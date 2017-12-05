@@ -15,8 +15,10 @@ import static org.apiguardian.api.API.Status.STABLE;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.PreconditionViolationException;
@@ -84,6 +86,7 @@ public final class LauncherDiscoveryRequestBuilder {
 	private List<DiscoveryFilter<?>> discoveryFilters = new ArrayList<>();
 	private List<PostDiscoveryFilter> postDiscoveryFilters = new ArrayList<>();
 	private Map<String, String> configurationParameters = new HashMap<>();
+	private Set<Object> extensions = new HashSet<>();
 
 	/**
 	 * Create a new {@code LauncherDiscoveryRequestBuilder}.
@@ -169,6 +172,11 @@ public final class LauncherDiscoveryRequestBuilder {
 		return this;
 	}
 
+	public LauncherDiscoveryRequestBuilder extendWith(Object... objects) {
+		extensions.addAll(Arrays.asList(objects));
+		return this;
+	}
+
 	private void storeFilter(Filter<?> filter) {
 		if (filter instanceof EngineFilter) {
 			this.engineFilters.add((EngineFilter) filter);
@@ -194,7 +202,7 @@ public final class LauncherDiscoveryRequestBuilder {
 		LauncherConfigurationParameters launcherConfigurationParameters = new LauncherConfigurationParameters(
 			this.configurationParameters);
 		return new DefaultDiscoveryRequest(this.selectors, this.engineFilters, this.discoveryFilters,
-			this.postDiscoveryFilters, launcherConfigurationParameters);
+			this.postDiscoveryFilters, launcherConfigurationParameters, this.extensions);
 	}
 
 }

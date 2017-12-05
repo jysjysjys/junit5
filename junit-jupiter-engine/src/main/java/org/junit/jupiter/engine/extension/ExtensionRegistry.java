@@ -72,6 +72,11 @@ public class ExtensionRegistry {
 	 * @return a new {@code ExtensionRegistry}; never {@code null}
 	 */
 	public static ExtensionRegistry createRegistryWithDefaultExtensions(ConfigurationParameters configParams) {
+		return createRegistryWithDefaultExtensions(configParams, Collections.emptySet());
+	}
+
+	public static ExtensionRegistry createRegistryWithDefaultExtensions(ConfigurationParameters configParams,
+			Set<Object> extensions) {
 		ExtensionRegistry extensionRegistry = new ExtensionRegistry(null);
 
 		// @formatter:off
@@ -85,6 +90,10 @@ public class ExtensionRegistry {
 		if (configParams.getBoolean(EXTENSIONS_AUTODETECTION_ENABLED_PROPERTY_NAME).orElse(Boolean.FALSE)) {
 			registerAutoDetectedExtensions(extensionRegistry);
 		}
+
+		extensions.stream().filter(extension -> extension instanceof Extension).peek(
+			extension -> logger.config(() -> "Registering provided extension: " + extension)).forEach(
+				extension -> extensionRegistry.registerExtension((Extension) extension, extensions));
 
 		return extensionRegistry;
 	}

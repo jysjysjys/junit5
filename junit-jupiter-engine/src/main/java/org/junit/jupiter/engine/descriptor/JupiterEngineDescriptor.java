@@ -13,6 +13,9 @@ package org.junit.jupiter.engine.descriptor;
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.jupiter.engine.extension.ExtensionRegistry.createRegistryWithDefaultExtensions;
 
+import java.util.Collections;
+import java.util.Set;
+
 import org.apiguardian.api.API;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
@@ -28,13 +31,21 @@ import org.junit.platform.engine.support.hierarchical.Node;
 @API(status = INTERNAL, since = "5.0")
 public class JupiterEngineDescriptor extends EngineDescriptor implements Node<JupiterEngineExecutionContext> {
 
+	private final Set<Object> extensions;
+
 	public JupiterEngineDescriptor(UniqueId uniqueId) {
+		this(uniqueId, Collections.emptySet());
+	}
+
+	public JupiterEngineDescriptor(UniqueId uniqueId, Set<Object> extensions) {
 		super(uniqueId, "JUnit Jupiter");
+		this.extensions = extensions;
 	}
 
 	@Override
-	public JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) throws Exception {
-		ExtensionRegistry extensionRegistry = createRegistryWithDefaultExtensions(context.getConfigurationParameters());
+	public JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) {
+		ExtensionRegistry extensionRegistry = createRegistryWithDefaultExtensions(context.getConfigurationParameters(),
+			extensions);
 		EngineExecutionListener executionListener = context.getExecutionListener();
 		ExtensionContext extensionContext = new JupiterEngineExtensionContext(executionListener, this);
 

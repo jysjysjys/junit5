@@ -13,6 +13,7 @@ package org.junit.platform.engine;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apiguardian.api.API;
 
@@ -65,4 +66,11 @@ public interface EngineDiscoveryRequest {
 	 */
 	ConfigurationParameters getConfigurationParameters();
 
+	/**
+	 * Auto-configurable extensions.
+	 *
+	 * @return the set of extension objects for this request; never
+	 * {@code null} but potentially empty
+	 */
+	Set<Object> getExtensions();
 }

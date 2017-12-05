@@ -14,6 +14,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.ConfigurationParameters;
@@ -47,14 +48,17 @@ final class DefaultDiscoveryRequest implements LauncherDiscoveryRequest {
 	// Configuration parameters can be used to provide custom configuration to engines, e.g. for extensions
 	private final LauncherConfigurationParameters configurationParameters;
 
+	private final Set<Object> extensions;
+
 	DefaultDiscoveryRequest(List<DiscoverySelector> selectors, List<EngineFilter> engineFilters,
 			List<DiscoveryFilter<?>> discoveryFilters, List<PostDiscoveryFilter> postDiscoveryFilters,
-			LauncherConfigurationParameters configurationParameters) {
+			LauncherConfigurationParameters configurationParameters, Set<Object> extensions) {
 		this.selectors = selectors;
 		this.engineFilters = engineFilters;
 		this.discoveryFilters = discoveryFilters;
 		this.postDiscoveryFilters = postDiscoveryFilters;
 		this.configurationParameters = configurationParameters;
+		this.extensions = extensions;
 	}
 
 	@Override
@@ -84,4 +88,8 @@ final class DefaultDiscoveryRequest implements LauncherDiscoveryRequest {
 		return this.configurationParameters;
 	}
 
+	@Override
+	public Set<Object> getExtensions() {
+		return extensions;
+	}
 }
