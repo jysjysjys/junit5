@@ -11,6 +11,8 @@
 package org.junit.jupiter.engine.descriptor;
 
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.junit.jupiter.engine.descriptor.ExtensionUtils.populateNewExtensionRegistryFromExtendWithAnnotation;
+import static org.junit.jupiter.engine.descriptor.ExtensionUtils.registerExtensionsFromFields;
 import static org.junit.jupiter.engine.descriptor.LifecycleMethodUtils.findAfterAllMethods;
 import static org.junit.jupiter.engine.descriptor.LifecycleMethodUtils.findAfterEachMethods;
 import static org.junit.jupiter.engine.descriptor.LifecycleMethodUtils.findBeforeAllMethods;
@@ -126,12 +128,12 @@ public class ClassTestDescriptor extends JupiterTestDescriptor {
 		this.beforeEachMethods = findBeforeEachMethods(testClass);
 		this.afterEachMethods = findAfterEachMethods(testClass);
 
-		ExtensionRegistry registry = populateNewExtensionRegistryFromExtendWith(this.testClass,
-			context.getExtensionRegistry());
+		ExtensionRegistry registry = populateNewExtensionRegistryFromExtendWithAnnotation(
+			context.getExtensionRegistry(), this.testClass);
 
 		// Register extensions from static fields here, at the class level but
 		// after extensions registered via @ExtendWith.
-		registerExtensionsFromFields(testClass, registry, null);
+		registerExtensionsFromFields(registry, testClass, null);
 		registerBeforeEachMethodAdapters(registry);
 		registerAfterEachMethodAdapters(registry);
 
@@ -200,7 +202,7 @@ public class ClassTestDescriptor extends JupiterTestDescriptor {
 		// In addition, we register extensions from instance fields here since the
 		// best time to do that is immediately following test class instantiation
 		// and post processing.
-		registerExtensionsFromFields(this.testClass, registry, instance);
+		registerExtensionsFromFields(registry, this.testClass, instance);
 		return instance;
 	}
 
