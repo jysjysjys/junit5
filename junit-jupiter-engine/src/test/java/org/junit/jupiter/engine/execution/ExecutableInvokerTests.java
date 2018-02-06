@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -137,6 +137,10 @@ class ExecutableInvokerTests {
 		assertSame(extensionContext, extension.resolveArguments.extensionContext);
 		assertEquals(0, extension.resolveArguments.parameterContext.getIndex());
 		assertSame(instance, extension.resolveArguments.parameterContext.getTarget().get());
+		// @formatter:off
+		assertThat(extension.resolveArguments.parameterContext.toString())
+				.contains("parameter", String.class.getTypeName(), "index", "0", "target", "Mock");
+		// @formatter:on
 	}
 
 	@Test

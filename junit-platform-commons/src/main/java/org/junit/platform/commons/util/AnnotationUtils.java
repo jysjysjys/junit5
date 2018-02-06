@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.JUnitException;
@@ -64,45 +65,6 @@ public final class AnnotationUtils {
 	///CLOVER:ON
 
 	private static final Map<AnnotationCacheKey, Annotation> annotationCache = new ConcurrentHashMap<>(256);
-
-	/**
-	 * Get the <em>default</em> value of the named attribute from the supplied
-	 * {@link Annotation}.
-	 *
-	 * @param annotation the annotation from which to retrieve the default
-	 * value; never {@code null}
-	 * @param attributeName the name of the attribute for which the default
-	 * value should be retrieved; never {@code null} or empty
-	 * @param attributeType the required type of the attribute; never {@code null}
-	 * @return an {@code Optional} containing the default value; potentially
-	 * <em>empty</em> if the attribute does not have a default value.
-	 */
-	public static <T> Optional<T> getDefaultValue(Annotation annotation, String attributeName, Class<T> attributeType) {
-		Preconditions.notNull(annotation, "Annotation must not be null");
-		Preconditions.notBlank(attributeName, "attributeName must not be null or blank");
-		Preconditions.notNull(attributeType, "attributeType must not be null");
-
-		Class<? extends Annotation> annotationType = annotation.annotationType();
-		Method attribute = null;
-		try {
-			attribute = annotationType.getDeclaredMethod(attributeName);
-		}
-		catch (Exception ex) {
-			return Optional.empty();
-		}
-
-		Object defaultValue = attribute.getDefaultValue();
-		if (defaultValue == null) {
-			return Optional.empty();
-		}
-
-		Preconditions.condition(attributeType.isInstance(defaultValue),
-			() -> String.format("Attribute '%s' in annotation %s is of type %s, not %s", attributeName,
-				annotationType.getName(), defaultValue.getClass().getName(), attributeType.getName()));
-
-		return Optional.of(attributeType.cast(defaultValue));
-
-	}
 
 	/**
 	 * Determine if an annotation of {@code annotationType} is either
@@ -196,6 +158,7 @@ public final class AnnotationUtils {
 				}
 			}
 
+			// Indirectly present?
 			// Search in class hierarchy
 			if (inherited) {
 				Class<?> superclass = clazz.getSuperclass();
@@ -206,13 +169,6 @@ public final class AnnotationUtils {
 					}
 				}
 			}
-		}
-
-		// Indirectly present?
-		annotation = element.getAnnotation(annotationType);
-		if (annotation != null) {
-			annotationCache.put(key, annotation);
-			return Optional.of(annotation);
 		}
 
 		// Meta-present on indirectly present annotations?
@@ -341,6 +297,43 @@ public final class AnnotationUtils {
 				.filter(field -> fieldType.isAssignableFrom(field.getType()) && isAnnotated(field, annotationType))
 				.collect(toUnmodifiableList());
 		// @formatter:on
+	}
+
+	/**
+	 * Find all {@linkplain Field fields} of the supplied class or interface
+	 * that are annotated or <em>meta-annotated</em> with the specified
+	 * {@code annotationType} and match the specified {@code predicate}, using
+	 * top-down search semantics within the type hierarchy.
+	 *
+	 * @see #findAnnotatedFields(Class, Class, Predicate, HierarchyTraversalMode)
+	 */
+	public static List<Field> findAnnotatedFields(Class<?> clazz, Class<? extends Annotation> annotationType,
+			Predicate<Field> predicate) {
+
+		return findAnnotatedFields(clazz, annotationType, predicate, HierarchyTraversalMode.TOP_DOWN);
+	}
+
+	/**
+	 * Find all {@linkplain Field fields} of the supplied class or interface
+	 * that are annotated or <em>meta-annotated</em> with the specified
+	 * {@code annotationType} and match the specified {@code predicate}.
+	 *
+	 * @param clazz the class or interface in which to find the fields; never {@code null}
+	 * @param annotationType the annotation type to search for; never {@code null}
+	 * @param predicate the field filter; never {@code null}
+	 * @param traversalMode the hierarchy traversal mode; never {@code null}
+	 * @return the list of all such fields found; neither {@code null} nor mutable
+	 */
+	public static List<Field> findAnnotatedFields(Class<?> clazz, Class<? extends Annotation> annotationType,
+			Predicate<Field> predicate, HierarchyTraversalMode traversalMode) {
+
+		Preconditions.notNull(clazz, "Class must not be null");
+		Preconditions.notNull(annotationType, "annotationType must not be null");
+		Preconditions.notNull(predicate, "Predicate must not be null");
+
+		Predicate<Field> annotated = field -> isAnnotated(field, annotationType);
+
+		return ReflectionUtils.findFields(clazz, annotated.and(predicate), traversalMode);
 	}
 
 	/**

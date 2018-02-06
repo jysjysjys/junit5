@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -43,6 +43,7 @@ import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.vintage.engine.samples.junit3.PlainJUnit3TestCaseWithSingleTestWhichFails;
+import org.junit.vintage.engine.samples.junit4.EmptyIgnoredTestClass;
 import org.junit.vintage.engine.samples.junit4.EnclosedJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.IgnoredJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteOfSuiteWithIgnoredJUnit4TestCase;
@@ -143,6 +144,8 @@ class VintageTestEngineExecutionTests {
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(nestedClass), started()), //
+			event(test("successfulTest"), started()), //
+			event(test("successfulTest"), finishedSuccessfully()), //
 			event(test("failingTest"), started()), //
 			event(test("failingTest"),
 				finishedWithFailure(allOf(isA(AssertionError.class), message("this test should fail")))), //
@@ -302,7 +305,19 @@ class VintageTestEngineExecutionTests {
 
 		assertRecordedExecutionEventsContainsExactly(executionEvents, //
 			event(engine(), started()), //
-			event(test(testClass.getName()), skippedWithReason("complete class is ignored")), //
+			event(container(testClass), skippedWithReason("complete class is ignored")), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesEmptyIgnoredTestClass() {
+		Class<?> testClass = EmptyIgnoredTestClass.class;
+
+		List<ExecutionEvent> executionEvents = execute(testClass);
+
+		assertRecordedExecutionEventsContainsExactly(executionEvents, //
+			event(engine(), started()), //
+			event(test(testClass.getName()), skippedWithReason("empty")), //
 			event(engine(), finishedSuccessfully()));
 	}
 
@@ -335,7 +350,7 @@ class VintageTestEngineExecutionTests {
 			event(engine(), started()), //
 			event(container(suiteOfSuiteClass), started()), //
 			event(container(suiteClass), started()), //
-			event(test(testClass.getName()), skippedWithReason("complete class is ignored")), //
+			event(container(testClass), skippedWithReason("complete class is ignored")), //
 			event(container(suiteClass), finishedSuccessfully()), //
 			event(container(suiteOfSuiteClass), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
@@ -504,7 +519,7 @@ class VintageTestEngineExecutionTests {
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("example"), started()), //
-			event(test("example"),
+			event(test("example"), //
 				finishedWithFailure(allOf(isA(MultipleFailuresError.class), //
 					new Condition<>(throwable -> ((MultipleFailuresError) throwable).getFailures().size() == 3,
 						"Must contain multiple errors (3)")))), //

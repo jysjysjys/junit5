@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -69,7 +69,10 @@ class TestClassRequestResolver {
 				runnerTestDescriptor = createCompleteRunnerTestDescriptor(testClass, filteredRunner, engineId);
 			}
 			else {
-				logger.warn(() -> "Runner " + runner.getClass().getName() //
+				Runner runnerToReport = (runner instanceof RunnerDecorator)
+						? ((RunnerDecorator) runner).getDecoratedRunner()
+						: runner;
+				logger.warn(() -> "Runner " + runnerToReport.getClass().getName() //
 						+ " (used on " + testClass.getName() + ") does not support filtering" //
 						+ " and will therefore be run completely.");
 			}

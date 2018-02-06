@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2018 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
+import static org.junit.platform.engine.test.event.ExecutionEvent.Type.DYNAMIC_TEST_REGISTERED;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.container;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.displayName;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.event;
@@ -48,6 +49,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.test.event.ExecutionEvent;
 import org.junit.platform.engine.test.event.ExecutionEventRecorder;
 
@@ -75,12 +77,47 @@ class ParameterizedTestIntegrationTests {
 	}
 
 	@Test
+	void executesWithEmptyMethodSource() {
+		List<ExecutionEvent> executionEvents = execute(
+			selectMethod(TestCase.class, "testWithEmptyMethodSource", String.class.getName()));
+		assertThat(executionEvents) //
+				.haveExactly(1, event(test(), finishedWithFailure(message("empty method source")))); //
+	}
+
+	@Test
 	void executesWithCustomName() {
 		List<ExecutionEvent> executionEvents = execute(
 			selectMethod(TestCase.class, "testWithCustomName", String.class.getName() + "," + Integer.TYPE.getName()));
 		assertThat(executionEvents) //
 				.haveExactly(1, event(test(), displayName("foo and 23"), finishedWithFailure(message("foo, 23")))) //
 				.haveExactly(1, event(test(), displayName("bar and 42"), finishedWithFailure(message("bar, 42"))));
+	}
+
+	/**
+	 * @since 5.1
+	 */
+	@Test
+	void executesWithImplicitGenericConverter() {
+		List<ExecutionEvent> executionEvents = execute(
+			selectMethod(TestCase.class, "testWithImplicitGenericConverter", Book.class.getName()));
+		assertThat(executionEvents) //
+				.haveExactly(1, event(test(), displayName("[1] book 1"), finishedWithFailure(message("book 1")))) //
+				.haveExactly(1, event(test(), displayName("[2] book 2"), finishedWithFailure(message("book 2"))));
+	}
+
+	@Test
+	void legacyReportingNames() {
+		List<ExecutionEvent> executionEvents = execute(
+			selectMethod(TestCase.class, "testWithCustomName", String.class.getName() + "," + Integer.TYPE.getName()));
+
+		// @formatter:off
+		Stream<String> legacyReportingNames = executionEvents.stream()
+				.filter(event -> event.getType() == DYNAMIC_TEST_REGISTERED)
+				.map(ExecutionEvent::getTestDescriptor)
+				.map(TestDescriptor::getLegacyReportingName);
+		// @formatter:off
+		assertThat(legacyReportingNames).containsExactly("testWithCustomName(String, int)[1]",
+				"testWithCustomName(String, int)[2]");
 	}
 
 	@Test
@@ -200,6 +237,12 @@ class ParameterizedTestIntegrationTests {
 		}
 
 		@ParameterizedTest
+		@ValueSource(strings = { "book 1", "book 2" })
+		void testWithImplicitGenericConverter(Book book) {
+			fail(book.title);
+		}
+
+		@ParameterizedTest
 		@ValueSource(strings = { "O", "XXX" })
 		void testWithExplicitConverter(@ConvertWith(StringLengthConverter.class) int length) {
 			fail("length: " + length);
@@ -209,6 +252,16 @@ class ParameterizedTestIntegrationTests {
 		@CsvSource({ "not important" })
 		void testWithEmptyName(String argument) {
 			fail(argument);
+		}
+
+		@ParameterizedTest
+		@MethodSource
+		void testWithEmptyMethodSource(String argument) {
+			fail(argument);
+		}
+
+		static Stream<Arguments> testWithEmptyMethodSource() {
+			return Stream.of(Arguments.of("empty method source"));
 		}
 	}
 
@@ -320,6 +373,19 @@ class ParameterizedTestIntegrationTests {
 		@Override
 		public Object convert(Object source, ParameterContext context) throws ArgumentConversionException {
 			return String.valueOf(source).length();
+		}
+	}
+
+	static class Book {
+
+		private final String title;
+
+		private Book(String title) {
+			this.title = title;
+		}
+
+		static Book factory(String title) {
+			return new Book(title);
 		}
 	}
 
