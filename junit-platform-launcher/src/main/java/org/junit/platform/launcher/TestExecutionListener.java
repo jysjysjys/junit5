@@ -18,14 +18,15 @@ import org.junit.platform.engine.TestExecutionResult.Status;
 import org.junit.platform.engine.reporting.ReportEntry;
 
 /**
- * Register an instance of this class with a {@link Launcher} to be notified of
- * events that occur during test execution.
+ * Register a concrete implementation of this interface with a {@link Launcher}
+ * to be notified of events that occur during test execution.
  *
- * <p>All methods in this class have empty <em>default</em> implementations.
- * Concrete implementations may therefore override one or more of these
- * methods to be notified of the selected events.
+ * <p>All methods in this interface have empty <em>default</em> implementations.
+ * Concrete implementations may therefore override one or more of these methods
+ * to be notified of the selected events.
  *
- * <p>JUnit provides two example implementations:
+ * <p>JUnit provides two example implementations.
+ *
  * <ul>
  * <li>{@link org.junit.platform.launcher.listeners.LoggingListener}</li>
  * <li>{@link org.junit.platform.launcher.listeners.SummaryGeneratingListener}</li>
@@ -45,7 +46,6 @@ import org.junit.platform.engine.reporting.ReportEntry;
  */
 @API(status = STABLE, since = "1.0")
 public interface TestExecutionListener {
-	///CLOVER:OFF
 
 	/**
 	 * Called when the execution of the {@link TestPlan} has started,
@@ -155,5 +155,4 @@ public interface TestExecutionListener {
 	default void reportingEntryPublished(TestIdentifier testIdentifier, ReportEntry entry) {
 	}
 
-	///CLOVER:ON
 }

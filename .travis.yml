@@ -8,34 +8,38 @@ branches:
   except:
     - /^r\d.*$/
 
+before_install:
+# https://github.com/travis-ci/travis-ci/issues/8408
+# Also interferes with platform-tooling-support-tests expectations
+  - unset _JAVA_OPTIONS
+
+install:
+  - echo "Don't let Travis CI execute './gradlew assemble' by default"
+
 matrix:
   include:
-# Java 9 (openjdk-9.0.1 fails with java.security.InvalidAlgorithmParameterException: the trustAnchors parameter must be non-empty)
-    - jdk: oraclejdk9
-      env: JDK_RELEASE='JDK 9' EXTRA_GRADLE_ARGS='-PenableJaCoCo'
-      install: echo "Don't let Travis CI execute './gradlew assemble' by default"
-# Java 10
-    - env: JDK_RELEASE='JDK 10 Early-Access' EXTRA_GRADLE_ARGS=''
-      install: . ./src/install/install-jdk-10.sh
+    - os: linux
+      jdk: openjdk10
+    - os: linux
+      jdk: openjdk11
+    - os: linux
+      jdk: openjdk-ea
+    - os: linux
+      jdk: openjdk10
+      env: SCAN='--scan --stacktrace --warning-mode=all' JACOCO='-PenableJaCoCo' INSTALL='publishToMavenLocal'
+    - os: osx
+      jdk: openjdk10
+  allow_failures:
+    - jdk: openjdk-ea
 
 script:
 # Display Gradle, Groovy, JVM and other versions
-  - ./gradlew -version
+  - ./gradlew --version
 # Build JUnit 5
-  - ./gradlew build $EXTRA_GRADLE_ARGS --scan --stacktrace -Dkotlin.compiler.execution.strategy="in-process"
+  - ./gradlew ${SCAN} ${JACOCO} build ${INSTALL}
 
-# Do not store unnecessary files from Gradle dependency cache
-before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-
-# Store Gradle dependency cache and Gradle Wrapper files for next execution
-cache:
-  directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
-
-# Run clover report and send report to codecov after build success for JDK 9 builds
 after_success:
-  - test "$JDK_RELEASE" = "JDK 9" && ./gradlew -PenableJaCoCo jacocoRootReport || true
-  - test "$JDK_RELEASE" = "JDK 9" && bash <(curl -s https://codecov.io/bash) || true
+# If variable JACOCO is set, run JaCoCo report and send report to codecov.io after build success
+  - test -v JACOCO && ./gradlew ${JACOCO} jacocoRootReport && bash <(curl -s https://codecov.io/bash) || true
+# If variable INSTALL is set, run platform-tooling-support-tests checking the local installation
+  - test -v INSTALL && ./gradlew --scan --stacktrace -Dplatform.tooling.support.tests.enabled=true build || true

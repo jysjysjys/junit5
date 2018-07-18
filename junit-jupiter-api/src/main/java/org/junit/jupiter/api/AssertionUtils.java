@@ -26,11 +26,13 @@ import org.opentest4j.AssertionFailedError;
  */
 class AssertionUtils {
 
-	///CLOVER:OFF
 	private AssertionUtils() {
 		/* no-op */
 	}
-	///CLOVER:ON
+
+	static void fail() {
+		throw new AssertionFailedError();
+	}
 
 	static void fail(String message) {
 		throw new AssertionFailedError(message);

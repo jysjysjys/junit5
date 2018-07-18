@@ -12,56 +12,55 @@ package org.junit.jupiter.params;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.Optional;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.junit.jupiter.params.converter.ArgumentConverter;
-import org.junit.jupiter.params.converter.ConvertWith;
-import org.junit.jupiter.params.converter.DefaultArgumentConverter;
-import org.junit.jupiter.params.support.AnnotationConsumerInitializer;
-import org.junit.platform.commons.util.AnnotationUtils;
-import org.junit.platform.commons.util.ReflectionUtils;
 
 /**
  * @since 5.0
  */
 class ParameterizedTestParameterResolver implements ParameterResolver {
 
+	private final ParameterizedTestMethodContext methodContext;
 	private final Object[] arguments;
 
-	ParameterizedTestParameterResolver(Object[] arguments) {
+	ParameterizedTestParameterResolver(ParameterizedTestMethodContext methodContext, Object[] arguments) {
+		this.methodContext = methodContext;
 		this.arguments = arguments;
 	}
 
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
-		Executable declaringExecutable = parameterContext.getParameter().getDeclaringExecutable();
+		Executable declaringExecutable = parameterContext.getDeclaringExecutable();
 		Method testMethod = extensionContext.getTestMethod().orElse(null);
-		return declaringExecutable.equals(testMethod) && parameterContext.getIndex() < arguments.length;
+
+		// Not a @ParameterizedTest method?
+		if (!declaringExecutable.equals(testMethod)) {
+			return false;
+		}
+
+		// Current parameter is an aggregator?
+		if (this.methodContext.isAggregator(parameterContext.getIndex())) {
+			return true;
+		}
+
+		// Ensure that the current parameter is declared before aggregators.
+		// Otherwise, a different ParameterResolver should handle it.
+		if (this.methodContext.indexOfFirstAggregator() != -1) {
+			return parameterContext.getIndex() < this.methodContext.indexOfFirstAggregator();
+		}
+
+		// Else fallback to behavior for parameterized test methods without aggregators.
+		return parameterContext.getIndex() < this.arguments.length;
 	}
 
 	@Override
 	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
 			throws ParameterResolutionException {
-		Object argument = arguments[parameterContext.getIndex()];
-		Parameter parameter = parameterContext.getParameter();
-		Optional<ConvertWith> annotation = AnnotationUtils.findAnnotation(parameter, ConvertWith.class);
-		// @formatter:off
-		ArgumentConverter argumentConverter = annotation.map(ConvertWith::value)
-				.map(clazz -> (ArgumentConverter) ReflectionUtils.newInstance(clazz))
-				.map(converter -> AnnotationConsumerInitializer.initialize(parameter, converter))
-				.orElse(DefaultArgumentConverter.INSTANCE);
-		// @formatter:on
-		try {
-			return argumentConverter.convert(argument, parameterContext);
-		}
-		catch (Exception ex) {
-			throw new ParameterResolutionException("Error resolving parameter at index " + parameterContext.getIndex(),
-				ex);
-		}
+
+		return this.methodContext.resolve(parameterContext, this.arguments);
 	}
+
 }

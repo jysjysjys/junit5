@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.junit.jupiter.params.provider.Arguments;
@@ -35,14 +36,40 @@ import org.junit.platform.commons.util.ReflectionUtils;
  */
 class ParameterizedTestExtension implements TestTemplateInvocationContextProvider {
 
+	private static final String METHOD_CONTEXT_KEY = "context";
+
 	@Override
 	public boolean supportsTestTemplate(ExtensionContext context) {
-		return isAnnotated(context.getTestMethod(), ParameterizedTest.class);
+		if (!context.getTestMethod().isPresent()) {
+			return false;
+		}
+
+		Method testMethod = context.getTestMethod().get();
+		if (!isAnnotated(testMethod, ParameterizedTest.class)) {
+			return false;
+		}
+
+		ParameterizedTestMethodContext methodContext = new ParameterizedTestMethodContext(testMethod);
+
+		Preconditions.condition(methodContext.hasPotentiallyValidSignature(),
+			() -> String.format(
+				"@ParameterizedTest method [%s] declares formal parameters in an invalid order: "
+						+ "argument aggregators must be declared after any indexed arguments "
+						+ "and before any arguments resolved by another ParameterResolver.",
+				testMethod.toGenericString()));
+
+		getStore(context).put(METHOD_CONTEXT_KEY, methodContext);
+
+		return true;
 	}
 
 	@Override
-	public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(ExtensionContext context) {
-		Method templateMethod = context.getRequiredTestMethod();
+	public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(
+			ExtensionContext extensionContext) {
+		Method templateMethod = extensionContext.getRequiredTestMethod();
+		ParameterizedTestMethodContext methodContext = getStore(extensionContext).get(METHOD_CONTEXT_KEY,
+			ParameterizedTestMethodContext.class);
+
 		ParameterizedTestNameFormatter formatter = createNameFormatter(templateMethod);
 		AtomicLong invocationCount = new AtomicLong(0);
 		// @formatter:off
@@ -51,20 +78,24 @@ class ParameterizedTestExtension implements TestTemplateInvocationContextProvide
 				.map(ArgumentsSource::value)
 				.map(ReflectionUtils::newInstance)
 				.map(provider -> AnnotationConsumerInitializer.initialize(templateMethod, provider))
-				.flatMap(provider -> arguments(provider, context))
+				.flatMap(provider -> arguments(provider, extensionContext))
 				.map(Arguments::get)
-				.map(arguments -> consumedArguments(arguments, templateMethod))
-				.map(arguments -> createInvocationContext(formatter, arguments))
+				.map(arguments -> consumedArguments(arguments, methodContext))
+				.map(arguments -> createInvocationContext(formatter, methodContext, arguments))
 				.peek(invocationContext -> invocationCount.incrementAndGet())
 				.onClose(() ->
 						Preconditions.condition(invocationCount.get() > 0,
-								() -> "Configuration error: You must provide at least one argument for this @" + ParameterizedTest.class.getSimpleName()));
+								"Configuration error: You must configure at least one set of arguments for this @ParameterizedTest"));
 		// @formatter:on
 	}
 
+	private ExtensionContext.Store getStore(ExtensionContext context) {
+		return context.getStore(Namespace.create(ParameterizedTestExtension.class, context.getRequiredTestMethod()));
+	}
+
 	private TestTemplateInvocationContext createInvocationContext(ParameterizedTestNameFormatter formatter,
-			Object[] arguments) {
-		return new ParameterizedTestInvocationContext(formatter, arguments);
+			ParameterizedTestMethodContext methodContext, Object[] arguments) {
+		return new ParameterizedTestInvocationContext(formatter, methodContext, arguments);
 	}
 
 	private ParameterizedTestNameFormatter createNameFormatter(Method templateMethod) {
@@ -85,9 +116,10 @@ class ParameterizedTestExtension implements TestTemplateInvocationContextProvide
 		}
 	}
 
-	private Object[] consumedArguments(Object[] arguments, Method templateMethod) {
-		int parametersCount = templateMethod.getParameterCount();
-		return arguments.length > parametersCount ? Arrays.copyOf(arguments, parametersCount) : arguments;
+	private Object[] consumedArguments(Object[] arguments, ParameterizedTestMethodContext methodContext) {
+		int parameterCount = methodContext.getParameterCount();
+		return methodContext.hasAggregator() ? arguments
+				: (arguments.length > parameterCount ? Arrays.copyOf(arguments, parameterCount) : arguments);
 	}
 
 }

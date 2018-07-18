@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,36 +31,53 @@ class DisabledIfSystemPropertyIntegrationTests {
 	private static final String BOGUS = "DisabledIfSystemPropertyTests.bogus";
 
 	@BeforeAll
-	static void setUp() {
+	static void setSystemProperty() {
 		System.setProperty(KEY, ENIGMA);
 	}
 
 	@AfterAll
-	static void tearDown() {
+	static void clearSystemProperty() {
 		System.clearProperty(KEY);
 	}
 
 	@Test
+	@Disabled("Only used in a unit test via reflection")
+	void enabledBecauseAnnotationIsNotPresent() {
+	}
+
+	@Test
+	@Disabled("Only used in a unit test via reflection")
+	@DisabledIfSystemProperty(named = "  ", matches = ENIGMA)
+	void blankNamedAttribute() {
+	}
+
+	@Test
+	@Disabled("Only used in a unit test via reflection")
+	@DisabledIfSystemProperty(named = KEY, matches = "  ")
+	void blankMatchesAttribute() {
+	}
+
+	@Test
 	@DisabledIfSystemProperty(named = KEY, matches = ENIGMA)
-	void propertyMatchesExactly() {
+	void disabledBecauseSystemPropertyMatchesExactly() {
 		fail("should be disabled");
 	}
 
 	@Test
 	@DisabledIfSystemProperty(named = KEY, matches = ".+enigma$")
-	void propertyMatchesPattern() {
+	void disabledBecauseSystemPropertyMatchesPattern() {
 		fail("should be disabled");
 	}
 
 	@Test
 	@DisabledIfSystemProperty(named = KEY, matches = BOGUS)
-	void propertyDoesNotMatch() {
+	void enabledBecauseSystemPropertyDoesNotMatch() {
 		assertNotEquals(BOGUS, System.getProperty(KEY));
 	}
 
 	@Test
 	@DisabledIfSystemProperty(named = BOGUS, matches = "doesn't matter")
-	void propertyDoesNotExist() {
+	void enabledBecauseSystemPropertyDoesNotExist() {
 		assertNull(System.getProperty(BOGUS));
 	}
 

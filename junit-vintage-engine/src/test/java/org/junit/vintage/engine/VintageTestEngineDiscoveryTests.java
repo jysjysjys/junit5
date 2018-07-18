@@ -49,14 +49,14 @@ import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.runner.manipulation.Filter;
-import org.junit.vintage.engine.samples.PlainOldJavaClassWithoutAnyTest;
+import org.junit.vintage.engine.samples.PlainOldJavaClassWithoutAnyTestsTestCase;
 import org.junit.vintage.engine.samples.junit3.JUnit3SuiteWithSingleTestCaseWithSingleTestWhichFails;
 import org.junit.vintage.engine.samples.junit3.PlainJUnit3TestCaseWithSingleTestWhichFails;
 import org.junit.vintage.engine.samples.junit4.Categories.Failing;
 import org.junit.vintage.engine.samples.junit4.Categories.Plain;
 import org.junit.vintage.engine.samples.junit4.Categories.Skipped;
 import org.junit.vintage.engine.samples.junit4.Categories.SkippedWithReason;
-import org.junit.vintage.engine.samples.junit4.EmptyIgnoredTestClass;
+import org.junit.vintage.engine.samples.junit4.EmptyIgnoredTestCase;
 import org.junit.vintage.engine.samples.junit4.IgnoredJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithPlainJUnit4TestCaseWithSingleTestWhichIsIgnored;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithTwoTestCases;
@@ -114,7 +114,7 @@ class VintageTestEngineDiscoveryTests {
 
 	@Test
 	void resolvesEmptyIgnoredTestClass() {
-		Class<?> testClass = EmptyIgnoredTestClass.class;
+		Class<?> testClass = EmptyIgnoredTestCase.class;
 		LauncherDiscoveryRequest discoveryRequest = discoveryRequestForClass(testClass);
 
 		TestDescriptor engineDescriptor = discoverTests(discoveryRequest);
@@ -122,7 +122,7 @@ class VintageTestEngineDiscoveryTests {
 		TestDescriptor runnerDescriptor = getOnlyElement(engineDescriptor.getChildren());
 		assertFalse(runnerDescriptor.isContainer());
 		assertTrue(runnerDescriptor.isTest());
-		assertEquals(testClass.getName(), runnerDescriptor.getDisplayName());
+		assertEquals(testClass.getSimpleName(), runnerDescriptor.getDisplayName());
 		assertEquals(VintageUniqueIdBuilder.uniqueIdForClass(testClass), runnerDescriptor.getUniqueId());
 		assertThat(runnerDescriptor.getChildren()).isEmpty();
 	}
@@ -223,7 +223,7 @@ class VintageTestEngineDiscoveryTests {
 
 	@Test
 	void doesNotResolvePlainOldJavaClassesWithoutAnyTest() {
-		assertYieldsNoDescriptors(PlainOldJavaClassWithoutAnyTest.class);
+		assertYieldsNoDescriptors(PlainOldJavaClassWithoutAnyTestsTestCase.class);
 	}
 
 	@Test
@@ -240,9 +240,9 @@ class VintageTestEngineDiscoveryTests {
 		// @formatter:off
 		assertThat(engineDescriptor.getChildren())
 			.extracting(TestDescriptor::getDisplayName)
-			.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getName())
-			.contains(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getName())
-			.doesNotContain(PlainOldJavaClassWithoutAnyTest.class.getName());
+			.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getSimpleName())
+			.contains(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getSimpleName())
+			.doesNotContain(PlainOldJavaClassWithoutAnyTestsTestCase.class.getSimpleName());
 		// @formatter:on
 	}
 
@@ -262,7 +262,7 @@ class VintageTestEngineDiscoveryTests {
 			// @formatter:off
 			assertThat(engineDescriptor.getChildren())
 					.extracting(TestDescriptor::getDisplayName)
-					.containsExactly("com.example.project.JUnit4Test");
+					.containsExactly("JUnit4Test");
 			// @formatter:on
 		}
 		finally {
@@ -282,9 +282,9 @@ class VintageTestEngineDiscoveryTests {
 		// @formatter:off
 		assertThat(engineDescriptor.getChildren())
 			.extracting(TestDescriptor::getDisplayName)
-			.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getName())
-			.doesNotContain(JUnit4TestCaseWithOverloadedMethod.class.getName())
-			.doesNotContain(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getName());
+			.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getSimpleName())
+			.doesNotContain(JUnit4TestCaseWithOverloadedMethod.class.getSimpleName())
+			.doesNotContain(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getSimpleName());
 		// @formatter:on
 	}
 
@@ -300,7 +300,7 @@ class VintageTestEngineDiscoveryTests {
 		// @formatter:off
 		assertThat(engineDescriptor.getChildren())
 				.extracting(TestDescriptor::getDisplayName)
-				.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getName());
+				.contains(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getSimpleName());
 		// @formatter:on
 	}
 
@@ -316,8 +316,8 @@ class VintageTestEngineDiscoveryTests {
 		// @formatter:off
 		assertThat(engineDescriptor.getChildren())
 			.extracting(TestDescriptor::getDisplayName)
-			.contains(testClass.getName())
-			.doesNotContain(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getName());
+			.contains(testClass.getSimpleName())
+			.doesNotContain(PlainJUnit3TestCaseWithSingleTestWhichFails.class.getSimpleName());
 		// @formatter:on
 	}
 
@@ -333,8 +333,8 @@ class VintageTestEngineDiscoveryTests {
 		// @formatter:off
 		assertThat(engineDescriptor.getChildren())
 			.extracting(TestDescriptor::getDisplayName)
-			.contains(testClass.getName())
-			.doesNotContain(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getName());
+			.contains(testClass.getSimpleName())
+			.doesNotContain(PlainJUnit4TestCaseWithSingleTestWhichFails.class.getSimpleName());
 		// @formatter:on
 	}
 
@@ -347,7 +347,7 @@ class VintageTestEngineDiscoveryTests {
 		TestDescriptor engineDescriptor = discoverTests(discoveryRequest);
 
 		TestDescriptor runnerDescriptor = getOnlyElement(engineDescriptor.getChildren());
-		assertEquals(testClass.getName(), runnerDescriptor.getDisplayName());
+		assertEquals(testClass.getSimpleName(), runnerDescriptor.getDisplayName());
 		assertClassSource(testClass, runnerDescriptor);
 
 		TestDescriptor testDescriptor = getOnlyElement(runnerDescriptor.getChildren());
@@ -637,7 +637,7 @@ class VintageTestEngineDiscoveryTests {
 		TestDescriptor engineDescriptor = discoverTests(request);
 
 		TestDescriptor runnerDescriptor = getOnlyElement(engineDescriptor.getChildren());
-		assertEquals(testClass.getName(), runnerDescriptor.getDisplayName());
+		assertEquals(testClass.getSimpleName(), runnerDescriptor.getDisplayName());
 		assertEquals(VintageUniqueIdBuilder.uniqueIdForClass(testClass), runnerDescriptor.getUniqueId());
 		assertThat(runnerDescriptor.getChildren()).isNotEmpty();
 	}
@@ -720,7 +720,7 @@ class VintageTestEngineDiscoveryTests {
 	private static void assertRunnerTestDescriptor(TestDescriptor runnerDescriptor, Class<?> testClass) {
 		assertTrue(runnerDescriptor.isContainer());
 		assertFalse(runnerDescriptor.isTest());
-		assertEquals(testClass.getName(), runnerDescriptor.getDisplayName());
+		assertEquals(testClass.getSimpleName(), runnerDescriptor.getDisplayName());
 		assertEquals(VintageUniqueIdBuilder.uniqueIdForClass(testClass), runnerDescriptor.getUniqueId());
 		assertClassSource(testClass, runnerDescriptor);
 	}

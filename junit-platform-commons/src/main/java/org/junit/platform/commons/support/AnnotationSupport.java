@@ -33,17 +33,31 @@ import org.junit.platform.commons.util.ReflectionUtils;
 @API(status = MAINTAINED, since = "1.0")
 public final class AnnotationSupport {
 
-	///CLOVER:OFF
 	private AnnotationSupport() {
 		/* no-op */
 	}
-	///CLOVER:ON
+
+	/**
+	 * Determine if an annotation of {@code annotationType} is either
+	 * <em>present</em> or <em>meta-present</em> on the supplied optional
+	 * {@code element}.
+	 *
+	 * @since 1.3
+	 * @see #isAnnotated(AnnotatedElement, Class)
+	 * @see #findAnnotation(Optional, Class)
+	 */
+	public static boolean isAnnotated(Optional<? extends AnnotatedElement> element,
+			Class<? extends Annotation> annotationType) {
+
+		return AnnotationUtils.isAnnotated(element, annotationType);
+	}
 
 	/**
 	 * Determine if an annotation of {@code annotationType} is either
 	 * <em>present</em> or <em>meta-present</em> on the supplied
 	 * {@code element}.
 	 *
+	 * @see #isAnnotated(Optional, Class)
 	 * @see #findAnnotation(AnnotatedElement, Class)
 	 */
 	public static boolean isAnnotated(AnnotatedElement element, Class<? extends Annotation> annotationType) {
@@ -72,6 +86,9 @@ public final class AnnotationSupport {
 	 * present</em> nor <em>meta-present</em> on the class, this method will
 	 * additionally search on interfaces implemented by the class before
 	 * finding an annotation that is <em>indirectly present</em> on the class.
+	 *
+	 * @return an {@code Optional} containing the annotation; never {@code null} but
+	 * potentially empty
 	 */
 	public static <A extends Annotation> Optional<A> findAnnotation(AnnotatedElement element, Class<A> annotationType) {
 		return AnnotationUtils.findAnnotation(element, annotationType);

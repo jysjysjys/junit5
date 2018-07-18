@@ -12,13 +12,14 @@ package org.junit.platform.launcher.tagexpression;
 
 import java.util.Optional;
 
+/**
+ * @since 1.1
+ */
 class ParseResults {
 
-	///CLOVER:OFF
 	private ParseResults() {
 		/* no-op */
 	}
-	///CLOVER:ON
 
 	static ParseResult success(TagExpression tagExpression) {
 		return new ParseResult() {
@@ -37,4 +38,5 @@ class ParseResults {
 			}
 		};
 	}
+
 }

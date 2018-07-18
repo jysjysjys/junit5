@@ -1,32 +1,11 @@
 apply plugin: 'com.github.johnrengelman.shadow'
 
-buildscript {
-	repositories {
-		jcenter()
-	}
-	dependencies {
-		classpath("com.github.jengelman.gradle.plugins:shadow:${shadowVersion}")
-	}
-}
+description = 'JUnit Platform Console'
 
 dependencies {
 	api(project(':junit-platform-launcher'))
 
-	shadow('net.sf.jopt-simple:jopt-simple:5.0.4')
-}
-
-sourceSets.main.compileClasspath += configurations.shadow
-
-eclipse {
-	classpath {
-		plusConfigurations += [ configurations.shadow ]
-	}
-}
-
-idea {
-	module {
-		scopes.PROVIDED.plus += [ configurations.shadow ]
-	}
+	shadowed('net.sf.jopt-simple:jopt-simple:5.0.4')
 }
 
 jar {
@@ -38,11 +17,8 @@ jar {
 	}
 }
 
-javadoc {
-	classpath = project.sourceSets.main.compileClasspath + configurations.shadow
-}
-
 jar.enabled = false
+jar.dependsOn shadowJar
 
 shadowJar {
 	// Generate shadow jar only if the underlying manifest was regenerated.
@@ -51,7 +27,7 @@ shadowJar {
 		(project.generateManifest || !shadowJar.archivePath.exists())
 	}
 	classifier = null
-	configurations = [project.configurations.shadow]
+	configurations = [project.configurations.shadowed]
 	exclude 'META-INF/**'
 	relocate 'joptsimple', 'org.junit.platform.console.shadow.joptsimple'
 	transform(com.github.jengelman.gradle.plugins.shadow.transformers.PropertiesFileTransformer) {
@@ -67,8 +43,4 @@ shadowJar {
 		include 'LICENSE-jopt-simple.md'
 		into 'META-INF'
 	}
-}
-
-artifacts {
-	archives shadowJar
 }

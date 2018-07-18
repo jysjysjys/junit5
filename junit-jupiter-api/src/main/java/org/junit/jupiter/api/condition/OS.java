@@ -22,12 +22,31 @@ import org.junit.platform.commons.util.StringUtils;
 /**
  * Enumeration of common operating systems used for testing Java applications.
  *
+ * <p>If the current operating system cannot be detected &mdash; for example,
+ * if the {@code os.name} JVM system property is undefined &mdash; then none
+ * of the constants defined in this enum will be considered to be the
+ * {@linkplain #isCurrentOs current operating system}.
+ *
  * @since 5.1
+ * @see #AIX
+ * @see #LINUX
+ * @see #MAC
+ * @see #SOLARIS
+ * @see #WINDOWS
+ * @see #OTHER
  * @see EnabledOnOs
  * @see DisabledOnOs
  */
 @API(status = STABLE, since = "5.1")
 public enum OS {
+
+	/**
+	 * IBM AIX operating system.
+	 *
+	 * @since 5.3
+	 */
+	@API(status = STABLE, since = "5.3")
+	AIX,
 
 	/**
 	 * Linux-based operating system.
@@ -50,31 +69,31 @@ public enum OS {
 	WINDOWS,
 
 	/**
-	 * An operating system other than {@link #LINUX}, {@link #MAC},
+	 * An operating system other than {@link #AIX}, {@link #LINUX}, {@link #MAC},
 	 * {@link #SOLARIS}, or {@link #WINDOWS}.
-	 *
-	 * <p>Note that {@code OTHER} will be considered to be the {@linkplain
-	 * #isCurrentOs current operating system} if the current operating system
-	 * could not be detected &mdash; for example, if the {@code os.name} JVM
-	 * system property is undefined.
 	 */
 	OTHER;
 
 	private static final Logger logger = LoggerFactory.getLogger(OS.class);
 
-	private static final OS CURRENT_OS = determineCurrentfOs();
+	private static final OS CURRENT_OS = determineCurrentOs();
 
-	private static OS determineCurrentfOs() {
+	private static OS determineCurrentOs() {
 		String osName = System.getProperty("os.name");
 
 		if (StringUtils.isBlank(osName)) {
 			logger.debug(
 				() -> "JVM system property 'os.name' is undefined. It is therefore not possible to detect the current OS.");
-			return OTHER;
+
+			// null signals that the current OS is "unknown"
+			return null;
 		}
 
 		osName = osName.toLowerCase(Locale.ENGLISH);
 
+		if (osName.contains("aix")) {
+			return AIX;
+		}
 		if (osName.contains("linux")) {
 			return LINUX;
 		}
@@ -91,8 +110,8 @@ public enum OS {
 	}
 
 	/**
-	 * @return {@code true} if <em>this</em> {@code OS} is the operating system
-	 * on which the current JVM is executing
+	 * @return {@code true} if <em>this</em> {@code OS} is known to be the
+	 * operating system on which the current JVM is executing
 	 */
 	public boolean isCurrentOs() {
 		return this == CURRENT_OS;

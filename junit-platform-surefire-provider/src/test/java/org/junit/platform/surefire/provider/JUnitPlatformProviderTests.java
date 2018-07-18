@@ -24,9 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.mockito.AdditionalMatchers.gt;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -176,9 +175,9 @@ class JUnitPlatformProviderTests {
 		ArgumentCaptor<byte[]> captor = ArgumentCaptor.forClass(byte[].class);
 		// @formatter:off
 		verify((ConsoleOutputReceiver) runListener)
-				.writeTestOutput(captor.capture(), eq(0), gt(6), eq(true));
+				.writeTestOutput(captor.capture(), eq(0), eq(6), eq(true));
 		verify((ConsoleOutputReceiver) runListener)
-				.writeTestOutput(captor.capture(), eq(0), gt(6), eq(false));
+				.writeTestOutput(captor.capture(), eq(0), eq(6), eq(false));
 		assertThat(captor.getAllValues())
 				.extracting(bytes -> new String(bytes, 0, 6))
 				.containsExactly("stdout", "stderr");
@@ -260,6 +259,34 @@ class JUnitPlatformProviderTests {
 		Map<String, String> properties = new HashMap<>();
 		properties.put(JUnitPlatformProvider.INCLUDE_TAGS, "tagOne, tagTwo");
 		properties.put(JUnitPlatformProvider.EXCLUDE_TAGS, "tagThree, tagFour");
+
+		ProviderParameters providerParameters = providerParametersMock(TestClass1.class);
+		when(providerParameters.getProviderProperties()).thenReturn(properties);
+
+		JUnitPlatformProvider provider = new JUnitPlatformProvider(providerParameters);
+
+		assertEquals(2, provider.filters.length);
+	}
+
+	@Test
+	void tagExpressionsAreSupportedForIncludeTagsContainingVerticalBar() {
+		Map<String, String> properties = new HashMap<>();
+		properties.put(JUnitPlatformProvider.INCLUDE_TAGS, "tagOne | tagTwo");
+		properties.put(JUnitPlatformProvider.EXCLUDE_TAGS, "tagThree | tagFour");
+
+		ProviderParameters providerParameters = providerParametersMock(TestClass1.class);
+		when(providerParameters.getProviderProperties()).thenReturn(properties);
+
+		JUnitPlatformProvider provider = new JUnitPlatformProvider(providerParameters);
+
+		assertEquals(2, provider.filters.length);
+	}
+
+	@Test
+	void tagExpressionsAreSupportedForIncludeTagsContainingAmpersand() {
+		Map<String, String> properties = new HashMap<>();
+		properties.put(JUnitPlatformProvider.INCLUDE_TAGS, "tagOne & !tagTwo");
+		properties.put(JUnitPlatformProvider.EXCLUDE_TAGS, "tagThree & !tagFour");
 
 		ProviderParameters providerParameters = providerParametersMock(TestClass1.class);
 		when(providerParameters.getProviderProperties()).thenReturn(properties);
@@ -533,8 +560,8 @@ class JUnitPlatformProviderTests {
 	static class VerboseTestClass {
 		@Test
 		void test() {
-			System.out.println("stdout");
-			System.err.println("stderr");
+			System.out.print("stdout");
+			System.err.print("stderr");
 		}
 	}
 

@@ -13,6 +13,7 @@ package org.junit.platform.launcher.core;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.logging.Logger;
@@ -44,6 +45,7 @@ class DefaultLauncher implements Launcher {
 	private static final Logger logger = LoggerFactory.getLogger(DefaultLauncher.class);
 
 	private final TestExecutionListenerRegistry listenerRegistry = new TestExecutionListenerRegistry();
+	private final EngineDiscoveryResultValidator discoveryResultValidator = new EngineDiscoveryResultValidator();
 	private final Iterable<TestEngine> testEngines;
 
 	/**
@@ -128,10 +130,7 @@ class DefaultLauncher implements Launcher {
 		UniqueId uniqueEngineId = UniqueId.forEngine(testEngine.getId());
 		try {
 			TestDescriptor engineRoot = testEngine.discover(discoveryRequest, uniqueEngineId);
-			Preconditions.notNull(engineRoot,
-				() -> String.format(
-					"The discover() method for TestEngine with ID '%s' must return a non-null root TestDescriptor.",
-					testEngine.getId()));
+			discoveryResultValidator.validate(testEngine, engineRoot);
 			return Optional.of(engineRoot);
 		}
 		catch (Throwable throwable) {
@@ -142,18 +141,33 @@ class DefaultLauncher implements Launcher {
 
 	private void execute(Root root, ConfigurationParameters configurationParameters,
 			TestExecutionListener... listeners) {
-
 		TestExecutionListenerRegistry listenerRegistry = buildListenerRegistryForExecution(listeners);
-		TestPlan testPlan = TestPlan.from(root.getEngineDescriptors());
+		withInterceptedStreams(configurationParameters, listenerRegistry, testExecutionListener -> {
+			TestPlan testPlan = TestPlan.from(root.getEngineDescriptors());
+			testExecutionListener.testPlanExecutionStarted(testPlan);
+			ExecutionListenerAdapter engineExecutionListener = new ExecutionListenerAdapter(testPlan,
+				testExecutionListener);
+			for (TestEngine testEngine : root.getTestEngines()) {
+				TestDescriptor testDescriptor = root.getTestDescriptorFor(testEngine);
+				execute(testEngine,
+					new ExecutionRequest(testDescriptor, engineExecutionListener, configurationParameters));
+			}
+			testExecutionListener.testPlanExecutionFinished(testPlan);
+		});
+	}
+
+	private void withInterceptedStreams(ConfigurationParameters configurationParameters,
+			TestExecutionListenerRegistry listenerRegistry, Consumer<TestExecutionListener> action) {
 		TestExecutionListener testExecutionListener = listenerRegistry.getCompositeTestExecutionListener();
-		testExecutionListener.testPlanExecutionStarted(testPlan);
-		ExecutionListenerAdapter engineExecutionListener = new ExecutionListenerAdapter(testPlan,
-			testExecutionListener);
-		for (TestEngine testEngine : root.getTestEngines()) {
-			TestDescriptor testDescriptor = root.getTestDescriptorFor(testEngine);
-			execute(testEngine, new ExecutionRequest(testDescriptor, engineExecutionListener, configurationParameters));
+		Optional<StreamInterceptingTestExecutionListener> streamInterceptingTestExecutionListener = StreamInterceptingTestExecutionListener.create(
+			configurationParameters, testExecutionListener::reportingEntryPublished);
+		streamInterceptingTestExecutionListener.ifPresent(listenerRegistry::registerListeners);
+		try {
+			action.accept(testExecutionListener);
 		}
-		testExecutionListener.testPlanExecutionFinished(testPlan);
+		finally {
+			streamInterceptingTestExecutionListener.ifPresent(StreamInterceptingTestExecutionListener::unregister);
+		}
 	}
 
 	private TestExecutionListenerRegistry buildListenerRegistryForExecution(TestExecutionListener... listeners) {

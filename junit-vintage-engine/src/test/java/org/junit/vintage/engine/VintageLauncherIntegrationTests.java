@@ -12,6 +12,7 @@ package org.junit.vintage.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.platform.commons.util.CollectionUtils.getOnlyElement;
+import static org.junit.platform.engine.FilterResult.excluded;
 import static org.junit.platform.engine.FilterResult.includedIf;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.launcher.EngineFilter.includeEngines;
@@ -45,6 +46,7 @@ import org.junit.vintage.engine.samples.junit4.JUnit4SuiteOfSuiteWithFilterableC
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithTwoTestCases;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithNotFilterableRunner;
 import org.junit.vintage.engine.samples.junit4.NotFilterableRunner;
+import org.junit.vintage.engine.samples.junit4.ParameterizedTestCase;
 import org.junit.vintage.engine.samples.junit4.PlainJUnit4TestCaseWithFiveTestMethods;
 import org.junit.vintage.engine.samples.junit4.PlainJUnit4TestCaseWithTwoTestMethods;
 
@@ -65,7 +67,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getName(), "failingTest");
+				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getSimpleName(), "failingTest");
 	}
 
 	@Test
@@ -81,7 +83,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getName(), nestedTestClass.getName(),
+				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getSimpleName(), nestedTestClass.getName(),
 					"failingTest");
 	}
 
@@ -98,7 +100,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getName(), nestedTestClass.getName(),
+				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getSimpleName(), nestedTestClass.getName(),
 					"successfulTest");
 	}
 
@@ -161,7 +163,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getName(), "Test #0", "Test #1");
+				.containsExactlyInAnyOrder("JUnit Vintage", testClass.getSimpleName(), "Test #0", "Test #1");
 		assertThat(logRecordListener.stream(RunnerTestDescriptor.class, Level.WARNING).map(LogRecord::getMessage)) //
 				.containsExactly(
 					"Runner " + NotFilterableRunner.class.getName() + " (used on class " + testClass.getName() + ")" //
@@ -183,7 +185,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", suiteClass.getName(), testClass.getName(), "Test #0",
+				.containsExactlyInAnyOrder("JUnit Vintage", suiteClass.getSimpleName(), testClass.getName(), "Test #0",
 					"Test #1");
 		assertThat(logRecordListener.stream(RunnerTestDescriptor.class, Level.WARNING).map(LogRecord::getMessage)) //
 				.containsExactly("Runner " + Suite.class.getName() + " (used on class " + suiteClass.getName() + ")" //
@@ -203,7 +205,7 @@ class VintageLauncherIntegrationTests {
 
 		Map<TestIdentifier, TestExecutionResult> results = execute(request);
 		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
-				.containsExactlyInAnyOrder("JUnit Vintage", suiteClass.getName(), testClass.getName(),
+				.containsExactlyInAnyOrder("JUnit Vintage", suiteClass.getSimpleName(), testClass.getName(),
 					"successfulTest");
 	}
 
@@ -213,6 +215,21 @@ class VintageLauncherIntegrationTests {
 		LauncherDiscoveryRequestBuilder request = request() //
 				.selectors(selectClass(testClass)) //
 				.filters(excludeTags(Categories.Successful.class.getName()));
+
+		TestPlan testPlan = discover(request);
+		assertThat(testPlan.getDescendants(getOnlyElement(testPlan.getRoots()))).isEmpty();
+
+		Map<TestIdentifier, TestExecutionResult> results = execute(request);
+		assertThat(results.keySet().stream().map(TestIdentifier::getDisplayName)) //
+				.containsExactly("JUnit Vintage");
+	}
+
+	@Test
+	void filtersOutAllDescendantsOfParameterizedTestCase() {
+		Class<?> testClass = ParameterizedTestCase.class;
+		LauncherDiscoveryRequestBuilder request = request() //
+				.selectors(selectClass(testClass)) //
+				.filters((PostDiscoveryFilter) descriptor -> excluded("excluded"));
 
 		TestPlan testPlan = discover(request);
 		assertThat(testPlan.getDescendants(getOnlyElement(testPlan.getRoots()))).isEmpty();

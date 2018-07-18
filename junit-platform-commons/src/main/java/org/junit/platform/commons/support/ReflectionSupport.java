@@ -32,11 +32,9 @@ import org.junit.platform.commons.util.ReflectionUtils;
 @API(status = MAINTAINED, since = "1.0")
 public final class ReflectionSupport {
 
-	///CLOVER:OFF
 	private ReflectionSupport() {
 		/* no-op */
 	}
-	///CLOVER:ON
 
 	/**
 	 * Load a class by its <em>primitive name</em> or <em>fully qualified name</em>,
@@ -70,6 +68,7 @@ public final class ReflectionSupport {
 	 * @return an immutable list of all such classes found; never {@code null}
 	 * but potentially empty
 	 * @see #findAllClassesInPackage(String, Predicate, Predicate)
+	 * @see #findAllClassesInModule(String, Predicate, Predicate)
 	 */
 	public static List<Class<?>> findAllClassesInClasspathRoot(URI root, Predicate<Class<?>> classFilter,
 			Predicate<String> classNameFilter) {
@@ -91,10 +90,33 @@ public final class ReflectionSupport {
 	 * @return an immutable list of all such classes found; never {@code null}
 	 * but potentially empty
 	 * @see #findAllClassesInClasspathRoot(URI, Predicate, Predicate)
+	 * @see #findAllClassesInModule(String, Predicate, Predicate)
 	 */
 	public static List<Class<?>> findAllClassesInPackage(String basePackageName, Predicate<Class<?>> classFilter,
 			Predicate<String> classNameFilter) {
 		return ReflectionUtils.findAllClassesInPackage(basePackageName, classFilter, classNameFilter);
+	}
+
+	/**
+	 * Find all {@linkplain Class classes} in the supplied {@code moduleName}
+	 * that match the specified {@code classFilter} and {@code classNameFilter}
+	 * predicates.
+	 *
+	 * <p>The module-path scanning algorithm searches recursively in all
+	 * packages contained in the module.
+	 *
+	 * @param moduleName the name of the module to scan
+	 * @param classFilter the class type filter; never {@code null}
+	 * @param classNameFilter the class name filter; never {@code null}
+	 * @return an immutable list of all such classes found; never {@code null}
+	 * but potentially empty
+	 * @since 1.1.1
+	 * @see #findAllClassesInClasspathRoot(URI, Predicate, Predicate)
+	 * @see #findAllClassesInPackage(String, Predicate, Predicate)
+	 */
+	public static List<Class<?>> findAllClassesInModule(String moduleName, Predicate<Class<?>> classFilter,
+			Predicate<String> classNameFilter) {
+		return ReflectionUtils.findAllClassesInModule(moduleName, classFilter, classNameFilter);
 	}
 
 	/**

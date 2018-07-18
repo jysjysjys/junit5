@@ -19,22 +19,60 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.params.ParameterizedTest;
 
 /**
  * {@code @MethodSource} is an {@link ArgumentsSource} which provides access
- * to values returned by {@linkplain #value() methods} of the class in
- * which this annotation is declared.
+ * to values returned from {@linkplain #value() factory methods} of the class in
+ * which this annotation is declared or from static factory methods in external
+ * classes referenced by <em>fully qualified method name</em>.
  *
- * <p>By default such methods must be {@code static} unless the
+ * <p>Each factory method must generate a <em>stream</em> of <em>arguments</em>,
+ * and each set of arguments within the stream will be provided as the physical
+ * arguments for individual invocations of the annotated
+ * {@link ParameterizedTest @ParameterizedTest} method. Generally speaking this
+ * translates to a {@link java.util.stream.Stream Stream} of {@link Arguments}
+ * (i.e., {@code Stream<Arguments>}); however, the actual concrete return type
+ * can take on many forms. In this context, a "stream" is anything that JUnit
+ * can reliably convert into a {@code Stream}, such as
+ * {@link java.util.stream.Stream Stream},
+ * {@link java.util.stream.DoubleStream DoubleStream},
+ * {@link java.util.stream.LongStream LongStream},
+ * {@link java.util.stream.IntStream IntStream},
+ * {@link java.util.Collection Collection},
+ * {@link java.util.Iterator Iterator},
+ * {@link Iterable}, an array of objects, or an array of primitives. The
+ * "arguments" within the stream can be supplied as an instance of
+ * {@link Arguments}, an array of objects (e.g., {@code Object[]}), or a single
+ * value if the parameterized test method accepts a single argument.
+ *
+ * <h3>Examples</h3>
+ *
+ * <p>The following table displays compatible method signatures for parameterized
+ * test methods and their corresponding factory methods.
+ *
+ * <p><table border="1">
+ * <tr><th>{@code @ParameterizedTest} method</th><th>Factory method</th></tr>
+ * <tr><td>{@code void test(int)}</td><td>{@code static int[] factory()}</td></tr>
+ * <tr><td>{@code void test(int)}</td><td>{@code static IntStream factory()}</td></tr>
+ * <tr><td>{@code void test(String)}</td><td>{@code static String[] factory()}</td></tr>
+ * <tr><td>{@code void test(String)}</td><td>{@code static List<String> factory()}</td></tr>
+ * <tr><td>{@code void test(String)}</td><td>{@code static Stream<String> factory()}</td></tr>
+ * <tr><td>{@code void test(String, int)}</td><td>{@code static Object[][] factory()}</td></tr>
+ * <tr><td>{@code void test(String, int)}</td><td>{@code static Stream<Object[]> factory()}</td></tr>
+ * <tr><td>{@code void test(String, int)}</td><td>{@code static Stream<Arguments> factory()}</td></tr>
+ * </table>
+ *
+ * <p>Factory methods within the test class must be {@code static} unless the
  * {@link org.junit.jupiter.api.TestInstance.Lifecycle#PER_CLASS PER_CLASS}
- * test instance lifecycle mode is used for the test class.
- *
- * <p>The values returned by such methods will be provided as arguments to the
- * annotated {@code @ParameterizedTest} method.
+ * test instance lifecycle mode is used; whereas, factory methods in external
+ * classes must always be {@code static}. In any case, factory methods must not
+ * declare any parameters.
  *
  * @since 5.0
- * @see org.junit.jupiter.params.provider.ArgumentsSource
- * @see org.junit.jupiter.params.ParameterizedTest
+ * @see Arguments
+ * @see ArgumentsSource
+ * @see ParameterizedTest
  * @see org.junit.jupiter.api.TestInstance
  */
 @Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD })
@@ -45,8 +83,18 @@ import org.apiguardian.api.API;
 public @interface MethodSource {
 
 	/**
-	 * The names of the test class methods to use as sources for arguments;
-	 * leave empty if the source method has the same name as the test method.
+	 * The names of factory methods within the test class or in external classes
+	 * to use as sources for arguments.
+	 *
+	 * <p>Factory methods in external classes must be referenced by <em>fully
+	 * qualified method name</em> &mdash; for example,
+	 * {@code com.example.StringsProviders#blankStrings}.
+	 *
+	 * <p>If no factory method names are declared, a method within the test class
+	 * that has the same name as the test method will be used as the factory
+	 * method by default.
+	 *
+	 * <p>For further information, see the {@linkplain MethodSource class-level JavaDoc}.
 	 */
 	String[] value() default "";
 

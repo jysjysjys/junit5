@@ -11,11 +11,11 @@
 package org.junit.jupiter.api.condition;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,37 +30,54 @@ class EnabledIfSystemPropertyIntegrationTests {
 	private static final String BOGUS = "EnabledIfSystemPropertyTests.bogus";
 
 	@BeforeAll
-	static void setUp() {
+	static void setSystemProperty() {
 		System.setProperty(KEY, ENIGMA);
 	}
 
 	@AfterAll
-	static void tearDown() {
+	static void clearSystemProperty() {
 		System.clearProperty(KEY);
 	}
 
 	@Test
+	@Disabled("Only used in a unit test via reflection")
+	void enabledBecauseAnnotationIsNotPresent() {
+	}
+
+	@Test
+	@Disabled("Only used in a unit test via reflection")
+	@EnabledIfSystemProperty(named = "  ", matches = ENIGMA)
+	void blankNamedAttribute() {
+	}
+
+	@Test
+	@Disabled("Only used in a unit test via reflection")
+	@EnabledIfSystemProperty(named = KEY, matches = "  ")
+	void blankMatchesAttribute() {
+	}
+
+	@Test
 	@EnabledIfSystemProperty(named = KEY, matches = ENIGMA)
-	void propertyMatchesExactly() {
+	void enabledBecauseSystemPropertyMatchesExactly() {
 		assertEquals(ENIGMA, System.getProperty(KEY));
 	}
 
 	@Test
 	@EnabledIfSystemProperty(named = KEY, matches = ".+enigma$")
-	void propertyMatchesPattern() {
+	void enabledBecauseSystemPropertyMatchesPattern() {
 		assertEquals(ENIGMA, System.getProperty(KEY));
 	}
 
 	@Test
 	@EnabledIfSystemProperty(named = KEY, matches = BOGUS)
-	void propertyDoesNotMatch() {
+	void disabledBecauseSystemPropertyDoesNotMatch() {
 		fail("should be disabled");
 	}
 
 	@Test
 	@EnabledIfSystemProperty(named = BOGUS, matches = "doesn't matter")
-	void propertyDoesNotExist() {
-		assertNull(System.getProperty(BOGUS));
+	void disabledBecauseSystemPropertyDoesNotExist() {
+		fail("should be disabled");
 	}
 
 }

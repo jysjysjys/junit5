@@ -23,10 +23,29 @@ import org.apiguardian.api.API;
  * to determine if a given container or test should be executed based on the
  * supplied {@link ExtensionContext}.
  *
- * <p>Implementations must provide a no-args constructor.
+ * <p>If an {@code ExecutionCondition} {@linkplain ConditionEvaluationResult#disabled
+ * disables} a test method, that does not prevent the test class from being
+ * instantiated. Rather, it prevents the execution of the test method and
+ * method-level lifecycle callbacks such as {@code @BeforeEach} methods,
+ * {@code @AfterEach} methods, and corresponding extension APIs.
+ *
+ * <h3>Constructor Requirements</h3>
+ *
+ * <p>Consult the documentation in {@link Extension} for details on
+ * constructor requirements.
  *
  * @since 5.0
  * @see org.junit.jupiter.api.Disabled
+ * @see org.junit.jupiter.api.condition.EnabledIf
+ * @see org.junit.jupiter.api.condition.DisabledIf
+ * @see org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+ * @see org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
+ * @see org.junit.jupiter.api.condition.EnabledIfSystemProperty
+ * @see org.junit.jupiter.api.condition.DisabledIfSystemProperty
+ * @see org.junit.jupiter.api.condition.EnabledOnJre
+ * @see org.junit.jupiter.api.condition.DisabledOnJre
+ * @see org.junit.jupiter.api.condition.EnabledOnOs
+ * @see org.junit.jupiter.api.condition.DisabledOnOs
  */
 @FunctionalInterface
 @API(status = STABLE, since = "5.0")

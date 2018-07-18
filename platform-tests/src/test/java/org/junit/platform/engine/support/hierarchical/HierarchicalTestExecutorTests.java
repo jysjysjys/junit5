@@ -10,32 +10,38 @@
 
 package org.junit.platform.engine.support.hierarchical;
 
+import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.platform.engine.TestExecutionResult.Status.ABORTED;
+import static org.junit.platform.engine.TestExecutionResult.Status.FAILED;
+import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
+import org.junit.platform.engine.support.hierarchical.ExclusiveResource.LockMode;
 import org.junit.platform.engine.support.hierarchical.Node.DynamicTestExecutor;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.opentest4j.TestAbortedException;
 
@@ -44,18 +50,20 @@ import org.opentest4j.TestAbortedException;
  *
  * @since 1.0
  */
+@ExtendWith(MockitoExtension.class)
 class HierarchicalTestExecutorTests {
 
-	MyContainer root;
+	@Spy
+	MyContainer root = new MyContainer(UniqueId.root("container", "root"));
+
+	@Mock
 	EngineExecutionListener listener;
-	MyEngineExecutionContext rootContext;
+
+	MyEngineExecutionContext rootContext = new MyEngineExecutionContext();
 	HierarchicalTestExecutor<MyEngineExecutionContext> executor;
 
 	@BeforeEach
 	void init() {
-		root = spy(new MyContainer(UniqueId.root("container", "root")));
-		listener = mock(EngineExecutionListener.class);
-		rootContext = new MyEngineExecutionContext();
 		ExecutionRequest request = new ExecutionRequest(root, listener, null);
 		executor = new MyExecutor(request, rootContext);
 	}
@@ -75,8 +83,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(root).after(rootContext);
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 
-		assertTrue(rootExecutionResult.getValue().getStatus() == TestExecutionResult.Status.SUCCESSFUL,
-			"Execution of root should be successful.");
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(SUCCESSFUL);
 	}
 
 	@Test
@@ -99,8 +106,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(child), childExecutionResult.capture());
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
-		assertTrue(childExecutionResult.getValue().getStatus() == TestExecutionResult.Status.SUCCESSFUL,
-			"Execution of child container should be successful.");
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(SUCCESSFUL);
 	}
 
 	@Test
@@ -122,8 +128,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(child), aTestExecutionResult.capture());
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
-		assertTrue(aTestExecutionResult.getValue().getStatus() == TestExecutionResult.Status.SUCCESSFUL,
-			"Execution of child leaf be successful.");
+		assertThat(aTestExecutionResult.getValue().getStatus()).isEqualTo(SUCCESSFUL);
 	}
 
 	@Test
@@ -144,7 +149,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
 		verify(listener, never()).executionStarted(child);
-		verifyNoMoreInteractions(child);
+		verify(child, never()).execute(any(), any());
 		verify(listener, never()).executionFinished(eq(child), any(TestExecutionResult.class));
 	}
 
@@ -166,7 +171,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
 		verify(listener, never()).executionStarted(child);
-		verifyNoMoreInteractions(child);
+		verify(child, never()).execute(any(), any());
 		verify(listener, never()).executionFinished(eq(child), any(TestExecutionResult.class));
 	}
 
@@ -191,11 +196,10 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(child), childExecutionResult.capture());
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
-		verifyNoMoreInteractions(child);
+		verify(child, never()).execute(any(), any());
 
-		assertTrue(childExecutionResult.getValue().getStatus() == TestExecutionResult.Status.FAILED,
-			"Execution of child should fail.");
-		assertSame(childExecutionResult.getValue().getThrowable().get(), anException);
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
+		assertThat(childExecutionResult.getValue().getThrowable()).containsSame(anException);
 	}
 
 	@Test
@@ -218,11 +222,10 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(root).after(rootContext);
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 
-		assertTrue(rootExecutionResult.getValue().getStatus() == TestExecutionResult.Status.FAILED,
-			"Execution of root should fail.");
-		assertSame(rootExecutionResult.getValue().getThrowable().get(), anException);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
+		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(anException);
 
-		verifyNoMoreInteractions(child);
+		verify(child, never()).execute(any(), any());
 	}
 
 	@Test
@@ -251,7 +254,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 		inOrder.verifyNoMoreInteractions();
 
-		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(TestExecutionResult.Status.FAILED);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
 		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(afterException);
 		assertThat(afterException.getSuppressed()).containsExactly(cleanUpException);
 	}
@@ -270,7 +273,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 		inOrder.verifyNoMoreInteractions();
 
-		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(TestExecutionResult.Status.FAILED);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
 		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(prepareException);
 		assertThat(prepareException.getSuppressed()).isEmpty();
 	}
@@ -293,7 +296,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 		inOrder.verifyNoMoreInteractions();
 
-		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(TestExecutionResult.Status.FAILED);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
 		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(cleanUpException);
 		assertThat(cleanUpException.getSuppressed()).isEmpty();
 	}
@@ -316,7 +319,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 		inOrder.verifyNoMoreInteractions();
 
-		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(TestExecutionResult.Status.FAILED);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
 		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(shouldBeSkippedException);
 		assertThat(shouldBeSkippedException.getSuppressed()).containsExactly(cleanUpException);
 	}
@@ -342,9 +345,8 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(root).after(rootContext);
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
-		assertTrue(childExecutionResult.getValue().getStatus() == TestExecutionResult.Status.FAILED,
-			"Execution of child should fail.");
-		assertSame(childExecutionResult.getValue().getThrowable().get(), anException);
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
+		assertThat(childExecutionResult.getValue().getThrowable()).containsSame(anException);
 	}
 
 	@Test
@@ -367,11 +369,10 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(root).after(rootContext);
 		inOrder.verify(listener).executionFinished(eq(root), rootExecutionResult.capture());
 
-		assertTrue(rootExecutionResult.getValue().getStatus() == TestExecutionResult.Status.ABORTED,
-			"Execution of root should abort.");
-		assertSame(rootExecutionResult.getValue().getThrowable().get(), anAbortedException);
+		assertThat(rootExecutionResult.getValue().getStatus()).isEqualTo(ABORTED);
+		assertThat(rootExecutionResult.getValue().getThrowable()).containsSame(anAbortedException);
 
-		verifyNoMoreInteractions(child);
+		verify(child, never()).execute(any(), any());
 	}
 
 	@Test
@@ -395,9 +396,8 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(root).after(rootContext);
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
-		assertTrue(childExecutionResult.getValue().getStatus() == TestExecutionResult.Status.ABORTED,
-			"Execution of child should abort.");
-		assertSame(childExecutionResult.getValue().getThrowable().get(), anAbortedException);
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(ABORTED);
+		assertThat(childExecutionResult.getValue().getThrowable()).containsSame(anAbortedException);
 	}
 
 	@Test
@@ -434,15 +434,16 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
 		assertThat(aTestExecutionResult.getAllValues()).extracting(TestExecutionResult::getStatus).containsExactly(
-			TestExecutionResult.Status.SUCCESSFUL, TestExecutionResult.Status.SUCCESSFUL);
+			SUCCESSFUL, SUCCESSFUL);
 	}
 
 	@Test
 	void executesDynamicTestDescriptorsUsingContainerAndTestType() throws Exception {
 
-		MyContainerAndTest child = spy(new MyContainerAndTest(root.getUniqueId().append("c&t", "child")));
-		MyContainerAndTest dynamicContainerAndTest = spy(
-			new MyContainerAndTest(child.getUniqueId().append("c&t", "dynamicContainerAndTest")));
+		MyContainerAndTestTestCase child = spy(
+			new MyContainerAndTestTestCase(root.getUniqueId().append("c&t", "child")));
+		MyContainerAndTestTestCase dynamicContainerAndTest = spy(
+			new MyContainerAndTestTestCase(child.getUniqueId().append("c&t", "dynamicContainerAndTest")));
 		MyLeaf dynamicLeaf = spy(new MyLeaf(dynamicContainerAndTest.getUniqueId().append("test", "dynamicLeaf")));
 
 		root.addChild(child);
@@ -482,8 +483,7 @@ class HierarchicalTestExecutorTests {
 		inOrder.verify(listener).executionFinished(eq(root), any(TestExecutionResult.class));
 
 		assertThat(aTestExecutionResult.getAllValues()).extracting(TestExecutionResult::getStatus).containsExactly(
-			TestExecutionResult.Status.FAILED, TestExecutionResult.Status.SUCCESSFUL,
-			TestExecutionResult.Status.SUCCESSFUL);
+			FAILED, SUCCESSFUL, SUCCESSFUL);
 	}
 
 	private Answer<Object> registerAndExecute(TestDescriptor dynamicChild) {
@@ -522,6 +522,83 @@ class HierarchicalTestExecutorTests {
 		assertSame(outOfMemoryError, actualException);
 	}
 
+	@Test
+	void exceptionInAfterDoesNotHideEarlierException() throws Exception {
+
+		MyLeaf child = spy(new MyLeaf(UniqueId.root("leaf", "leaf")));
+		Exception exceptionInExecute = new RuntimeException("execute");
+		Exception exceptionInAfter = new RuntimeException("after");
+		doThrow(exceptionInExecute).when(child).execute(eq(rootContext), any());
+		doThrow(exceptionInAfter).when(child).after(eq(rootContext));
+		root.addChild(child);
+
+		InOrder inOrder = inOrder(listener, child);
+
+		executor.execute();
+
+		ArgumentCaptor<TestExecutionResult> childExecutionResult = ArgumentCaptor.forClass(TestExecutionResult.class);
+		inOrder.verify(child).execute(eq(rootContext), any());
+		inOrder.verify(child).after(eq(rootContext));
+		inOrder.verify(listener).executionFinished(eq(child), childExecutionResult.capture());
+
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
+		assertThat(childExecutionResult.getValue().getThrowable().get()).isSameAs(
+			exceptionInExecute).hasSuppressedException(exceptionInAfter);
+	}
+
+	@Test
+	void dynamicTestDescriptorsMustNotDeclareExclusiveResources() throws Exception {
+
+		UniqueId leafUniqueId = UniqueId.root("leaf", "child leaf");
+		MyLeaf child = spy(new MyLeaf(leafUniqueId));
+		MyLeaf dynamicTestDescriptor = spy(new MyLeaf(leafUniqueId.append("dynamic", "child")));
+		when(dynamicTestDescriptor.getExclusiveResources()).thenReturn(
+			singleton(new ExclusiveResource("foo", LockMode.READ)));
+
+		when(child.execute(any(), any())).thenAnswer(invocation -> {
+			DynamicTestExecutor dynamicTestExecutor = invocation.getArgument(1);
+			dynamicTestExecutor.execute(dynamicTestDescriptor);
+			return invocation.getArgument(0);
+		});
+		root.addChild(child);
+
+		executor.execute();
+
+		ArgumentCaptor<TestExecutionResult> aTestExecutionResult = ArgumentCaptor.forClass(TestExecutionResult.class);
+		verify(listener).executionStarted(dynamicTestDescriptor);
+		verify(listener).executionFinished(eq(dynamicTestDescriptor), aTestExecutionResult.capture());
+
+		TestExecutionResult executionResult = aTestExecutionResult.getValue();
+		assertThat(executionResult.getStatus()).isEqualTo(FAILED);
+		assertThat(executionResult.getThrowable()).isPresent();
+		assertThat(executionResult.getThrowable().get()).hasMessageContaining(
+			"Dynamic test descriptors must not declare exclusive resources");
+	}
+
+	@Test
+	void exceptionInAfterIsReportedInsteadOfEarlierTestAbortedException() throws Exception {
+
+		MyLeaf child = spy(new MyLeaf(UniqueId.root("leaf", "leaf")));
+		Exception exceptionInExecute = new TestAbortedException("execute");
+		Exception exceptionInAfter = new RuntimeException("after");
+		doThrow(exceptionInExecute).when(child).execute(eq(rootContext), any());
+		doThrow(exceptionInAfter).when(child).after(eq(rootContext));
+		root.addChild(child);
+
+		InOrder inOrder = inOrder(listener, child);
+
+		executor.execute();
+
+		ArgumentCaptor<TestExecutionResult> childExecutionResult = ArgumentCaptor.forClass(TestExecutionResult.class);
+		inOrder.verify(child).execute(eq(rootContext), any());
+		inOrder.verify(child).after(eq(rootContext));
+		inOrder.verify(listener).executionFinished(eq(child), childExecutionResult.capture());
+
+		assertThat(childExecutionResult.getValue().getStatus()).isEqualTo(FAILED);
+		assertThat(childExecutionResult.getValue().getThrowable().get()).isSameAs(
+			exceptionInAfter).hasSuppressedException(exceptionInExecute);
+	}
+
 	// -------------------------------------------------------------------
 
 	private static class MyEngineExecutionContext implements EngineExecutionContext {
@@ -557,9 +634,10 @@ class HierarchicalTestExecutorTests {
 		}
 	}
 
-	private static class MyContainerAndTest extends AbstractTestDescriptor implements Node<MyEngineExecutionContext> {
+	private static class MyContainerAndTestTestCase extends AbstractTestDescriptor
+			implements Node<MyEngineExecutionContext> {
 
-		MyContainerAndTest(UniqueId uniqueId) {
+		MyContainerAndTestTestCase(UniqueId uniqueId) {
 			super(uniqueId, uniqueId.toString());
 		}
 
@@ -572,7 +650,8 @@ class HierarchicalTestExecutorTests {
 	private static class MyExecutor extends HierarchicalTestExecutor<MyEngineExecutionContext> {
 
 		MyExecutor(ExecutionRequest request, MyEngineExecutionContext rootContext) {
-			super(request, rootContext);
+			super(request, rootContext, new SameThreadHierarchicalTestExecutorService(),
+				OpenTest4JAwareThrowableCollector::new);
 		}
 	}
 
