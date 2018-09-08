@@ -21,11 +21,14 @@ import static org.junit.platform.engine.test.event.ExecutionEventConditions.engi
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.event;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.finishedSuccessfully;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.finishedWithFailure;
+import static org.junit.platform.engine.test.event.ExecutionEventConditions.nestedContainer;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.started;
 import static org.junit.platform.engine.test.event.ExecutionEventConditions.test;
 import static org.junit.platform.engine.test.event.TestExecutionResultConditions.isA;
 import static org.junit.platform.engine.test.event.TestExecutionResultConditions.message;
 
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,7 +66,7 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	void multipleFactoriesRegisteredOnSingleTestClass() {
-		Class<?> testClass = MultipleFactoriesRegisteredTestCase.class;
+		Class<?> testClass = MultipleFactoriesRegisteredOnSingleTestCase.class;
 		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
 
 		assertEquals(0, eventRecorder.getTestStartedCount(), "# tests started");
@@ -77,6 +80,49 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 					message("The following TestInstanceFactory extensions were registered for test class ["
 							+ testClass.getName() + "], but only one is permitted: "
 							+ nullSafeToString(FooInstanceFactory.class, BarInstanceFactory.class))))), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void multipleFactoriesRegisteredWithinTestClassHierarchy() {
+		Class<?> testClass = MultipleFactoriesRegisteredWithinClassHierarchyTestCase.class;
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
+
+		assertEquals(0, eventRecorder.getTestStartedCount(), "# tests started");
+		assertEquals(0, eventRecorder.getTestFailedCount(), "# tests aborted");
+
+		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
+			event(engine(), started()), //
+			event(container(testClass), started()), //
+			event(container(testClass),
+				finishedWithFailure(allOf(isA(ExtensionConfigurationException.class),
+					message("The following TestInstanceFactory extensions were registered for test class ["
+							+ testClass.getName() + "], but only one is permitted: "
+							+ nullSafeToString(FooInstanceFactory.class, BarInstanceFactory.class))))), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void multipleFactoriesRegisteredWithinNestedClassStructure() {
+		Class<?> outerClass = MultipleFactoriesRegisteredWithinNestedClassStructureTestCase.class;
+		Class<?> nestedClass = MultipleFactoriesRegisteredWithinNestedClassStructureTestCase.InnerTestCase.class;
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(outerClass);
+
+		assertEquals(1, eventRecorder.getTestStartedCount(), "# tests started");
+		assertEquals(1, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
+
+		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
+			event(engine(), started()), //
+			event(container(outerClass), started()), //
+			event(test("outerTest()"), started()), //
+			event(test("outerTest()"), finishedSuccessfully()), //
+			event(nestedContainer(nestedClass), started()), //
+			event(nestedContainer(nestedClass),
+				finishedWithFailure(allOf(isA(ExtensionConfigurationException.class),
+					message("The following TestInstanceFactory extensions were registered for test class ["
+							+ nestedClass.getName() + "], but only one is permitted: "
+							+ nullSafeToString(FooInstanceFactory.class, BarInstanceFactory.class))))), //
+			event(container(outerClass), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
 
@@ -199,7 +245,32 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
-	void instanceFactoryOnToplevelTestClass() {
+	void proxyTestInstanceFactoryFailsDueToUseOfDifferentClassLoader() {
+		Class<?> testClass = ProxiedTestCase.class;
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
+
+		assertEquals(0, eventRecorder.getTestStartedCount(), "# tests started");
+		assertEquals(0, eventRecorder.getTestFailedCount(), "# tests aborted");
+
+		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
+			event(engine(), started()), //
+			event(container(testClass), started()), //
+			event(container(testClass), //
+				// NOTE: the test class names are the same even though the objects are
+				// instantiated using different ClassLoaders. Thus, we check for the
+				// appended "@" but ignore the actual hash code for the test class
+				// loaded by the different ClassLoader.
+				finishedWithFailure(allOf(isA(TestInstantiationException.class),
+					message(m -> m.startsWith("TestInstanceFactory [" + ProxyTestInstanceFactory.class.getName() + "]")
+							&& m.contains("failed to return an instance of [" + testClass.getName() + "@"
+									+ Integer.toHexString(System.identityHashCode(testClass)))
+							&& m.contains("and instead returned an instance of [" + testClass.getName() + "@")//
+					)))), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void instanceFactoryOnTopLevelTestClass() {
 		ExecutionEventRecorder eventRecorder = executeTestsForClass(ParentTestCase.class);
 
 		assertEquals(1, eventRecorder.getTestStartedCount(), "# tests started");
@@ -214,62 +285,61 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
-	void instanceFactoryInTestClassHierarchy() {
-		ExecutionEventRecorder eventRecorder = executeTestsForClass(ChildTestCase.class);
+	void inheritedFactoryInTestClassHierarchy() {
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(InheritedFactoryTestCase.class);
 
 		assertEquals(2, eventRecorder.getTestStartedCount(), "# tests started");
 		assertEquals(2, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
 
 		// @formatter:off
 		assertThat(callSequence).containsExactly(
-			"FooInstanceFactory instantiated: ChildTestCase",
+			"FooInstanceFactory instantiated: InheritedFactoryTestCase",
 				"parentTest",
-			"FooInstanceFactory instantiated: ChildTestCase",
+			"FooInstanceFactory instantiated: InheritedFactoryTestCase",
 				"childTest"
 		);
 		// @formatter:on
 	}
 
 	@Test
-	void multipleFactoriesRegisteredInTestClassHierarchy() {
-		Class<?> testClass = MultipleFactoriesRegisteredChildTestCase.class;
-		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
-
-		assertEquals(0, eventRecorder.getTestStartedCount(), "# tests started");
-		assertEquals(0, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
-
-		assertRecordedExecutionEventsContainsExactly(eventRecorder.getExecutionEvents(), //
-			event(engine(), started()), //
-			event(container(testClass), started()), //
-			event(container(testClass),
-				finishedWithFailure(allOf(isA(ExtensionConfigurationException.class),
-					message("The following TestInstanceFactory extensions were registered for test class ["
-							+ testClass.getName() + "], but only one is permitted: "
-							+ nullSafeToString(FooInstanceFactory.class, BarInstanceFactory.class))))), //
-			event(engine(), finishedSuccessfully()));
-	}
-
-	@Test
-	void instanceFactoriesInNestedClassHierarchy() {
+	void instanceFactoriesInNestedClassStructureAreInherited() {
 		ExecutionEventRecorder eventRecorder = executeTestsForClass(OuterTestCase.class);
 
-		assertEquals(2, eventRecorder.getTestStartedCount(), "# tests started");
-		assertEquals(2, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
+		assertEquals(3, eventRecorder.getTestStartedCount(), "# tests started");
+		assertEquals(3, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
 
 		// @formatter:off
 		assertThat(callSequence).containsExactly(
 
 			// OuterTestCase
 			"FooInstanceFactory instantiated: OuterTestCase",
-				"beforeOuterMethod",
-					"testOuter",
+				"outerTest",
 
 			// InnerTestCase
 			"FooInstanceFactory instantiated: OuterTestCase",
-				"NestedInstanceFactory instantiated: InnerTestCase",
-					"beforeOuterMethod",
-						"beforeInnerMethod",
-							"testInner"
+				"FooInstanceFactory instantiated: InnerTestCase",
+					"innerTest1",
+
+			// InnerInnerTestCase
+			"FooInstanceFactory instantiated: OuterTestCase",
+				"FooInstanceFactory instantiated: InnerTestCase",
+					"FooInstanceFactory instantiated: InnerInnerTestCase",
+						"innerTest2"
+		);
+		// @formatter:on
+	}
+
+	@Test
+	void instanceFactoryRegisteredViaTestInterface() {
+		ExecutionEventRecorder eventRecorder = executeTestsForClass(FactoryFromInterfaceTestCase.class);
+
+		assertEquals(1, eventRecorder.getTestStartedCount(), "# tests started");
+		assertEquals(1, eventRecorder.getTestSuccessfulCount(), "# tests succeeded");
+
+		// @formatter:off
+		assertThat(callSequence).containsExactly(
+			"FooInstanceFactory instantiated: FactoryFromInterfaceTestCase",
+				"test"
 		);
 		// @formatter:on
 	}
@@ -314,7 +384,7 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	// -------------------------------------------------------------------------
 
 	@ExtendWith({ FooInstanceFactory.class, BarInstanceFactory.class })
-	static class MultipleFactoriesRegisteredTestCase {
+	static class MultipleFactoriesRegisteredOnSingleTestCase {
 
 		@Test
 		void testShouldNotBeCalled() {
@@ -370,7 +440,7 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 		}
 	}
 
-	static class ChildTestCase extends ParentTestCase {
+	static class InheritedFactoryTestCase extends ParentTestCase {
 
 		@Test
 		void childTest() {
@@ -379,40 +449,67 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@ExtendWith(BarInstanceFactory.class)
-	static class MultipleFactoriesRegisteredChildTestCase extends ParentTestCase {
+	static class MultipleFactoriesRegisteredWithinClassHierarchyTestCase extends ParentTestCase {
 
 		@Test
-		void testShouldNotBeCalled() {
-			callSequence.add("testShouldNotBeCalled");
+		void childTest() {
+			callSequence.add("childTest");
 		}
 	}
 
 	@ExtendWith(FooInstanceFactory.class)
 	static class OuterTestCase {
 
-		@BeforeEach
-		void beforeOuterMethod() {
-			callSequence.add("beforeOuterMethod");
-		}
-
 		@Test
-		void testOuter() {
-			callSequence.add("testOuter");
+		void outerTest() {
+			callSequence.add("outerTest");
 		}
 
 		@Nested
-		@ExtendWith(NestedInstanceFactory.class)
 		class InnerTestCase {
 
-			@BeforeEach
-			void beforeInnerMethod() {
-				callSequence.add("beforeInnerMethod");
+			@Test
+			void innerTest1() {
+				callSequence.add("innerTest1");
 			}
 
-			@Test
-			void testInner() {
-				callSequence.add("testInner");
+			@Nested
+			class InnerInnerTestCase {
+
+				@Test
+				void innerTest2() {
+					callSequence.add("innerTest2");
+				}
 			}
+		}
+	}
+
+	@ExtendWith(FooInstanceFactory.class)
+	static class MultipleFactoriesRegisteredWithinNestedClassStructureTestCase {
+
+		@Test
+		void outerTest() {
+		}
+
+		@Nested
+		@ExtendWith(BarInstanceFactory.class)
+		class InnerTestCase {
+
+			@Test
+			void innerTest() {
+			}
+		}
+	}
+
+	@ExtendWith(FooInstanceFactory.class)
+	interface TestInterface {
+	}
+
+	static class FactoryFromInterfaceTestCase implements TestInterface {
+
+		@Test
+		void test() {
+			callSequence.add("test");
 		}
 	}
 
@@ -474,12 +571,34 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 		}
 	}
 
+	@ExtendWith(ProxyTestInstanceFactory.class)
+	@TestInstance(PER_CLASS)
+	static class ProxiedTestCase {
+
+		@Test
+		void test1() {
+			callSequence.add("test1");
+		}
+
+		@Test
+		void test2() {
+			callSequence.add("test2");
+		}
+	}
+
+	// -------------------------------------------------------------------------
+
 	private static abstract class AbstractTestInstanceFactory implements TestInstanceFactory {
 
 		@Override
 		public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {
 			Class<?> testClass = factoryContext.getTestClass();
 			instantiated(getClass(), testClass);
+
+			if (factoryContext.getOuterInstance().isPresent()) {
+				return ReflectionUtils.newInstance(testClass, factoryContext.getOuterInstance().get());
+			}
+			// else
 			return ReflectionUtils.newInstance(testClass);
 		}
 	}
@@ -488,17 +607,6 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	private static class BarInstanceFactory extends AbstractTestInstanceFactory {
-	}
-
-	private static class NestedInstanceFactory implements TestInstanceFactory {
-
-		@Override
-		public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {
-			Class<?> testClass = factoryContext.getTestClass();
-			Object outerInstance = factoryContext.getOuterInstance().get();
-			instantiated(getClass(), testClass);
-			return ReflectionUtils.newInstance(testClass, outerInstance);
-		}
 	}
 
 	/**
@@ -532,6 +640,44 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 		@Override
 		public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {
 			throw new RuntimeException("boom!");
+		}
+	}
+
+	/**
+	 * This does not actually create a proxy. Rather, it simply simulates what
+	 * a proxy-based implementation might do, by loading the class from a
+	 * different {@link ClassLoader}.
+	 */
+	private static class ProxyTestInstanceFactory implements TestInstanceFactory {
+
+		@Override
+		public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {
+			Class<?> testClass = factoryContext.getTestClass();
+			String className = testClass.getName();
+			instantiated(getClass(), testClass);
+
+			try (ProxyClassLoader proxyClassLoader = new ProxyClassLoader()) {
+				// Load test class from different class loader
+				Class<?> clazz = proxyClassLoader.loadClass(className);
+				return ReflectionUtils.newInstance(clazz);
+			}
+			catch (Exception ex) {
+				throw new RuntimeException("Failed to load class [" + className + "]", ex);
+			}
+		}
+	}
+
+	private static class ProxyClassLoader extends URLClassLoader {
+
+		ProxyClassLoader() {
+			super(new URL[] { ProxyClassLoader.class.getProtectionDomain().getCodeSource().getLocation() },
+				getSystemClassLoader());
+		}
+
+		@Override
+		public Class<?> loadClass(String name) throws ClassNotFoundException {
+			return (name.startsWith(TestInstanceFactoryTests.class.getName()) ? findClass(name)
+					: super.loadClass(name));
 		}
 	}
 

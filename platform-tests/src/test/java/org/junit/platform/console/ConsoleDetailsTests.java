@@ -92,7 +92,7 @@ class ConsoleDetailsTests {
 							"--include-engine", "junit-jupiter", //
 							"--details", details.name(), //
 							"--details-theme", theme.name(), //
-							"--disable-ansi-colors", "true", //
+							"--disable-ansi-colors", //
 							"--include-classname", containerClass.getCanonicalName(), //
 							"--select-method", getFullyQualifiedMethodName(containerClass, methodName, types) //
 					};
@@ -156,6 +156,17 @@ class ConsoleDetailsTests {
 
 	@DisplayName("Report")
 	static class ReportTestCase {
+
+		@Test
+		void reportSingleMessage(TestReporter reporter) {
+			reporter.publishEntry("foo");
+		}
+
+		@Test
+		void reportMultipleMessages(TestReporter reporter) {
+			reporter.publishEntry("foo");
+			reporter.publishEntry("bar");
+		}
 
 		@Test
 		void reportSingleEntryWithSingleMapping(TestReporter reporter) {

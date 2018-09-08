@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.support.AnnotationConsumerInitializer;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ReflectionUtils;
@@ -66,17 +67,19 @@ class ParameterizedTestExtension implements TestTemplateInvocationContextProvide
 	@Override
 	public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(
 			ExtensionContext extensionContext) {
-		Method templateMethod = extensionContext.getRequiredTestMethod();
-		ParameterizedTestMethodContext methodContext = getStore(extensionContext).get(METHOD_CONTEXT_KEY,
-			ParameterizedTestMethodContext.class);
 
-		ParameterizedTestNameFormatter formatter = createNameFormatter(templateMethod);
+		Method templateMethod = extensionContext.getRequiredTestMethod();
+		String displayName = extensionContext.getDisplayName();
+		ParameterizedTestMethodContext methodContext = getStore(extensionContext)//
+				.get(METHOD_CONTEXT_KEY, ParameterizedTestMethodContext.class);
+		ParameterizedTestNameFormatter formatter = createNameFormatter(templateMethod, displayName);
 		AtomicLong invocationCount = new AtomicLong(0);
+
 		// @formatter:off
 		return findRepeatableAnnotations(templateMethod, ArgumentsSource.class)
 				.stream()
 				.map(ArgumentsSource::value)
-				.map(ReflectionUtils::newInstance)
+				.map(this::instantiateArgumentsProvider)
 				.map(provider -> AnnotationConsumerInitializer.initialize(templateMethod, provider))
 				.flatMap(provider -> arguments(provider, extensionContext))
 				.map(Arguments::get)
@@ -89,6 +92,23 @@ class ParameterizedTestExtension implements TestTemplateInvocationContextProvide
 		// @formatter:on
 	}
 
+	@SuppressWarnings("ConstantConditions")
+	private ArgumentsProvider instantiateArgumentsProvider(Class<? extends ArgumentsProvider> clazz) {
+		try {
+			return ReflectionUtils.newInstance(clazz);
+		}
+		catch (Exception ex) {
+			if (ex instanceof NoSuchMethodException) {
+				String message = String.format("Failed to find a no-argument constructor for ArgumentsProvider [%s]. "
+						+ "Please ensure that a no-argument constructor exists and "
+						+ "that the class is either a top-level class or a static nested class",
+					clazz.getName());
+				throw new JUnitException(message, ex);
+			}
+			throw ex;
+		}
+	}
+
 	private ExtensionContext.Store getStore(ExtensionContext context) {
 		return context.getStore(Namespace.create(ParameterizedTestExtension.class, context.getRequiredTestMethod()));
 	}
@@ -98,13 +118,13 @@ class ParameterizedTestExtension implements TestTemplateInvocationContextProvide
 		return new ParameterizedTestInvocationContext(formatter, methodContext, arguments);
 	}
 
-	private ParameterizedTestNameFormatter createNameFormatter(Method templateMethod) {
+	private ParameterizedTestNameFormatter createNameFormatter(Method templateMethod, String displayName) {
 		ParameterizedTest parameterizedTest = findAnnotation(templateMethod, ParameterizedTest.class).get();
-		String name = Preconditions.notBlank(parameterizedTest.name().trim(),
+		String pattern = Preconditions.notBlank(parameterizedTest.name().trim(),
 			() -> String.format(
 				"Configuration error: @ParameterizedTest on method [%s] must be declared with a non-empty name.",
 				templateMethod));
-		return new ParameterizedTestNameFormatter(name);
+		return new ParameterizedTestNameFormatter(pattern, displayName);
 	}
 
 	protected static Stream<? extends Arguments> arguments(ArgumentsProvider provider, ExtensionContext context) {

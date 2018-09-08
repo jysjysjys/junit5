@@ -4,9 +4,9 @@ This repository is the home of the next generation of JUnit, _JUnit 5_.
 
 ## Latest Releases
 
-- General Availability (GA): [JUnit 5.2.0](https://github.com/junit-team/junit5/releases/tag/r5.2.0)
-(April 29, 2018).
-- Preview (Milestone/Release Candidate): [JUnit 5.3.0 M1](https://github.com/junit-team/junit5/releases/tag/r5.3.0-M1) (June 24, 2018).
+- General Availability (GA): [JUnit 5.3.0](https://github.com/junit-team/junit5/releases/tag/r5.3.0)
+(September 3, 2018).
+- Preview (Milestone/Release Candidate): N/A
 
 ## Documentation
 
@@ -38,12 +38,12 @@ Ask JUnit 5 related questions on [StackOverflow] or chat with the team and the c
 
 ## Code Coverage
 
-Code coverage using [JaCoCo] for the latest build is available on the
-[Jenkins CI server] and on [Codecov].
+Code coverage using [JaCoCo] for the latest build is available on the [Jenkins CI server]
+and on [Codecov].
 
-A code coverage report can also be generated locally by executing
-`gradlew -PenableJaCoCo clean jacocoRootReport`. The results will be available in
-`build/reports/jacoco/jacocoRootReport/html/index.html`.
+A code coverage report can also be generated locally via the [Gradle Wrapper] by
+executing `gradlew -PenableJaCoCo clean jacocoRootReport`. The results will be available
+in `build/reports/jacoco/jacocoRootReport/html/index.html`.
 
 ## Gradle Build Scans
 
@@ -56,27 +56,24 @@ project, click on "See console output" on the build scan page.
 ## Building from Source
 
 You need [JDK-10] to build JUnit 5.
-All modules can be built with Gradle using the following command.
 
-```
-gradlew clean assemble
-```
+All modules can be _built_ with the [Gradle Wrapper] using the following command.
 
-All modules can be tested with Gradle using the following command.
+`gradlew clean assemble`
 
-```
-gradlew clean test
-```
+All modules can be _tested_ with the [Gradle Wrapper] using the following command.
 
-Since Gradle has excellent incremental build support, you can usually omit executing the `clean` task.
+`gradlew clean test`
+
+Since Gradle has excellent incremental build support, you can usually omit executing the
+`clean` task.
 
 ## Installing in Local Maven Repository
 
-All modules can be installed in a local Maven repository for consumption in other projects via the following command.
+All modules can be _installed_ with the [Gradle Wrapper] in a local Maven repository for
+consumption in other projects via the following command.
 
-```
-gradlew clean publishToMavenLocal
-```
+`gradlew clean publishToMavenLocal`
 
 ## Dependency Metadata
 
@@ -88,7 +85,7 @@ See also <http://repo1.maven.org/maven2/org/junit/> for releases and <https://os
 ### JUnit Platform
 
 - **Group ID**: `org.junit.platform`
-- **Version**: `1.2.0` or `1.3.0-M1` or `1.3.0-SNAPSHOT`
+- **Version**: `1.3.0` or `1.4.0-SNAPSHOT`
 - **Artifact IDs** and **Automatic-Module-Name**:
   - `junit-platform-commons` (`org.junit.platform.commons`)
   - `junit-platform-console` (`org.junit.platform.console`)
@@ -102,7 +99,7 @@ See also <http://repo1.maven.org/maven2/org/junit/> for releases and <https://os
 ### JUnit Jupiter
 
 - **Group ID**: `org.junit.jupiter`
-- **Version**: `5.2.0` or `5.3.0-M1` or `5.3.0-SNAPSHOT`
+- **Version**: `5.3.0` or `5.4.0-SNAPSHOT`
 - **Artifact IDs** and **Automatic-Module-Name**:
   - `junit-jupiter-api` (`org.junit.jupiter.api`)
   - `junit-jupiter-engine` (`org.junit.jupiter.engine`)
@@ -112,7 +109,7 @@ See also <http://repo1.maven.org/maven2/org/junit/> for releases and <https://os
 ### JUnit Vintage
 
 - **Group ID**: `org.junit.vintage`
-- **Version**: `5.2.0` or `5.3.0-M1` or `5.3.0-SNAPSHOT`
+- **Version**: `5.3.0` or `5.4.0-SNAPSHOT`
 - **Artifact ID** and **Automatic-Module-Name**:
   - `junit-vintage-engine` (`org.junit.vintage.engine`)
 
@@ -120,7 +117,7 @@ See also <http://repo1.maven.org/maven2/org/junit/> for releases and <https://os
 
 - **Group ID**: `org.junit`
 - **Artifact ID** `junit-bom`
-- **Version**: `5.2.0` or `5.3.0-M1` or `5.3.0-SNAPSHOT`
+- **Version**: `5.3.0` or `5.4.0-SNAPSHOT`
 
 ## Java Module Names
 
@@ -148,6 +145,7 @@ as it is not intended to be used as a module.
 [Codecov]: https://codecov.io/gh/junit-team/junit5
 [CONTRIBUTING.md]: https://github.com/junit-team/junit5/blob/master/CONTRIBUTING.md
 [Gitter]: https://gitter.im/junit-team/junit5
+[Gradle Wrapper]: https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:using_wrapper
 [JaCoCo]: http://www.eclemma.org/jacoco/
 [Javadoc]: https://junit.org/junit5/docs/current/api/
 [JDK-10]: http://jdk.java.net/10/

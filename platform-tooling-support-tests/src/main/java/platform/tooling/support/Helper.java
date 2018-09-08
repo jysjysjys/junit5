@@ -10,11 +10,16 @@
 
 package platform.tooling.support;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Properties;
+import java.util.jar.JarFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,7 +30,7 @@ public class Helper {
 
 	private static final Path ROOT = Paths.get("..");
 	private static final Path GRADLE_PROPERTIES = ROOT.resolve("gradle.properties");
-	private static final Path SETTINGS_GRADLE = ROOT.resolve("settings.gradle");
+	private static final Path SETTINGS_GRADLE = ROOT.resolve("settings.gradle.kts");
 
 	private static final Properties gradleProperties = new Properties();
 
@@ -59,10 +64,11 @@ public class Helper {
 	}
 
 	public static List<String> loadModuleDirectoryNames() {
-		String startOfModuleLine = "include '";
+		Pattern moduleLinePattern = Pattern.compile("include\\(\"(.+)\"\\)");
 		try (Stream<String> stream = Files.lines(SETTINGS_GRADLE) //
-				.filter(line -> line.startsWith(startOfModuleLine)) //
-				.map(line -> line.substring(startOfModuleLine.length(), line.length() - 1)) //
+				.map(moduleLinePattern::matcher) //
+				.filter(Matcher::matches) //
+				.map(matcher -> matcher.group(1)) //
 				.filter(name -> name.startsWith("junit-")) //
 				.filter(name -> !name.equals("junit-bom")) //
 				.filter(name -> !name.equals("junit-platform-commons-java-9")) //
@@ -74,4 +80,18 @@ public class Helper {
 		}
 	}
 
+	public static JarFile createJarFile(String module) {
+		var archive = module + '-' + version(module) + ".jar";
+		var path = Paths.get("..", module, "build", "libs", archive);
+		try {
+			return new JarFile(path.toFile());
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException("Creating JarFile for '" + path + "' failed.", e);
+		}
+	}
+
+	public static List<JarFile> loadJarFiles() {
+		return loadModuleDirectoryNames().stream().map(Helper::createJarFile).collect(Collectors.toList());
+	}
 }

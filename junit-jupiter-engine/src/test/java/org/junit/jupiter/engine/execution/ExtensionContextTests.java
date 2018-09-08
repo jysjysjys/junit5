@@ -185,18 +185,21 @@ class ExtensionContextTests {
 		extensionContext.publishReportEntry(map1);
 		extensionContext.publishReportEntry(map2);
 		extensionContext.publishReportEntry("3rd key", "third value");
+		extensionContext.publishReportEntry("status message");
 
 		ArgumentCaptor<ReportEntry> entryCaptor = ArgumentCaptor.forClass(ReportEntry.class);
-		Mockito.verify(engineExecutionListener, Mockito.times(3)).reportingEntryPublished(
+		Mockito.verify(engineExecutionListener, Mockito.times(4)).reportingEntryPublished(
 			ArgumentMatchers.eq(classTestDescriptor), entryCaptor.capture());
 
 		ReportEntry reportEntry1 = entryCaptor.getAllValues().get(0);
 		ReportEntry reportEntry2 = entryCaptor.getAllValues().get(1);
 		ReportEntry reportEntry3 = entryCaptor.getAllValues().get(2);
+		ReportEntry reportEntry4 = entryCaptor.getAllValues().get(3);
 
 		assertEquals(map1, reportEntry1.getKeyValuePairs());
 		assertEquals(map2, reportEntry2.getKeyValuePairs());
 		assertEquals("third value", reportEntry3.getKeyValuePairs().get("3rd key"));
+		assertEquals("status message", reportEntry4.getKeyValuePairs().get("value"));
 	}
 
 	@Test
@@ -247,7 +250,7 @@ class ExtensionContextTests {
 		JupiterEngineDescriptor engineDescriptor = new JupiterEngineDescriptor(engineUniqueId);
 
 		UniqueId classUniqueId = UniqueId.parse("[engine:junit-jupiter]/[class:MyClass]");
-		ClassTestDescriptor classTestDescriptor = new ClassTestDescriptor(classUniqueId, getClass());
+		ClassTestDescriptor classTestDescriptor = new ClassTestDescriptor(classUniqueId, getClass(), configParams);
 
 		Method method = getClass().getDeclaredMethod("configurationParameter");
 		UniqueId methodUniqueId = UniqueId.parse("[engine:junit-jupiter]/[class:MyClass]/[method:myMethod]");
@@ -263,13 +266,13 @@ class ExtensionContextTests {
 	}
 
 	private ClassTestDescriptor nestedClassDescriptor() {
-		return new NestedClassTestDescriptor(UniqueId.root("nested-class", "NestedClass"),
-			OuterClass.NestedClass.class);
+		return new NestedClassTestDescriptor(UniqueId.root("nested-class", "NestedClass"), OuterClass.NestedClass.class,
+			configParams);
 	}
 
 	private ClassTestDescriptor outerClassDescriptor(TestDescriptor child) {
 		ClassTestDescriptor classTestDescriptor = new ClassTestDescriptor(UniqueId.root("class", "OuterClass"),
-			OuterClass.class);
+			OuterClass.class, configParams);
 		if (child != null) {
 			classTestDescriptor.addChild(child);
 		}
