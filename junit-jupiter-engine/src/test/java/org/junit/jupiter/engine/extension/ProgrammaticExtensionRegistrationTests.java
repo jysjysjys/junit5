@@ -10,14 +10,19 @@
 
 package org.junit.jupiter.engine.extension;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.assertj.core.api.Assertions.allOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
+import static org.junit.platform.testkit.engine.EventConditions.finishedWithFailure;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.cause;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
 
 import java.lang.reflect.Field;
 import java.util.function.Predicate;
 
+import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
@@ -35,7 +41,7 @@ import org.junit.jupiter.engine.JupiterTestEngine;
 import org.junit.platform.commons.util.AnnotationUtils;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.junit.platform.engine.test.event.ExecutionEventRecorder;
+import org.junit.platform.testkit.engine.EngineExecutionResults;
 
 /**
  * Integration tests that verify support for programmatic extension registration
@@ -75,15 +81,53 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 		assertOneTestSucceeded(ExtensionRegistrationFromInterfaceTestCase.class);
 	}
 
+	@Test
+	void propagatesCheckedExceptionThrownDuringInitializationOfStaticField() {
+		assertClassFails(ClassLevelExplosiveCheckedExceptionTestCase.class, allOf(
+			instanceOf(ExceptionInInitializerError.class), cause(allOf(instanceOf(Exception.class), message("boom")))));
+	}
+
+	@Test
+	void propagatesUncheckedExceptionThrownDuringInitializationOfStaticField() {
+		assertClassFails(ClassLevelExplosiveUncheckedExceptionTestCase.class,
+			allOf(instanceOf(ExceptionInInitializerError.class),
+				cause(allOf(instanceOf(RuntimeException.class), message("boom")))));
+	}
+
+	@Test
+	void propagatesErrorThrownDuringInitializationOfStaticField() {
+		assertClassFails(ClassLevelExplosiveErrorTestCase.class, allOf(instanceOf(Error.class), message("boom")));
+	}
+
+	@Test
+	void propagatesCheckedExceptionThrownDuringInitializationOfInstanceField() {
+		assertTestFails(InstanceLevelExplosiveCheckedExceptionTestCase.class,
+			allOf(instanceOf(Exception.class), message("boom")));
+	}
+
+	@Test
+	void propagatesUncheckedExceptionThrownDuringInitializationOfInstanceField() {
+		assertTestFails(InstanceLevelExplosiveUncheckedExceptionTestCase.class,
+			allOf(instanceOf(RuntimeException.class), message("boom")));
+	}
+
+	@Test
+	void propagatesErrorThrownDuringInitializationOfInstanceField() {
+		assertTestFails(InstanceLevelExplosiveErrorTestCase.class, allOf(instanceOf(Error.class), message("boom")));
+	}
+
+	private void assertClassFails(Class<?> testClass, Condition<Throwable> causeCondition) {
+		EngineExecutionResults executionResults = executeTestsForClass(testClass);
+		executionResults.containers().assertThatEvents().haveExactly(1, finishedWithFailure(causeCondition));
+	}
+
+	private void assertTestFails(Class<?> testClass, Condition<Throwable> causeCondition) {
+		executeTestsForClass(testClass).tests().assertThatEvents().haveExactly(1, finishedWithFailure(causeCondition));
+	}
+
 	private void assertOneTestSucceeded(Class<?> testClass) {
-		ExecutionEventRecorder eventRecorder = executeTestsForClass(testClass);
-		assertAll(//
-			() -> assertEquals(1, eventRecorder.getTestStartedCount(), "# tests started"), //
-			() -> assertEquals(1, eventRecorder.getTestSuccessfulCount(), "# tests succeeded"), //
-			() -> assertEquals(0, eventRecorder.getTestSkippedCount(), "# tests skipped"), //
-			() -> assertEquals(0, eventRecorder.getTestAbortedCount(), "# tests aborted"), //
-			() -> assertEquals(0, eventRecorder.getTestFailedCount(), "# tests failed")//
-		);
+		executeTestsForClass(testClass).tests().assertStatistics(
+			stats -> stats.started(1).succeeded(1).skipped(0).aborted(0).failed(0));
 	}
 
 	// -------------------------------------------------------------------
@@ -269,6 +313,64 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 
 	}
 
+	static class AbstractTestCase {
+
+		@Test
+		void test() {
+		}
+
+	}
+
+	static class ClassLevelExplosiveCheckedExceptionTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		static Extension field = new ExplosiveExtension(new Exception("boom"));
+
+	}
+
+	static class ClassLevelExplosiveUncheckedExceptionTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		static Extension field = new ExplosiveExtension(new RuntimeException("boom"));
+
+	}
+
+	static class ClassLevelExplosiveErrorTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		static Extension field = new ExplosiveExtension(new Error("boom"));
+
+	}
+
+	static class InstanceLevelExplosiveCheckedExceptionTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		Extension field = new ExplosiveExtension(new Exception("boom"));
+
+	}
+
+	static class InstanceLevelExplosiveUncheckedExceptionTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		Extension field = new ExplosiveExtension(new RuntimeException("boom"));
+
+	}
+
+	static class InstanceLevelExplosiveErrorTestCase extends AbstractTestCase {
+
+		@RegisterExtension
+		Extension field = new ExplosiveExtension(new Error("boom"));
+
+	}
+
+	static class ExplosiveExtension implements Extension {
+
+		ExplosiveExtension(Throwable t) {
+			throw ExceptionUtils.throwAsUncheckedException(t);
+		}
+
+	}
+
 	/**
 	 * Mimics a dependency injection framework such as Spring, Guice, CDI, etc.,
 	 * where the instance of the extension registered via
@@ -281,7 +383,7 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 			field.getType());
 
 		@Override
-		public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
+		public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
 			// @formatter:off
 			AnnotationUtils.findAnnotatedFields(testInstance.getClass(), RegisterExtension.class, isCrystalBall).stream()
 				.findFirst()

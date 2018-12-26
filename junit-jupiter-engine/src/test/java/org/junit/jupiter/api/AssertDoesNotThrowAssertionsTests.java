@@ -35,7 +35,7 @@ class AssertDoesNotThrowAssertionsTests {
 	private static final ThrowingSupplier<String> something = () -> "enigma";
 
 	@Test
-	void assertDoesNotThrowWithFutureMethodReference() {
+	void assertDoesNotThrowWithMethodReferenceForNonVoidReturnType() {
 		FutureTask<String> future = new FutureTask<>(() -> {
 			return "foo";
 		});
@@ -43,9 +43,11 @@ class AssertDoesNotThrowAssertionsTests {
 
 		String result;
 
-		// Current compiler's type inference
-		result = assertDoesNotThrow(future::get);
-		assertEquals("foo", result);
+		// Current compiler's type inference: does NOT compile since the compiler
+		// cannot figure out which overloaded variant of assertDoesNotThrow() to
+		// invoke (i.e., Executable vs. ThrowingSupplier).
+		//
+		// result = assertDoesNotThrow(future::get);
 
 		// Explicitly as an Executable
 		assertDoesNotThrow((Executable) future::get);
@@ -61,7 +63,9 @@ class AssertDoesNotThrowAssertionsTests {
 
 		// Note: the following does not compile since the compiler cannot properly
 		// perform type inference for a method reference for an overloaded method
-		// that has a void return type such as Foo.overloaded(...)
+		// that has a void return type such as Foo.overloaded(...), IFF the
+		// compiler is simultaneously trying to pick which overloaded variant
+		// of assertDoesNotThrow() to invoke.
 		//
 		// assertDoesNotThrow(foo::overloaded);
 
@@ -104,6 +108,20 @@ class AssertDoesNotThrowAssertionsTests {
 	}
 
 	@Test
+	void assertDoesNotThrowWithExecutableThatThrowsACheckedExceptionWithMessage() {
+		String message = "Checked exception message";
+		try {
+			assertDoesNotThrow((Executable) () -> {
+				throw new IOException(message);
+			});
+			expectAssertionFailedError();
+		}
+		catch (AssertionFailedError ex) {
+			assertMessageEquals(ex, "Unexpected exception thrown: " + IOException.class.getName() + ": " + message);
+		}
+	}
+
+	@Test
 	void assertDoesNotThrowWithExecutableThatThrowsARuntimeException() {
 		try {
 			assertDoesNotThrow((Executable) () -> {
@@ -113,6 +131,21 @@ class AssertDoesNotThrowAssertionsTests {
 		}
 		catch (AssertionFailedError ex) {
 			assertMessageEquals(ex, "Unexpected exception thrown: " + IllegalStateException.class.getName());
+		}
+	}
+
+	@Test
+	void assertDoesNotThrowWithExecutableThatThrowsARuntimeExceptionWithMessage() {
+		String message = "Runtime exception message";
+		try {
+			assertDoesNotThrow((Executable) () -> {
+				throw new IllegalStateException(message);
+			});
+			expectAssertionFailedError();
+		}
+		catch (AssertionFailedError ex) {
+			assertMessageEquals(ex,
+				"Unexpected exception thrown: " + IllegalStateException.class.getName() + ": " + message);
 		}
 	}
 
@@ -142,6 +175,21 @@ class AssertDoesNotThrowAssertionsTests {
 	}
 
 	@Test
+	void assertDoesNotThrowWithExecutableThatThrowsAnExceptionWithMessageWithMessageString() {
+		String message = "Runtime exception message";
+		try {
+			assertDoesNotThrow((Executable) () -> {
+				throw new IllegalStateException(message);
+			}, "Custom message");
+			expectAssertionFailedError();
+		}
+		catch (AssertionFailedError ex) {
+			assertMessageEquals(ex, "Custom message ==> Unexpected exception thrown: "
+					+ IllegalStateException.class.getName() + ": " + message);
+		}
+	}
+
+	@Test
 	void assertDoesNotThrowWithExecutableThatThrowsAnExceptionWithMessageSupplier() {
 		try {
 			assertDoesNotThrow((Executable) () -> {
@@ -152,6 +200,21 @@ class AssertDoesNotThrowAssertionsTests {
 		catch (AssertionFailedError ex) {
 			assertMessageEquals(ex,
 				"Custom message ==> Unexpected exception thrown: " + IllegalStateException.class.getName());
+		}
+	}
+
+	@Test
+	void assertDoesNotThrowWithExecutableThatThrowsAnExceptionWithMessageWithMessageSupplier() {
+		String message = "Runtime exception message";
+		try {
+			assertDoesNotThrow((Executable) () -> {
+				throw new IllegalStateException(message);
+			}, () -> "Custom message");
+			expectAssertionFailedError();
+		}
+		catch (AssertionFailedError ex) {
+			assertMessageEquals(ex, "Custom message ==> Unexpected exception thrown: "
+					+ IllegalStateException.class.getName() + ": " + message);
 		}
 	}
 
@@ -249,6 +312,7 @@ class AssertDoesNotThrowAssertionsTests {
 		void overloaded() {
 		}
 
+		@SuppressWarnings("unused")
 		void overloaded(int i) {
 		}
 

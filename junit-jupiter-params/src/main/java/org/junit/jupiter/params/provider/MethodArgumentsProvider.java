@@ -74,8 +74,8 @@ class MethodArgumentsProvider implements ArgumentsProvider, AnnotationConsumer<M
 	}
 
 	private Class<?> loadRequiredClass(String className) {
-		return ReflectionUtils.loadClass(className).orElseThrow(
-			() -> new JUnitException(format("Could not load class [%s]", className)));
+		return ReflectionUtils.tryToLoadClass(className).getOrThrow(
+			cause -> new JUnitException(format("Could not load class [%s]", className), cause));
 	}
 
 	private Method getMethod(Class<?> clazz, String methodName) {
@@ -84,12 +84,25 @@ class MethodArgumentsProvider implements ArgumentsProvider, AnnotationConsumer<M
 	}
 
 	private static Arguments toArguments(Object item) {
+
+		// Nothing to do except cast.
 		if (item instanceof Arguments) {
 			return (Arguments) item;
 		}
+
+		// Pass all multidimensional arrays "as is", in contrast to Object[].
+		// See https://github.com/junit-team/junit5/issues/1665
+		if (ReflectionUtils.isMultidimensionalArray(item)) {
+			return arguments(item);
+		}
+
+		// Special treatment for one-dimensional reference arrays.
+		// See https://github.com/junit-team/junit5/issues/1665
 		if (item instanceof Object[]) {
 			return arguments((Object[]) item);
 		}
+
+		// Pass everything else "as is".
 		return arguments(item);
 	}
 

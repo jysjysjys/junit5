@@ -10,6 +10,8 @@
 package example
 
 // tag::user_guide[]
+import example.domain.Person
+
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,15 +20,13 @@ import org.junit.jupiter.api.assertThrows
 
 class AssertionsKotlinDemo {
 
-    // end::user_guide[]
-    val person = Person("John", "Doe")
-    val people = setOf(person, Person("Jane", "Doe"))
+    val person = Person("Jane", "Doe")
+    val people = setOf(person, Person("John", "Doe"))
 
-    // tag::user_guide[]
     @Test
     fun `grouped assertions`() {
         assertAll("person",
-            { assertEquals("John", person.firstName) },
+            { assertEquals("Jane", person.firstName) },
             { assertEquals("Doe", person.lastName) }
         )
     }

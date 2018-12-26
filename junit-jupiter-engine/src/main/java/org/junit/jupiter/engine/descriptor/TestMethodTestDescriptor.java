@@ -12,6 +12,7 @@ package org.junit.jupiter.engine.descriptor;
 
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.jupiter.engine.descriptor.ExtensionUtils.populateNewExtensionRegistryFromExtendWithAnnotation;
+import static org.junit.jupiter.engine.support.JupiterThrowableCollectorFactory.createThrowableCollector;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -26,6 +27,8 @@ import org.junit.jupiter.api.extension.BeforeTestExecutionCallback;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
+import org.junit.jupiter.api.extension.TestInstances;
+import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.execution.AfterEachMethodAdapter;
 import org.junit.jupiter.engine.execution.BeforeEachMethodAdapter;
 import org.junit.jupiter.engine.execution.ExecutableInvoker;
@@ -34,7 +37,6 @@ import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
-import org.junit.platform.engine.support.hierarchical.OpenTest4JAwareThrowableCollector;
 import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 import org.junit.platform.engine.support.hierarchical.ThrowableCollector.Executable;
 
@@ -61,12 +63,14 @@ public class TestMethodTestDescriptor extends MethodBasedTestDescriptor {
 
 	private static final ExecutableInvoker executableInvoker = new ExecutableInvoker();
 
-	public TestMethodTestDescriptor(UniqueId uniqueId, Class<?> testClass, Method testMethod) {
-		super(uniqueId, testClass, testMethod);
+	public TestMethodTestDescriptor(UniqueId uniqueId, Class<?> testClass, Method testMethod,
+			JupiterConfiguration configuration) {
+		super(uniqueId, testClass, testMethod, configuration);
 	}
 
-	TestMethodTestDescriptor(UniqueId uniqueId, String displayName, Class<?> testClass, Method testMethod) {
-		super(uniqueId, displayName, testClass, testMethod);
+	TestMethodTestDescriptor(UniqueId uniqueId, String displayName, Class<?> testClass, Method testMethod,
+			JupiterConfiguration configuration) {
+		super(uniqueId, displayName, testClass, testMethod, configuration);
 	}
 
 	@Override
@@ -79,12 +83,11 @@ public class TestMethodTestDescriptor extends MethodBasedTestDescriptor {
 	@Override
 	public JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) throws Exception {
 		ExtensionRegistry registry = populateNewExtensionRegistry(context);
-		Object testInstance = context.getTestInstanceProvider().getTestInstance(Optional.of(registry));
+		TestInstances testInstances = context.getTestInstancesProvider().getTestInstances(Optional.of(registry));
 
-		ThrowableCollector throwableCollector = new OpenTest4JAwareThrowableCollector();
+		ThrowableCollector throwableCollector = createThrowableCollector();
 		ExtensionContext extensionContext = new MethodExtensionContext(context.getExtensionContext(),
-			context.getExecutionListener(), this, context.getConfigurationParameters(), testInstance,
-			throwableCollector);
+			context.getExecutionListener(), this, context.getConfiguration(), testInstances, throwableCollector);
 
 		// @formatter:off
 		return context.extend()

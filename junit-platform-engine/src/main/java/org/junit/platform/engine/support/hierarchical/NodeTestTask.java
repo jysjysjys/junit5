@@ -16,11 +16,16 @@ import static org.junit.platform.engine.TestExecutionResult.failed;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.junit.platform.commons.JUnitException;
+import org.junit.platform.commons.logging.Logger;
+import org.junit.platform.commons.logging.LoggerFactory;
+import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutorService.TestTask;
+import org.junit.platform.engine.support.hierarchical.Node.DynamicTestExecutor;
 import org.junit.platform.engine.support.hierarchical.Node.ExecutionMode;
 import org.junit.platform.engine.support.hierarchical.Node.SkipResult;
 
@@ -28,6 +33,8 @@ import org.junit.platform.engine.support.hierarchical.Node.SkipResult;
  * @since 1.3
  */
 class NodeTestTask<C extends EngineExecutionContext> implements TestTask {
+
+	private static final Logger logger = LoggerFactory.getLogger(NodeTestTask.class);
 
 	private final NodeTestTaskContext taskContext;
 	private final TestDescriptor testDescriptor;
@@ -62,18 +69,33 @@ class NodeTestTask<C extends EngineExecutionContext> implements TestTask {
 
 	@Override
 	public void execute() {
-		throwableCollector = taskContext.getThrowableCollectorFactory().create();
-		prepare();
-		if (throwableCollector.isEmpty()) {
-			checkWhetherSkipped();
+		try {
+			throwableCollector = taskContext.getThrowableCollectorFactory().create();
+			prepare();
+			if (throwableCollector.isEmpty()) {
+				checkWhetherSkipped();
+			}
+			if (throwableCollector.isEmpty() && !skipResult.isSkipped()) {
+				executeRecursively();
+			}
+			if (context != null) {
+				cleanUp();
+			}
+			reportCompletion();
 		}
-		if (throwableCollector.isEmpty() && !skipResult.isSkipped()) {
-			executeRecursively();
+		finally {
+			// Ensure that the 'interrupted status' flag for the current thread
+			// is cleared for reuse of the thread in subsequent task executions.
+			// See https://github.com/junit-team/junit5/issues/1688
+			if (Thread.interrupted()) {
+				logger.debug(() -> String.format(
+					"Execution of TestDescriptor with display name [%s] "
+							+ "and unique ID [%s] failed to clear the 'interrupted status' flag for the "
+							+ "current thread. JUnit has cleared the flag, but you may wish to investigate "
+							+ "why the flag was not cleared by user code.",
+					this.testDescriptor.getDisplayName(), this.testDescriptor.getUniqueId()));
+			}
 		}
-		if (context != null) {
-			cleanUp();
-		}
-		reportCompletion();
 	}
 
 	private void prepare() {
@@ -93,45 +115,31 @@ class NodeTestTask<C extends EngineExecutionContext> implements TestTask {
 		started = true;
 
 		throwableCollector.execute(() -> {
-			// @formatter:off
-			List<NodeTestTask<C>> children = testDescriptor.getChildren().stream()
-					.map(descriptor -> new NodeTestTask<C>(taskContext, descriptor))
-					.collect(toCollection(ArrayList::new));
-			// @formatter:on
+			node.around(context, ctx -> {
+				context = ctx;
+				throwableCollector.execute(() -> {
+					// @formatter:off
+					List<NodeTestTask<C>> children = testDescriptor.getChildren().stream()
+							.map(descriptor -> new NodeTestTask<C>(taskContext, descriptor))
+							.collect(toCollection(ArrayList::new));
+					// @formatter:on
 
-			context = node.before(context);
+					context = node.before(context);
 
-			List<Future<?>> futures = new ArrayList<>();
-			context = node.execute(context,
-				dynamicTestDescriptor -> executeDynamicTest(dynamicTestDescriptor, futures));
+					final DynamicTestExecutor dynamicTestExecutor = new DefaultDynamicTestExecutor();
+					context = node.execute(context, dynamicTestExecutor);
 
-			if (!children.isEmpty()) {
-				children.forEach(child -> child.setParentContext(context));
-				taskContext.getExecutorService().invokeAll(children);
-			}
+					if (!children.isEmpty()) {
+						children.forEach(child -> child.setParentContext(context));
+						taskContext.getExecutorService().invokeAll(children);
+					}
 
-			// using a for loop for the sake for ForkJoinPool's work stealing
-			for (Future<?> future : futures) {
-				future.get();
-			}
+					throwableCollector.execute(dynamicTestExecutor::awaitFinished);
+				});
+
+				throwableCollector.execute(() -> node.after(context));
+			});
 		});
-
-		throwableCollector.execute(() -> node.after(context));
-	}
-
-	private void executeDynamicTest(TestDescriptor dynamicTestDescriptor, List<Future<?>> futures) {
-		taskContext.getListener().dynamicTestRegistered(dynamicTestDescriptor);
-		Set<ExclusiveResource> exclusiveResources = NodeUtils.asNode(dynamicTestDescriptor).getExclusiveResources();
-		if (!exclusiveResources.isEmpty()) {
-			taskContext.getListener().executionStarted(dynamicTestDescriptor);
-			String message = "Dynamic test descriptors must not declare exclusive resources: " + exclusiveResources;
-			taskContext.getListener().executionFinished(dynamicTestDescriptor, failed(new JUnitException(message)));
-		}
-		else {
-			NodeTestTask<C> nodeTestTask = new NodeTestTask<>(taskContext, dynamicTestDescriptor);
-			nodeTestTask.setParentContext(context);
-			futures.add(taskContext.getExecutorService().submit(nodeTestTask));
-		}
 	}
 
 	private void cleanUp() {
@@ -155,4 +163,35 @@ class NodeTestTask<C extends EngineExecutionContext> implements TestTask {
 		throwableCollector = null;
 	}
 
+	private class DefaultDynamicTestExecutor implements DynamicTestExecutor {
+		private final List<Future<?>> futures = new ArrayList<>();
+
+		@Override
+		public void execute(TestDescriptor dynamicTestDescriptor) {
+			taskContext.getListener().dynamicTestRegistered(dynamicTestDescriptor);
+			Set<ExclusiveResource> exclusiveResources = NodeUtils.asNode(dynamicTestDescriptor).getExclusiveResources();
+			if (!exclusiveResources.isEmpty()) {
+				taskContext.getListener().executionStarted(dynamicTestDescriptor);
+				String message = "Dynamic test descriptors must not declare exclusive resources: " + exclusiveResources;
+				taskContext.getListener().executionFinished(dynamicTestDescriptor, failed(new JUnitException(message)));
+			}
+			else {
+				NodeTestTask<C> nodeTestTask = new NodeTestTask<>(taskContext, dynamicTestDescriptor);
+				nodeTestTask.setParentContext(context);
+				futures.add(taskContext.getExecutorService().submit(nodeTestTask));
+			}
+		}
+
+		@Override
+		public void awaitFinished() throws InterruptedException {
+			for (Future<?> future : futures) {
+				try {
+					future.get();
+				}
+				catch (ExecutionException e) {
+					ExceptionUtils.throwAsUncheckedException(e.getCause());
+				}
+			}
+		}
+	}
 }

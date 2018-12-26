@@ -13,6 +13,7 @@ package org.junit.platform.commons.support;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.platform.commons.support.PreconditionAssertions.assertPreconditionViolationException;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -31,6 +32,47 @@ import org.junit.platform.commons.util.ReflectionUtils;
  * @since 1.0
  */
 class AnnotationSupportTests {
+
+	@Test
+	void isAnnotatedPreconditions() {
+		Optional<Class<Probe>> optional = Optional.of(Probe.class);
+		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.isAnnotated(optional, null));
+		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.isAnnotated(Probe.class, null));
+	}
+
+	@Test
+	void findAnnotationPreconditions() {
+		Optional<Class<Probe>> optional = Optional.of(Probe.class);
+		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.findAnnotation(optional, null));
+		assertPreconditionViolationException("annotationType",
+			() -> AnnotationSupport.findAnnotation(Probe.class, null));
+	}
+
+	@Test
+	void findRepeatableAnnotationsPreconditions() {
+		assertPreconditionViolationException("annotationType",
+			() -> AnnotationSupport.findRepeatableAnnotations(Probe.class, null));
+	}
+
+	@Test
+	void findPublicAnnotatedFieldsPreconditions() {
+		assertPreconditionViolationException("Class",
+			() -> AnnotationSupport.findPublicAnnotatedFields(null, String.class, FieldMarker.class));
+		assertPreconditionViolationException("fieldType",
+			() -> AnnotationSupport.findPublicAnnotatedFields(Probe.class, null, FieldMarker.class));
+		assertPreconditionViolationException("annotationType",
+			() -> AnnotationSupport.findPublicAnnotatedFields(Probe.class, String.class, null));
+	}
+
+	@Test
+	void findAnnotatedMethodsPreconditions() {
+		assertPreconditionViolationException("Class",
+			() -> AnnotationSupport.findAnnotatedMethods(null, Tag.class, HierarchyTraversalMode.TOP_DOWN));
+		assertPreconditionViolationException("annotationType",
+			() -> AnnotationSupport.findAnnotatedMethods(Probe.class, null, HierarchyTraversalMode.TOP_DOWN));
+		assertPreconditionViolationException("HierarchyTraversalMode",
+			() -> AnnotationSupport.findAnnotatedMethods(Probe.class, Tag.class, null));
+	}
 
 	@Test
 	void isAnnotatedDelegates() {
@@ -115,10 +157,10 @@ class AnnotationSupportTests {
 	static class Probe {
 
 		@FieldMarker
-		public static String publicStaticAnnotatedField = "static";
+		public static String publicAnnotatedStaticField = "static";
 
 		@FieldMarker
-		public String publicNormalAnnotatedField = "normal";
+		public String publicAnnotatedInstanceField = "instance";
 
 		@Tag("method-tag")
 		void aMethod() {

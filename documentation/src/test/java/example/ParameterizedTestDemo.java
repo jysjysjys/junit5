@@ -31,7 +31,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import example.Person.Gender;
+import example.domain.Person;
+import example.domain.Person.Gender;
+import example.util.StringUtils;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,21 +60,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class ParameterizedTestDemo {
 
-	private static boolean isPalindrome(String candidate) {
-		int length = candidate.length();
-		for (int i = 0; i < length / 2; i++) {
-			if (candidate.charAt(i) != candidate.charAt(length - (i + 1))) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	// tag::first_example[]
 	@ParameterizedTest
 	@ValueSource(strings = { "racecar", "radar", "able was I ere I saw elba" })
 	void palindromes(String candidate) {
-		assertTrue(isPalindrome(candidate));
+		assertTrue(StringUtils.isPalindrome(candidate));
 	}
 	// end::first_example[]
 
@@ -174,14 +166,20 @@ class ParameterizedTestDemo {
 	// end::multi_arg_MethodSource_example[]
 	// @formatter:on
 
+	// @formatter:off
 	// tag::CsvSource_example[]
 	@ParameterizedTest
-	@CsvSource({ "foo, 1", "bar, 2", "'baz, qux', 3" })
+	@CsvSource({
+		"apple,         1",
+		"banana,        2",
+		"'lemon, lime', 0xF1"
+	})
 	void testWithCsvSource(String first, int second) {
 		assertNotNull(first);
 		assertNotEquals(0, second);
 	}
 	// end::CsvSource_example[]
+	// @formatter:on
 
 	// tag::CsvFileSource_example[]
 	@ParameterizedTest
@@ -201,7 +199,7 @@ class ParameterizedTestDemo {
 
 	// end::ArgumentsSource_example[]
 	static
-	// tag::ArgumentsSource_example[]
+	// tag::ArgumentsProvider_example[]
 	public class MyArgumentsProvider implements ArgumentsProvider {
 
 		@Override
@@ -209,7 +207,7 @@ class ParameterizedTestDemo {
 			return Stream.of("foo", "bar").map(Arguments::of);
 		}
 	}
-	// end::ArgumentsSource_example[]
+	// end::ArgumentsProvider_example[]
 
 	// tag::ParameterResolver_example[]
 	@BeforeEach
@@ -246,7 +244,7 @@ class ParameterizedTestDemo {
 
 	// end::implicit_fallback_conversion_example[]
 	static
-	// tag::implicit_fallback_conversion_example[]
+	// tag::implicit_fallback_conversion_example_Book[]
 	public class Book {
 
 		private final String title;
@@ -263,7 +261,7 @@ class ParameterizedTestDemo {
 			return this.title;
 		}
 	}
-	// end::implicit_fallback_conversion_example[]
+	// end::implicit_fallback_conversion_example_Book[]
 
 	// @formatter:off
 	// tag::explicit_conversion_example[]
@@ -277,7 +275,7 @@ class ParameterizedTestDemo {
 
 	// end::explicit_conversion_example[]
 	static
-	// tag::explicit_conversion_example[]
+	// tag::explicit_conversion_example_ToStringArgumentConverter[]
 	public class ToStringArgumentConverter extends SimpleArgumentConverter {
 
 		@Override
@@ -286,7 +284,7 @@ class ParameterizedTestDemo {
 			return String.valueOf(source);
 		}
 	}
-	// end::explicit_conversion_example[]
+	// end::explicit_conversion_example_ToStringArgumentConverter[]
 
 	// tag::explicit_java_time_converter[]
 	@ParameterizedTest
@@ -337,7 +335,7 @@ class ParameterizedTestDemo {
 
     // end::ArgumentsAggregator_example[]
     static
-    // tag::ArgumentsAggregator_example[]
+    // tag::ArgumentsAggregator_example_PersonAggregator[]
     public class PersonAggregator implements ArgumentsAggregator {
         @Override
         public Person aggregateArguments(ArgumentsAccessor arguments, ParameterContext context) {
@@ -347,7 +345,7 @@ class ParameterizedTestDemo {
                               arguments.get(3, LocalDate.class));
         }
     }
-    // end::ArgumentsAggregator_example[]
+    // end::ArgumentsAggregator_example_PersonAggregator[]
 	// @formatter:on
 
 	// @formatter:off
@@ -360,13 +358,15 @@ class ParameterizedTestDemo {
     void testWithCustomAggregatorAnnotation(@CsvToPerson Person person) {
         // perform assertions against person
     }
+    // end::ArgumentsAggregator_with_custom_annotation_example[]
 
+    // tag::ArgumentsAggregator_with_custom_annotation_example_CsvToPerson[]
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     @AggregateWith(PersonAggregator.class)
     public @interface CsvToPerson {
     }
-    // end::ArgumentsAggregator_with_custom_annotation_example[]
+    // end::ArgumentsAggregator_with_custom_annotation_example_CsvToPerson[]
 	// @formatter:on
 
 	// tag::custom_display_names[]

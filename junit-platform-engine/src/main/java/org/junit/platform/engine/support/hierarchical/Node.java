@@ -121,6 +121,20 @@ public interface Node<C extends EngineExecutionContext> {
 	}
 
 	/**
+	 * Wraps around the invocation of {@link #before(EngineExecutionContext)},
+	 * {@link #execute(EngineExecutionContext, DynamicTestExecutor)}, and
+	 * {@link #after(EngineExecutionContext)}.
+	 *
+	 * @param context context the context to execute in
+	 * @param invocation the wrapped invocation (must be invoked exactly once)
+	 * @since 1.4
+	 */
+	@API(status = EXPERIMENTAL, since = "1.4")
+	default void around(C context, Invocation<C> invocation) throws Exception {
+		invocation.invoke(context);
+	}
+
+	/**
 	 * Get the set of {@linkplain ExclusiveResource exclusive resources}
 	 * required to execute this node.
 	 *
@@ -243,6 +257,17 @@ public interface Node<C extends EngineExecutionContext> {
 		 */
 		void execute(TestDescriptor testDescriptor);
 
+		/**
+		 * Block until all dynamic test descriptors submitted to this executor
+		 * are finished.
+		 *
+		 * <p>This method is useful if the node needs to perform actions in its
+		 * {@link #execute(EngineExecutionContext, DynamicTestExecutor)} method
+		 * after all its dynamic children have finished.
+		 *
+		 * @throws InterruptedException if interrupted while waiting
+		 */
+		void awaitFinished() throws InterruptedException;
 	}
 
 	/**
@@ -271,4 +296,20 @@ public interface Node<C extends EngineExecutionContext> {
 		CONCURRENT
 	}
 
+	/**
+	 * Represents an invocation that runs with the supplied context.
+	 *
+	 * @param <C> the type of {@code EngineExecutionContext} used by the {@code HierarchicalTestEngine}
+	 * @since 1.4
+	 */
+	@API(status = EXPERIMENTAL, since = "1.4")
+	interface Invocation<C extends EngineExecutionContext> {
+
+		/**
+		 * Invoke this invocation with the supplied context.
+		 *
+		 * @param context the context to invoke in
+		 */
+		void invoke(C context) throws Exception;
+	}
 }

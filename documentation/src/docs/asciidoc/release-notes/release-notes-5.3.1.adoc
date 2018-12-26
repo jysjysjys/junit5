@@ -1,7 +1,7 @@
 [[release-notes-5.3.1]]
 == 5.3.1
 
-*Date of Release:* ❓
+*Date of Release:* September 11, 2018
 
 *Scope:* Bug fixes since 5.3.0
 
@@ -23,6 +23,9 @@ repository on GitHub.
   - Previously, a `NodeTestTask` instance was created for each `TestDescriptor` before
     starting execution. Now they are created on the fly and can be garbage collected by
     the JVM after the enclosing container has finished.
+* The https://github.com/ota4j-team/opentest4j[OpenTest4J] dependency has been updated to
+  1.1.1 to fix a serialization incompatibility between 1.0.0 and 1.1.0 that caused failure
+  messages to be discarded when used from Gradle and potentially other tools and IDEs.
 
 
 [[release-notes-5.3.1-junit-jupiter]]
@@ -30,7 +33,16 @@ repository on GitHub.
 
 ==== Bug Fixes
 
-* ❓
+* Invocations of `assertThrows()` that are passed a method reference for an overloaded
+  method with a `void` return type once again compile.
+  - For example, given an instance of `java.lang.Object` stored in a variable named
+    `object`, `assertThrows(Exception.class, object::wait)` compiled against JUnit 5.2.0,
+    failed to compile against JUnit 5.3.0, but now compiles against JUnit 5.3.1.
+
+==== Breaking Changes
+
+* In order to revert the aforementioned breaking change, variants of `assertThrows()`
+  introduced in JUnit 5.3.0 that accept `ThrowingSupplier` arguments have been removed.
 
 
 [[release-notes-5.3.1-junit-vintage]]
