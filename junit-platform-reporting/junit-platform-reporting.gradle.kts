@@ -1,13 +1,13 @@
+plugins {
+	`java-library-conventions`
+}
+
 description = "JUnit Platform Reporting"
 
 dependencies {
-	api(project(":junit-platform-launcher"))
-}
+	internal(platform(project(":dependencies")))
 
-tasks.named<Jar>("jar") {
-	manifest {
-		attributes(
-				"Automatic-Module-Name" to "org.junit.platform.reporting"
-		)
-	}
+	api(platform(project(":junit-bom")))
+	api("org.apiguardian:apiguardian-api")
+	api(project(":junit-platform-launcher"))
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.engine;
@@ -82,6 +82,10 @@ public class UniqueId implements Cloneable, Serializable {
 
 	private final UniqueIdFormat uniqueIdFormat;
 	private final List<Segment> segments;
+	// lazily computed
+	private transient int hashCode;
+	// lazily computed
+	private transient String toString;
 
 	private UniqueId(UniqueIdFormat uniqueIdFormat, Segment segment) {
 		this.uniqueIdFormat = uniqueIdFormat;
@@ -173,6 +177,34 @@ public class UniqueId implements Cloneable, Serializable {
 		return size >= prefixSize && this.segments.subList(0, prefixSize).equals(potentialPrefix.segments);
 	}
 
+	/**
+	 * Construct a new {@code UniqueId} and removing the last {@link Segment} of
+	 * this {@code UniqueId}.
+	 *
+	 * <p>This {@code UniqueId} will not be modified.
+	 *
+	 * @throws org.junit.platform.commons.PreconditionViolationException
+	 * if this {@code UniqueId} contains a single segment
+	 * @return a new {@code UniqueId}; never {@code null}
+	 * @since 1.5
+	 */
+	@API(status = STABLE, since = "1.5")
+	public UniqueId removeLastSegment() {
+		Preconditions.condition(this.segments.size() > 1, "Cannot remove last remaining segment");
+		return new UniqueId(uniqueIdFormat, new ArrayList<>(segments.subList(0, segments.size() - 1)));
+	}
+
+	/**
+	 * Get the last {@link Segment} of this {@code UniqueId}.
+	 *
+	 * @return the last {@code Segment}; never {@code null}
+	 * @since 1.5
+	 */
+	@API(status = STABLE, since = "1.5")
+	public Segment getLastSegment() {
+		return this.segments.get(this.segments.size() - 1);
+	}
+
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
 		return super.clone();
@@ -193,7 +225,23 @@ public class UniqueId implements Cloneable, Serializable {
 
 	@Override
 	public int hashCode() {
-		return this.segments.hashCode();
+		int value = this.hashCode;
+		if (value == 0) {
+			value = this.segments.hashCode();
+			if (value == 0) {
+				// handle the edge case of the computed hashCode being 0
+				value = 1;
+			}
+			// this is a benign race like String#hash
+			// we potentially read and write values from multiple threads
+			// without a happens-before relationship
+			// however the JMM guarantees us that we only ever see values
+			// that were valid at one point, either 0 or the hash code
+			// so we might end up not seeing a value that a different thread
+			// has computed or multiple threads writing the same value
+			this.hashCode = value;
+		}
+		return value;
 	}
 
 	/**
@@ -202,7 +250,19 @@ public class UniqueId implements Cloneable, Serializable {
 	 */
 	@Override
 	public String toString() {
-		return this.uniqueIdFormat.format(this);
+		String s = this.toString;
+		if (s == null) {
+			s = this.uniqueIdFormat.format(this);
+			// this is a benign race like String#hash
+			// we potentially read and write values from multiple threads
+			// without a happens-before relationship
+			// however the JMM guarantees us that we only ever see values
+			// that were valid at one point, either null or the toString value
+			// so we might end up not seeing a value that a different thread
+			// has computed or multiple threads writing the same value
+			this.toString = s;
+		}
+		return s;
 	}
 
 	/**

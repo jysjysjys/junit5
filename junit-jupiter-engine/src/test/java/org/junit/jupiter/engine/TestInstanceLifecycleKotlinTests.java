@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine;
@@ -39,7 +39,7 @@ class TestInstanceLifecycleKotlinTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTestsForClass(testClass);
 
-		assertThat(executionResults.tests().finished().count()).isEqualTo(2);
+		assertThat(executionResults.testEvents().finished().count()).isEqualTo(2);
 		assertThat(InstancePerClassKotlinTestCase.TEST_INSTANCES.keySet()).hasSize(1);
 		assertThat(getOnlyElement(InstancePerClassKotlinTestCase.TEST_INSTANCES.values())) //
 				.containsEntry("beforeAll", 1) //
@@ -56,7 +56,7 @@ class TestInstanceLifecycleKotlinTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTestsForClass(testClass);
 
-		assertThat(executionResults.tests().finished().count()).isEqualTo(2);
+		assertThat(executionResults.testEvents().finished().count()).isEqualTo(2);
 		List<Object> instances = new ArrayList<>(InstancePerMethodKotlinTestCase.TEST_INSTANCES.keySet());
 		assertThat(instances) //
 				.hasSize(3) //

@@ -1,21 +1,23 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.commons.support;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.platform.commons.support.PreconditionAssertions.assertPreconditionViolationException;
 import static org.junit.platform.commons.support.PreconditionAssertions.assertPreconditionViolationExceptionForString;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
@@ -26,7 +28,7 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.junit.platform.commons.util.PreconditionViolationException;
+import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 /**
@@ -34,9 +36,13 @@ import org.junit.platform.commons.util.ReflectionUtils;
  */
 class ReflectionSupportTests {
 
-	private final Predicate<Class<?>> allTypes = type -> true;
-	private final Predicate<String> allNames = name -> true;
-	private final Predicate<Method> allMethods = name -> true;
+	private static final Predicate<Class<?>> allTypes = type -> true;
+	private static final Predicate<String> allNames = name -> true;
+	private static final Predicate<Method> allMethods = name -> true;
+	private static final Predicate<Field> allFields = name -> true;
+
+	static final String staticField = "static";
+	final String instanceField = "instance";
 
 	@Test
 	@SuppressWarnings("deprecation")
@@ -137,6 +143,118 @@ class ReflectionSupportTests {
 	}
 
 	@Test
+	void newInstanceDelegates() {
+		assertEquals(ReflectionUtils.newInstance(String.class, "foo"),
+			ReflectionSupport.newInstance(String.class, "foo"));
+	}
+
+	@Test
+	void newInstancePreconditions() {
+		assertPreconditionViolationException("Class", () -> ReflectionSupport.newInstance(null));
+		assertPreconditionViolationException("Argument array",
+			() -> ReflectionSupport.newInstance(String.class, (Object[]) null));
+		assertPreconditionViolationException("Individual arguments",
+			() -> ReflectionSupport.newInstance(String.class, new Object[] { null }));
+	}
+
+	@Test
+	void invokeMethodDelegates() throws Exception {
+		Method method = Boolean.class.getMethod("valueOf", String.class);
+		assertEquals(ReflectionUtils.invokeMethod(method, null, "true"),
+			ReflectionSupport.invokeMethod(method, null, "true"));
+	}
+
+	@Test
+	void invokeMethodPreconditions() throws Exception {
+		assertPreconditionViolationException("Method", () -> ReflectionSupport.invokeMethod(null, null, "true"));
+
+		Method method = Boolean.class.getMethod("toString");
+		PreconditionViolationException exception = assertThrows(PreconditionViolationException.class,
+			() -> ReflectionSupport.invokeMethod(method, null));
+		assertEquals("Cannot invoke non-static method [" + method.toGenericString() + "] on a null target.",
+			exception.getMessage());
+	}
+
+	@Test
+	void findFieldsDelegates() {
+		assertEquals(
+			ReflectionUtils.findFields(ReflectionSupportTests.class, allFields,
+				ReflectionUtils.HierarchyTraversalMode.BOTTOM_UP),
+			ReflectionSupport.findFields(ReflectionSupportTests.class, allFields, HierarchyTraversalMode.BOTTOM_UP));
+		assertEquals(
+			ReflectionUtils.findFields(ReflectionSupportTests.class, allFields,
+				ReflectionUtils.HierarchyTraversalMode.TOP_DOWN),
+			ReflectionSupport.findFields(ReflectionSupportTests.class, allFields, HierarchyTraversalMode.TOP_DOWN));
+	}
+
+	@Test
+	void findFieldsPreconditions() {
+		assertPreconditionViolationException("Class",
+			() -> ReflectionSupport.findFields(null, allFields, HierarchyTraversalMode.BOTTOM_UP));
+		assertPreconditionViolationException("Class",
+			() -> ReflectionSupport.findFields(null, allFields, HierarchyTraversalMode.TOP_DOWN));
+		assertPreconditionViolationException("Predicate",
+			() -> ReflectionSupport.findFields(ReflectionSupportTests.class, null, HierarchyTraversalMode.BOTTOM_UP));
+		assertPreconditionViolationException("Predicate",
+			() -> ReflectionSupport.findFields(ReflectionSupportTests.class, null, HierarchyTraversalMode.TOP_DOWN));
+		assertPreconditionViolationException("HierarchyTraversalMode",
+			() -> ReflectionSupport.findFields(ReflectionSupportTests.class, allFields, null));
+	}
+
+	@Test
+	void tryToReadFieldValueDelegates() throws Exception {
+		Field staticField = getClass().getDeclaredField("staticField");
+		assertEquals(ReflectionUtils.tryToReadFieldValue(staticField, null),
+			ReflectionSupport.tryToReadFieldValue(staticField, null));
+
+		Field instanceField = getClass().getDeclaredField("instanceField");
+		assertEquals(ReflectionUtils.tryToReadFieldValue(instanceField, this),
+			ReflectionSupport.tryToReadFieldValue(instanceField, this));
+	}
+
+	@Test
+	void tryToReadFieldValuePreconditions() throws Exception {
+		assertPreconditionViolationException("Field", () -> ReflectionSupport.tryToReadFieldValue(null, this));
+
+		Field instanceField = getClass().getDeclaredField("instanceField");
+		Exception exception = assertThrows(PreconditionViolationException.class,
+			() -> ReflectionSupport.tryToReadFieldValue(instanceField, null));
+		assertThat(exception)//
+				.hasMessageStartingWith("Cannot read non-static field")//
+				.hasMessageEndingWith("on a null instance.");
+	}
+
+	@Test
+	void findMethodDelegates() throws Exception {
+		assertEquals(ReflectionUtils.findMethod(Boolean.class, "valueOf", String.class.getName()),
+			ReflectionSupport.findMethod(Boolean.class, "valueOf", String.class.getName()));
+
+		assertEquals(ReflectionUtils.findMethod(Boolean.class, "valueOf", String.class),
+			ReflectionSupport.findMethod(Boolean.class, "valueOf", String.class));
+	}
+
+	@Test
+	void findMethodPreconditions() throws Exception {
+		assertPreconditionViolationException("Class",
+			() -> ReflectionSupport.findMethod(null, "valueOf", String.class.getName()));
+		assertPreconditionViolationExceptionForString("Method name",
+			() -> ReflectionSupport.findMethod(Boolean.class, "", String.class.getName()));
+		assertPreconditionViolationExceptionForString("Method name",
+			() -> ReflectionSupport.findMethod(Boolean.class, "   ", String.class.getName()));
+
+		assertPreconditionViolationException("Class",
+			() -> ReflectionSupport.findMethod(null, "valueOf", String.class));
+		assertPreconditionViolationExceptionForString("Method name",
+			() -> ReflectionSupport.findMethod(Boolean.class, "", String.class));
+		assertPreconditionViolationExceptionForString("Method name",
+			() -> ReflectionSupport.findMethod(Boolean.class, "   ", String.class));
+		assertPreconditionViolationException("Parameter types array",
+			() -> ReflectionSupport.findMethod(Boolean.class, "valueOf", (Class<?>[]) null));
+		assertPreconditionViolationException("Individual parameter types",
+			() -> ReflectionSupport.findMethod(Boolean.class, "valueOf", new Class<?>[] { null }));
+	}
+
+	@Test
 	void findMethodsDelegates() {
 		assertEquals(
 			ReflectionUtils.findMethods(ReflectionSupportTests.class, allMethods,
@@ -160,6 +278,30 @@ class ReflectionSupportTests {
 			() -> ReflectionSupport.findMethods(ReflectionSupportTests.class, null, HierarchyTraversalMode.TOP_DOWN));
 		assertPreconditionViolationException("HierarchyTraversalMode",
 			() -> ReflectionSupport.findMethods(ReflectionSupportTests.class, allMethods, null));
+	}
+
+	@Test
+	void findNestedClassesDelegates() throws Exception {
+		assertEquals(ReflectionUtils.findNestedClasses(ClassWithNestedClasses.class, ReflectionUtils::isStatic),
+			ReflectionSupport.findNestedClasses(ClassWithNestedClasses.class, ReflectionUtils::isStatic));
+	}
+
+	@Test
+	void findNestedClassesPreconditions() throws Exception {
+		assertPreconditionViolationException("Class",
+			() -> ReflectionSupport.findNestedClasses(null, ReflectionUtils::isStatic));
+		assertPreconditionViolationException("Predicate",
+			() -> ReflectionSupport.findNestedClasses(ClassWithNestedClasses.class, null));
+	}
+
+	static class ClassWithNestedClasses {
+
+		class Nested1 {
+		}
+
+		static class Nested2 {
+		}
+
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine.extension;
@@ -65,7 +65,7 @@ class TestExecutionExceptionHandlerTests extends AbstractJupiterTestEngineTests 
 
 		assertTrue(RethrowException.handleExceptionCalled, "TestExecutionExceptionHandler should have been called");
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(ATestCase.class), started()), //
 			event(test("testRethrow"), started()), //
@@ -82,7 +82,7 @@ class TestExecutionExceptionHandlerTests extends AbstractJupiterTestEngineTests 
 
 		assertTrue(SwallowException.handleExceptionCalled, "TestExecutionExceptionHandler should have been called");
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(ATestCase.class), started()), //
 			event(test("testSwallow"), started()), //
@@ -99,7 +99,7 @@ class TestExecutionExceptionHandlerTests extends AbstractJupiterTestEngineTests 
 
 		assertTrue(ConvertException.handleExceptionCalled, "TestExecutionExceptionHandler should have been called");
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(ATestCase.class), started()), //
 			event(test("testConvert"), started()), //
@@ -119,7 +119,7 @@ class TestExecutionExceptionHandlerTests extends AbstractJupiterTestEngineTests 
 		assertTrue(SwallowException.handleExceptionCalled, "SwallowException should have been called");
 		assertFalse(ShouldNotBeCalled.handleExceptionCalled, "ShouldNotBeCalled should not have been called");
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(ATestCase.class), started()), //
 			event(test("testSeveral"), started()), //

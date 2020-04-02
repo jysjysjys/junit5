@@ -1,15 +1,13 @@
-# JUnit 5
+# <img src="https://junit.org/junit5/assets/img/junit5-logo.png" align="right" width="100">JUnit 5
 
 This repository is the home of the next generation of JUnit, _JUnit 5_.
 
-[![Support us on Steady](https://img.shields.io/badge/support_us-on_Steady-ff7264.svg)](https://steadyhq.com/en/junit)
+[![Support JUnit](https://img.shields.io/badge/%F0%9F%92%9A-Support%20JUnit-brightgreen.svg)](https://junit.org/sponsoring)
 
 ## Latest Releases
 
-- General Availability (GA): [JUnit 5.3.2](https://github.com/junit-team/junit5/releases/tag/r5.3.2)
-(November 25, 2018).
-- Preview (Milestone/Release Candidate): [JUnit 5.4.0-M1](https://github.com/junit-team/junit5/releases/tag/r5.4.0-M1)
-(December 23, 2018).
+- General Availability (GA): [JUnit 5.6.1](https://github.com/junit-team/junit5/releases/tag/r5.6.1) (March 22, 2020).
+- Preview (Milestone/Release Candidate): n/a
 
 ## Documentation
 
@@ -34,10 +32,11 @@ Ask JUnit 5 related questions on [StackOverflow] or chat with the team and the c
 
 ## Continuous Integration Builds
 
-| CI Server | OS           | Status | Description |
-| --------- | ------------ | ------ | ----------- |
-| Travis CI | Linux, macOS | [![Travis CI build status](https://travis-ci.org/junit-team/junit5.svg?branch=master)](https://travis-ci.org/junit-team/junit5) | Official CI build server for JUnit 5. Used to perform quick checks on submitted pull requests and for build matrices including the latest released OpenJDK and early access builds of the next OpenJDK |
-| AppVeyor  | Windows      | [![Build status](https://ci.appveyor.com/api/projects/status/xv8wc8w9sr44ghc4/branch/master?svg=true)](https://ci.appveyor.com/project/marcphilipp/junit5/branch/master) | Used to ensure that JUnit 5 can be built on Windows |
+[![CI Status](https://github.com/junit-team/junit5/workflows/CI/badge.svg)](https://github.com/junit-team/junit5/actions) [![Cross-Version Status](https://github.com/junit-team/junit5/workflows/Cross-Version/badge.svg)](https://github.com/junit-team/junit5/actions)
+
+Official CI build server for JUnit 5. Used to perform quick checks on submitted pull
+requests and for build matrices including the latest released OpenJDK and early access
+builds of the next OpenJDK.
 
 ## Code Coverage
 
@@ -47,10 +46,13 @@ A code coverage report can also be generated locally via the [Gradle Wrapper] by
 executing `gradlew -PenableJaCoCo clean jacocoRootReport`. The results will be available
 in `build/reports/jacoco/jacocoRootReport/html/index.html`.
 
-## Gradle Build Scans
+## Gradle Build Scans and Build Caching
 
-JUnit 5 utilizes [Gradle's](https://gradle.org/) support for _Build Scans_. An example
-build scan for JUnit 5 can be viewed [here](https://scans.gradle.com/s/bl3pw4mrbgsao).
+JUnit 5 utilizes [Gradle Enterprise](https://gradle.com/) for _Build Scans_ and the
+_Remote Build Cache_. An example build scan for JUnit 5 can be viewed
+[here](https://ge.junit.org/s/2vwrn4rn67dky). Currently, only core team members can
+publish build scans. The remote build cache, however, is enabled by default for everyone
+so that local builds can reuse task outputs from previous CI builds.
 
 ## Building from Source
 
@@ -84,8 +86,8 @@ See also <https://repo1.maven.org/maven2/org/junit/> for releases and <https://o
 ### JUnit Platform
 
 - **Group ID**: `org.junit.platform`
-- **Version**: `1.3.2` or `1.4.0-M1` or `1.4.0-SNAPSHOT`
-- **Artifact IDs** and **Automatic-Module-Name**:
+- **Version**: `1.6.1` or `1.7.0-SNAPSHOT`
+- **Artifact IDs** and Java **module** name:
   - `junit-platform-commons` (`org.junit.platform.commons`)
   - `junit-platform-console` (`org.junit.platform.console`)
   - `junit-platform-console-standalone` (*N/A*)
@@ -99,8 +101,8 @@ See also <https://repo1.maven.org/maven2/org/junit/> for releases and <https://o
 ### JUnit Jupiter
 
 - **Group ID**: `org.junit.jupiter`
-- **Version**: `5.3.2` or `5.4.0-M1` or `5.4.0-SNAPSHOT`
-- **Artifact IDs** and **Automatic-Module-Name**:
+- **Version**: `5.6.1` or `5.7.0-SNAPSHOT`
+- **Artifact IDs** and Java **module** name:
   - `junit-jupiter` (`org.junit.jupiter`)
   - `junit-jupiter-api` (`org.junit.jupiter.api`)
   - `junit-jupiter-engine` (`org.junit.jupiter.engine`)
@@ -110,44 +112,22 @@ See also <https://repo1.maven.org/maven2/org/junit/> for releases and <https://o
 ### JUnit Vintage
 
 - **Group ID**: `org.junit.vintage`
-- **Version**: `5.3.2` or `5.4.0-M1` or `5.4.0-SNAPSHOT`
-- **Artifact ID** and **Automatic-Module-Name**:
+- **Version**: `5.6.1` or `5.7.0-SNAPSHOT`
+- **Artifact ID** and Java **module** name:
   - `junit-vintage-engine` (`org.junit.vintage.engine`)
 
 ### Bill of Materials (BOM)
 
 - **Group ID**: `org.junit`
 - **Artifact ID** `junit-bom`
-- **Version**: `5.3.2` or `5.4.0-M1` or `5.4.0-SNAPSHOT`
-
-## Java Module Names
-
-All published JAR artifacts contain an [Automatic-Module-Name] manifest attribute
-whose value is used as the name of the automatic module defined by that JAR file
-when it is placed on the module path. The automatic module names are listed above
-in the [Dependency Metadata](#dependency-metadata) section.
-
-This allows test module authors to require well-known JUnit module names as
-can be seen in the following example.
+- **Version**: `5.6.1` or `5.7.0-SNAPSHOT`
 
 
-```
-open module test.mylib {
-  requires mylib;
-  requires org.junit.jupiter.api;
-}
-```
-
-The `junit-platform-console-standalone` JAR does not provide an automatic module name
-as it is not intended to be used as a module.
-
-
-[Automatic-Module-Name]: http://mail.openjdk.java.net/pipermail/jpms-spec-experts/2017-April/000667.html
 [Codecov]: https://codecov.io/gh/junit-team/junit5
 [CONTRIBUTING.md]: https://github.com/junit-team/junit5/blob/master/CONTRIBUTING.md
 [Gitter]: https://gitter.im/junit-team/junit5
 [Gradle Wrapper]: https://docs.gradle.org/current/userguide/gradle_wrapper.html#sec:using_wrapper
-[JaCoCo]: http://www.eclemma.org/jacoco/
+[JaCoCo]: https://www.eclemma.org/jacoco/
 [Javadoc]: https://junit.org/junit5/docs/current/api/
 [JDK 11]: https://jdk.java.net/11/
 [Release Notes]: https://junit.org/junit5/docs/current/release-notes/

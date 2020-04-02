@@ -45,6 +45,13 @@ traverse the tree, retrieve details about a node, and get a link to the original
 (like class, method, or file position). Every node in the test plan has a _unique ID_
 that can be used to invoke a particular test or group of tests.
 
+Clients can register one or more `{LauncherDiscoveryListener}` implementations to get
+insights into events that occur during test discovery via the
+`{LauncherDiscoveryRequestBuilder}`. The builder registers a default listener that can be
+changed via the `junit.platform.discovery.listener.default` configuration parameter. If
+the parameter is not set, test discovery will be aborted after the first failure is
+encountered.
+
 [[launcher-api-execution]]
 ==== Executing Tests
 
@@ -109,6 +116,36 @@ example, an `example.TestInfoPrinter` class implementing `{TestExecutionListener
 declared within the
 `/META-INF/services/org.junit.platform.launcher.TestExecutionListener` file is loaded and
 registered automatically.
+
+[[launcher-api-listeners-custom-deactivation]]
+==== Deactivating Test Execution Listeners
+
+Sometimes it can be useful to run a test suite _without_ certain execution listeners being
+active. For example, you might have custom a `TestExecutionListener` that sends the test
+results to an external system for reporting purposes, and while debugging you might not
+want these _debug_ results to be reported. To do this, provide a pattern for the
+`junit.platform.execution.listeners.deactivate` _configuration parameter_ to specify which
+execution listeners should be deactivated (i.e. not registered) for the current test run.
+
+[NOTE]
+====
+Only listeners registered via the `ServiceLoader` mechanism within the
+`/META-INF/services/org.junit.platform.launcher.TestExecutionListener` file can be
+deactivated. In other words, any `TestExecutionListener` registered explicitly via the
+`LauncherDiscoveryRequest` cannot be deactivated via the
+`junit.platform.execution.listeners.deactivate` _configuration parameter_.
+
+In addition, since execution listeners are registered before the test run starts, the
+`junit.platform.execution.listeners.deactivate` _configuration parameter_ can only be
+supplied as a JVM system property or via the JUnit Platform configuration file (see
+<<running-tests-config-params>> for details). This _configuration parameter_ cannot be
+supplied in the `LauncherDiscoveryRequest` that is passed to the `Launcher`.
+====
+
+[[launcher-api-listeners-custom-deactivation-pattern]]
+===== Pattern Matching Syntax
+
+Refer to <<running-tests-config-params-deactivation-pattern>> for details.
 
 [[launcher-api-listeners-reporting]]
 ==== JUnit Platform Reporting

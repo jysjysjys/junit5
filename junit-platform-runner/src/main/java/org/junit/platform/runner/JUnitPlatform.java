@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.runner;
@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.apiguardian.api.API;
-import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
@@ -69,6 +68,11 @@ import org.junit.runner.notification.RunNotifier;
  * <p>Annotating a class with {@code @RunWith(JUnitPlatform.class)} allows it
  * to be run with IDEs and build systems that support JUnit 4 but do not yet
  * support the JUnit Platform directly.
+ *
+ * <p>Please note that test classes and suites annotated with
+ * {@code @RunWith(JUnitPlatform.class)} <em>cannot</em> be executed directly on
+ * the JUnit Platform (or as a "JUnit 5" test as documented in some IDEs). Such
+ * classes and suites can only be executed using JUnit 4 infrastructure.
  *
  * <p>Consult the various annotations in the {@code org.junit.platform.suite.api}
  * package for configuration options.
@@ -112,7 +116,6 @@ public class JUnitPlatform extends Runner implements Filterable {
 	private final Class<?> testClass;
 	private final Launcher launcher;
 
-	private LauncherDiscoveryRequest discoveryRequest;
 	private JUnitPlatformTestTree testTree;
 
 	public JUnitPlatform(Class<?> testClass) {
@@ -123,8 +126,7 @@ public class JUnitPlatform extends Runner implements Filterable {
 	JUnitPlatform(Class<?> testClass, Launcher launcher) {
 		this.launcher = launcher;
 		this.testClass = testClass;
-		this.discoveryRequest = createDiscoveryRequest();
-		this.testTree = generateTestTree();
+		this.testTree = generateTestTree(createDiscoveryRequest());
 	}
 
 	@Override
@@ -134,15 +136,12 @@ public class JUnitPlatform extends Runner implements Filterable {
 
 	@Override
 	public void run(RunNotifier notifier) {
-		JUnitPlatformRunnerListener listener = new JUnitPlatformRunnerListener(this.testTree, notifier);
-		this.launcher.registerTestExecutionListeners(listener);
-		this.launcher.execute(this.discoveryRequest);
+		this.launcher.execute(this.testTree.getTestPlan(), new JUnitPlatformRunnerListener(this.testTree, notifier));
 	}
 
-	private JUnitPlatformTestTree generateTestTree() {
-		Preconditions.notNull(this.discoveryRequest, "DiscoveryRequest must not be null");
-		TestPlan plan = this.launcher.discover(this.discoveryRequest);
-		return new JUnitPlatformTestTree(plan, testClass);
+	private JUnitPlatformTestTree generateTestTree(LauncherDiscoveryRequest discoveryRequest) {
+		TestPlan testPlan = this.launcher.discover(discoveryRequest);
+		return new JUnitPlatformTestTree(testPlan, this.testClass);
 	}
 
 	private LauncherDiscoveryRequest createDiscoveryRequest() {
@@ -308,8 +307,7 @@ public class JUnitPlatform extends Runner implements Filterable {
 		if (filteredIdentifiers.isEmpty()) {
 			throw new NoTestsRemainException();
 		}
-		this.discoveryRequest = createDiscoveryRequestForUniqueIds(filteredIdentifiers);
-		this.testTree = generateTestTree();
+		this.testTree = generateTestTree(createDiscoveryRequestForUniqueIds(filteredIdentifiers));
 	}
 
 	private LauncherDiscoveryRequest createDiscoveryRequestForUniqueIds(Set<TestIdentifier> testIdentifiers) {

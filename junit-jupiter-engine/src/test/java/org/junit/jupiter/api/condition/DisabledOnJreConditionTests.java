@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api.condition;
@@ -15,12 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava10;
 import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava11;
 import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava12;
+import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava13;
+import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava14;
+import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava15;
 import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava8;
 import static org.junit.jupiter.api.condition.EnabledOnJreIntegrationTests.onJava9;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExecutionCondition;
-import org.junit.platform.commons.util.PreconditionViolationException;
+import org.junit.platform.commons.PreconditionViolationException;
 
 /**
  * Unit tests for {@link DisabledOnJreCondition}.
@@ -116,12 +119,40 @@ class DisabledOnJreConditionTests extends AbstractExecutionConditionTests {
 	}
 
 	/**
+	 * @see DisabledOnJreIntegrationTests#java13()
+	 */
+	@Test
+	void java13() {
+		evaluateCondition();
+		assertDisabledOnCurrentJreIf(onJava13());
+	}
+
+	/**
+	 * @see DisabledOnJreIntegrationTests#java14()
+	 */
+	@Test
+	void java14() {
+		evaluateCondition();
+		assertDisabledOnCurrentJreIf(onJava14());
+	}
+
+	/**
+	 * @see DisabledOnJreIntegrationTests#java15()
+	 */
+	@Test
+	void java15() {
+		evaluateCondition();
+		assertDisabledOnCurrentJreIf(onJava15());
+	}
+
+	/**
 	 * @see DisabledOnJreIntegrationTests#other()
 	 */
 	@Test
 	void other() {
 		evaluateCondition();
-		assertDisabledOnCurrentJreIf(!(onJava8() || onJava9() || onJava10() || onJava11() || onJava12()));
+		assertDisabledOnCurrentJreIf(!(onJava8() || onJava9() || onJava10() || onJava11() || onJava12() || onJava13()
+				|| onJava14() || onJava15()));
 	}
 
 	private void assertDisabledOnCurrentJreIf(boolean condition) {

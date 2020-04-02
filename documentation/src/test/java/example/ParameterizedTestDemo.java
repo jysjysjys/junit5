@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package example;
@@ -24,10 +24,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -38,6 +39,7 @@ import example.util.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -54,8 +56,11 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvFileSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class ParameterizedTestDemo {
@@ -76,62 +81,94 @@ class ParameterizedTestDemo {
 	}
 	// end::ValueSource_example[]
 
+	@Nested
+	class NullAndEmptySource_1 {
+
+		// tag::NullAndEmptySource_example1[]
+		@ParameterizedTest
+		@NullSource
+		@EmptySource
+		@ValueSource(strings = { " ", "   ", "\t", "\n" })
+		void nullEmptyAndBlankStrings(String text) {
+			assertTrue(text == null || text.trim().isEmpty());
+		}
+		// end::NullAndEmptySource_example1[]
+	}
+
+	@Nested
+	class NullAndEmptySource_2 {
+
+		// tag::NullAndEmptySource_example2[]
+		@ParameterizedTest
+		@NullAndEmptySource
+		@ValueSource(strings = { " ", "   ", "\t", "\n" })
+		void nullEmptyAndBlankStrings(String text) {
+			assertTrue(text == null || text.trim().isEmpty());
+		}
+		// end::NullAndEmptySource_example2[]
+	}
+
 	// tag::EnumSource_example[]
 	@ParameterizedTest
-	@EnumSource(TimeUnit.class)
-	void testWithEnumSource(TimeUnit timeUnit) {
-		assertNotNull(timeUnit);
+	@EnumSource(ChronoUnit.class)
+	void testWithEnumSource(TemporalUnit unit) {
+		assertNotNull(unit);
 	}
 	// end::EnumSource_example[]
 
+	// tag::EnumSource_example_autodetection[]
+	@ParameterizedTest
+	@EnumSource
+	void testWithEnumSourceWithAutoDetection(ChronoUnit unit) {
+		assertNotNull(unit);
+	}
+	// end::EnumSource_example_autodetection[]
+
 	// tag::EnumSource_include_example[]
 	@ParameterizedTest
-	@EnumSource(value = TimeUnit.class, names = { "DAYS", "HOURS" })
-	void testWithEnumSourceInclude(TimeUnit timeUnit) {
-		assertTrue(EnumSet.of(TimeUnit.DAYS, TimeUnit.HOURS).contains(timeUnit));
+	@EnumSource(names = { "DAYS", "HOURS" })
+	void testWithEnumSourceInclude(ChronoUnit unit) {
+		assertTrue(EnumSet.of(ChronoUnit.DAYS, ChronoUnit.HOURS).contains(unit));
 	}
 	// end::EnumSource_include_example[]
 
 	// tag::EnumSource_exclude_example[]
 	@ParameterizedTest
-	@EnumSource(value = TimeUnit.class, mode = EXCLUDE, names = { "DAYS", "HOURS" })
-	void testWithEnumSourceExclude(TimeUnit timeUnit) {
-		assertFalse(EnumSet.of(TimeUnit.DAYS, TimeUnit.HOURS).contains(timeUnit));
-		assertTrue(timeUnit.name().length() > 5);
+	@EnumSource(mode = EXCLUDE, names = { "ERAS", "FOREVER" })
+	void testWithEnumSourceExclude(ChronoUnit unit) {
+		assertFalse(EnumSet.of(ChronoUnit.ERAS, ChronoUnit.FOREVER).contains(unit));
 	}
 	// end::EnumSource_exclude_example[]
 
 	// tag::EnumSource_regex_example[]
 	@ParameterizedTest
-	@EnumSource(value = TimeUnit.class, mode = MATCH_ALL, names = "^(M|N).+SECONDS$")
-	void testWithEnumSourceRegex(TimeUnit timeUnit) {
-		String name = timeUnit.name();
-		assertTrue(name.startsWith("M") || name.startsWith("N"));
-		assertTrue(name.endsWith("SECONDS"));
+	@EnumSource(mode = MATCH_ALL, names = "^.*DAYS$")
+	void testWithEnumSourceRegex(ChronoUnit unit) {
+		assertTrue(unit.name().endsWith("DAYS"));
 	}
 	// end::EnumSource_regex_example[]
 
 	// tag::simple_MethodSource_example[]
 	@ParameterizedTest
 	@MethodSource("stringProvider")
-	void testWithSimpleMethodSource(String argument) {
+	void testWithExplicitLocalMethodSource(String argument) {
 		assertNotNull(argument);
 	}
 
 	static Stream<String> stringProvider() {
-		return Stream.of("foo", "bar");
+		return Stream.of("apple", "banana");
 	}
 	// end::simple_MethodSource_example[]
 
 	// tag::simple_MethodSource_without_value_example[]
 	@ParameterizedTest
 	@MethodSource
-	void testWithSimpleMethodSourceHavingNoValue(String argument) {
+	void testWithDefaultLocalMethodSource(String argument) {
 		assertNotNull(argument);
 	}
 
-	static Stream<String> testWithSimpleMethodSourceHavingNoValue() {
-		return Stream.of("foo", "bar");
+	static Stream<String> testWithDefaultLocalMethodSource() {
+		return Stream.of("apple", "banana");
 	}
 	// end::simple_MethodSource_without_value_example[]
 
@@ -152,15 +189,15 @@ class ParameterizedTestDemo {
 	@ParameterizedTest
 	@MethodSource("stringIntAndListProvider")
 	void testWithMultiArgMethodSource(String str, int num, List<String> list) {
-		assertEquals(3, str.length());
+		assertEquals(5, str.length());
 		assertTrue(num >=1 && num <=2);
 		assertEquals(2, list.size());
 	}
 
 	static Stream<Arguments> stringIntAndListProvider() {
 		return Stream.of(
-			arguments("foo", 1, Arrays.asList("a", "b")),
-			arguments("bar", 2, Arrays.asList("x", "y"))
+			arguments("apple", 1, Arrays.asList("a", "b")),
+			arguments("lemon", 2, Arrays.asList("x", "y"))
 		);
 	}
 	// end::multi_arg_MethodSource_example[]
@@ -174,9 +211,9 @@ class ParameterizedTestDemo {
 		"banana,        2",
 		"'lemon, lime', 0xF1"
 	})
-	void testWithCsvSource(String first, int second) {
-		assertNotNull(first);
-		assertNotEquals(0, second);
+	void testWithCsvSource(String fruit, int rank) {
+		assertNotNull(fruit);
+		assertNotEquals(0, rank);
 	}
 	// end::CsvSource_example[]
 	// @formatter:on
@@ -184,9 +221,9 @@ class ParameterizedTestDemo {
 	// tag::CsvFileSource_example[]
 	@ParameterizedTest
 	@CsvFileSource(resources = "/two-column.csv", numLinesToSkip = 1)
-	void testWithCsvFileSource(String first, int second) {
-		assertNotNull(first);
-		assertNotEquals(0, second);
+	void testWithCsvFileSource(String country, int reference) {
+		assertNotNull(country);
+		assertNotEquals(0, reference);
 	}
 	// end::CsvFileSource_example[]
 
@@ -204,7 +241,7 @@ class ParameterizedTestDemo {
 
 		@Override
 		public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
-			return Stream.of("foo", "bar").map(Arguments::of);
+			return Stream.of("apple", "banana").map(Arguments::of);
 		}
 	}
 	// end::ArgumentsProvider_example[]
@@ -216,7 +253,7 @@ class ParameterizedTestDemo {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = "foo")
+	@ValueSource(strings = "apple")
 	void testWithRegularParameterResolver(String argument, TestReporter testReporter) {
 		testReporter.publishEntry("argument", argument);
 	}
@@ -230,7 +267,7 @@ class ParameterizedTestDemo {
 	// tag::implicit_conversion_example[]
 	@ParameterizedTest
 	@ValueSource(strings = "SECONDS")
-	void testWithImplicitArgumentConversion(TimeUnit argument) {
+	void testWithImplicitArgumentConversion(ChronoUnit argument) {
 		assertNotNull(argument.name());
 	}
 	// end::implicit_conversion_example[]
@@ -266,11 +303,11 @@ class ParameterizedTestDemo {
 	// @formatter:off
 	// tag::explicit_conversion_example[]
 	@ParameterizedTest
-	@EnumSource(TimeUnit.class)
+	@EnumSource(ChronoUnit.class)
 	void testWithExplicitArgumentConversion(
 			@ConvertWith(ToStringArgumentConverter.class) String argument) {
 
-		assertNotNull(TimeUnit.valueOf(argument));
+		assertNotNull(ChronoUnit.valueOf(argument));
 	}
 
 	// end::explicit_conversion_example[]
@@ -281,6 +318,9 @@ class ParameterizedTestDemo {
 		@Override
 		protected Object convert(Object source, Class<?> targetType) {
 			assertEquals(String.class, targetType, "Can only convert to String");
+			if (source instanceof Enum<?>) {
+				return ((Enum<?>) source).name();
+			}
 			return String.valueOf(source);
 		}
 	}
@@ -371,9 +411,9 @@ class ParameterizedTestDemo {
 
 	// tag::custom_display_names[]
 	@DisplayName("Display name of container")
-	@ParameterizedTest(name = "{index} ==> first=''{0}'', second={1}")
-	@CsvSource({ "foo, 1", "bar, 2", "'baz, qux', 3" })
-	void testWithCustomDisplayNames(String first, int second) {
+	@ParameterizedTest(name = "{index} ==> the rank of ''{0}'' is {1}")
+	@CsvSource({ "apple, 1", "banana, 2", "'lemon, lime', 3" })
+	void testWithCustomDisplayNames(String fruit, int rank) {
 	}
 	// end::custom_display_names[]
 }

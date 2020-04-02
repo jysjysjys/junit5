@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.console.tasks;
@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestIdentifier;
@@ -40,7 +41,7 @@ class TreeNode {
 	}
 
 	TreeNode(TestIdentifier identifier) {
-		this(identifier.getDisplayName());
+		this(createCaption(identifier.getDisplayName()));
 		this.identifier = identifier;
 		this.visible = true;
 	}
@@ -80,5 +81,12 @@ class TreeNode {
 
 	Optional<TestIdentifier> identifier() {
 		return Optional.ofNullable(identifier);
+	}
+
+	static String createCaption(String displayName) {
+		boolean normal = displayName.length() <= 80;
+		String caption = normal ? displayName : displayName.substring(0, 80) + "...";
+		String whites = StringUtils.replaceWhitespaceCharacters(caption, " ");
+		return StringUtils.replaceIsoControlCharacters(whites, ".");
 	}
 }

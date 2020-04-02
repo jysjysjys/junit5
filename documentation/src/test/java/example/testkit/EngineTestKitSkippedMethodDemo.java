@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package example.testkit;
@@ -34,7 +34,7 @@ class EngineTestKitSkippedMethodDemo {
 			.engine("junit-jupiter") // <1>
 			.selectors(selectMethod(ExampleTestCase.class, methodName)) // <2>
 			.execute() // <3>
-			.tests(); // <4>
+			.testEvents(); // <4>
 
 		testEvents.assertStatistics(stats -> stats.skipped(1)); // <6>
 

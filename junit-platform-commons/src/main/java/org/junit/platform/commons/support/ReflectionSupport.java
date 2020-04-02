@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.commons.support;
@@ -13,6 +13,7 @@ package org.junit.platform.commons.support;
 import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.function.Try;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.Preconditions;
@@ -197,6 +199,49 @@ public final class ReflectionSupport {
 	}
 
 	/**
+	 * Find all {@linkplain Field fields} of the supplied class or interface
+	 * that match the specified {@code predicate}.
+	 *
+	 * <p>Fields declared in the same class or interface will be ordered using
+	 * an algorithm that is deterministic but intentionally nonobvious.
+	 *
+	 * <p>The results will not contain fields that are <em>hidden</em> or
+	 * {@linkplain Field#isSynthetic() synthetic}.
+	 *
+	 * @param clazz the class or interface in which to find the fields; never {@code null}
+	 * @param predicate the field filter; never {@code null}
+	 * @param traversalMode the hierarchy traversal mode; never {@code null}
+	 * @return an immutable list of all such fields found; never {@code null}
+	 * but potentially empty
+	 * @since 1.4
+	 */
+	@API(status = MAINTAINED, since = "1.4")
+	public static List<Field> findFields(Class<?> clazz, Predicate<Field> predicate,
+			HierarchyTraversalMode traversalMode) {
+
+		Preconditions.notNull(traversalMode, "HierarchyTraversalMode must not be null");
+
+		return ReflectionUtils.findFields(clazz, predicate,
+			ReflectionUtils.HierarchyTraversalMode.valueOf(traversalMode.name()));
+	}
+
+	/**
+	 * Try to read the value of a potentially inaccessible field.
+	 *
+	 * <p>If an exception occurs while reading the field, a failed {@link Try}
+	 * is returned that contains the corresponding exception.
+	 *
+	 * @param field the field to read; never {@code null}
+	 * @param instance the instance from which the value is to be read; may
+	 * be {@code null} for a static field
+	 * @since 1.4
+	 */
+	@API(status = MAINTAINED, since = "1.4")
+	public static Try<Object> tryToReadFieldValue(Field field, Object instance) {
+		return ReflectionUtils.tryToReadFieldValue(field, instance);
+	}
+
+	/**
 	 * Find the first {@link Method} of the supplied class or interface that
 	 * meets the specified criteria, beginning with the specified class or
 	 * interface and traversing up the type hierarchy until such a method is
@@ -263,16 +308,28 @@ public final class ReflectionSupport {
 	}
 
 	/**
-	 * Find all nested classes within the given class that conform to the given
-	 * predicate.
+	 * Find all nested classes within the supplied class, or inherited by the
+	 * supplied class, that conform to the supplied predicate.
+	 *
+	 * <p>This method does <strong>not</strong> search for nested classes
+	 * recursively.
+	 *
+	 * <p>As of JUnit Platform 1.6, this method detects cycles in <em>inner</em>
+	 * class hierarchies &mdash; from the supplied class up to the outermost
+	 * enclosing class &mdash; and throws a {@link JUnitException} if such a cycle
+	 * is detected. Cycles within inner class hierarchies <em>below</em> the
+	 * supplied class are not detected by this method.
 	 *
 	 * @param clazz the class to be searched; never {@code null}
 	 * @param predicate the predicate against which the list of nested classes is
 	 * checked; never {@code null}
 	 * @return an immutable list of all such classes found; never {@code null}
 	 * but potentially empty
+	 * @throws JUnitException if a cycle is detected within an inner class hierarchy
 	 */
-	public static List<Class<?>> findNestedClasses(Class<?> clazz, Predicate<Class<?>> predicate) {
+	public static List<Class<?>> findNestedClasses(Class<?> clazz, Predicate<Class<?>> predicate)
+			throws JUnitException {
+
 		return ReflectionUtils.findNestedClasses(clazz, predicate);
 	}
 

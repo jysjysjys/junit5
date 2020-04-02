@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api;
@@ -20,7 +20,7 @@ import java.util.Optional;
 import org.apiguardian.api.API;
 
 /**
- * {@link MethodDescriptor} encapsulates functionality for a given {@link Method}.
+ * {@code MethodDescriptor} encapsulates functionality for a given {@link Method}.
  *
  * @since 5.4
  * @see MethodOrdererContext
@@ -34,6 +34,16 @@ public interface MethodDescriptor {
 	 * @return the method; never {@code null}
 	 */
 	Method getMethod();
+
+	/**
+	 * Get the display name for this descriptor's {@link #getMethod() method}.
+	 *
+	 * @return the display name for this descriptor's method; never {@code null}
+	 * or blank
+	 * @since 5.7
+	 */
+	@API(status = EXPERIMENTAL, since = "5.7")
+	String getDisplayName();
 
 	/**
 	 * Determine if an annotation of {@code annotationType} is either

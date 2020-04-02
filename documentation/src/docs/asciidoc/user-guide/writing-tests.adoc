@@ -1,6 +1,10 @@
 [[writing-tests]]
 == Writing Tests
 
+The following example provides a glimpse at the minimum requirements for writing a test in
+JUnit Jupiter. Subsequent sections of this chapter will provide further details on all
+available features.
+
 [source,java,indent=0]
 .A first test case
 ----
@@ -13,8 +17,8 @@ include::{testDir}/example/MyFirstJUnitJupiterTests.java[tags=user_guide]
 JUnit Jupiter supports the following annotations for configuring tests and extending the
 framework.
 
-All core annotations are located in the `{api-package}` package in the `junit-jupiter-api`
-module.
+Unless otherwise stated, all core annotations are located in the `{api-package}` package
+in the `junit-jupiter-api` module.
 
 [cols="20,80"]
 |===
@@ -36,12 +40,11 @@ module.
 | `@Nested`                | Denotes that the annotated class is a non-static <<writing-tests-nested,nested test class>>. `@BeforeAll` and `@AfterAll` methods cannot be used directly in a `@Nested` test class unless the "per-class" <<writing-tests-test-instance-lifecycle, test instance lifecycle>> is used. Such annotations are not _inherited_.
 | `@Tag`                   | Used to declare <<writing-tests-tagging-and-filtering,tags for filtering tests>>, either at the class or method level; analogous to test groups in TestNG or Categories in JUnit 4. Such annotations are _inherited_ at the class level but not at the method level.
 | `@Disabled`              | Used to <<writing-tests-disabling,disable>> a test class or test method; analogous to JUnit 4's `@Ignore`. Such annotations are not _inherited_.
+| `@Timeout`               | Used to fail a test, test factory, test template, or lifecycle method if its execution exceeds a given duration. Such annotations are _inherited_.
 | `@ExtendWith`            | Used to <<extensions-registration-declarative,register extensions declaratively>>. Such annotations are _inherited_.
 | `@RegisterExtension`     | Used to <<extensions-registration-programmatic,register extensions programmatically>> via fields. Such fields are _inherited_ unless they are _shadowed_.
+| `@TempDir`               | Used to supply a <<writing-tests-built-in-extensions-TempDirectory,temporary directory>> via field injection or parameter injection in a lifecycle method or test method; located in the `org.junit.jupiter.api.io` package.
 |===
-
-Any method annotated with `@Test`, `@TestTemplate`, `@RepeatedTest`, `@ParameterizedTest`,
-`@BeforeAll`, `@AfterAll`, `@BeforeEach`, or `@AfterEach` must not return a value.
 
 WARNING: Some annotations may currently be _experimental_. Consult the table in
 <<api-evolution-experimental-apis>> for details.
@@ -63,22 +66,68 @@ named `@Fast` as follows. `@Fast` can then be used as a drop-in replacement for
 include::{testDir}/example/Fast.java[tags=user_guide]
 ----
 
+The following `@Test` method demonstrates usage of the `@Fast` annotation.
+
+[source,java,indent=0]
+----
+@Fast
+@Test
+void myFastTest() {
+    // ...
+}
+----
+
+You can even take that one step further by introducing a custom `@FastTest` annotation
+that can be used as a drop-in replacement for `@Tag("fast")` _and_ `@Test`.
+
+[source,java,indent=0]
+----
+include::{testDir}/example/FastTest.java[tags=user_guide]
+----
+
+JUnit automatically recognizes the following as a `@Test` method that is tagged with
+"fast".
+
+[source,java,indent=0]
+----
+@FastTest
+void myFastTest() {
+    // ...
+}
+----
+
 [[writing-tests-classes-and-methods]]
 === Test Classes and Methods
 
-A _test method_ is any instance method that is directly annotated or meta-annotated with
-`@Test`, `@RepeatedTest`, `@ParameterizedTest`, `@TestFactory`, or `@TestTemplate`. A
-_test class_ is any top-level or `static` member class that contains at least one _test
-method_.
+**Test Class**: any top-level class, `static` member class, or <<writing-tests-nested,
+`@Nested` class>> that contains at least one _test method_.
+
+Test classes must not be `abstract` and must have a single constructor.
+
+**Test Method**: any instance method that is directly annotated or meta-annotated with
+`@Test`, `@RepeatedTest`, `@ParameterizedTest`, `@TestFactory`, or `@TestTemplate`.
+
+**Lifecycle Method**: any method that is directly annotated or meta-annotated with
+`@BeforeAll`, `@AfterAll`, `@BeforeEach`, or `@AfterEach`.
+
+Test methods and lifecycle methods may be declared locally within the current test class,
+inherited from superclasses, or inherited from interfaces (see
+<<writing-tests-test-interfaces-and-default-methods>>). In addition, test methods and
+lifecycle methods must not be `abstract` and must not return a value.
+
+NOTE: Test classes, test methods, and lifecycle methods are not required to be `public`,
+but they must _not_ be `private`.
+
+The following test class demonstrates the use of `@Test` methods and all supported
+lifecycle methods. For further information on runtime semantics, see
+<<writing-tests-test-execution-order>> and
+<<extensions-execution-order-wrapping-behavior>>.
 
 [source,java,indent=0]
 .A standard test class
 ----
 include::{testDir}/example/StandardTests.java[tags=user_guide]
 ----
-
-NOTE: Test classes and test methods are not required to be `public`, but they must _not_
-be `private`.
 
 [[writing-tests-display-names]]
 === Display Names
@@ -119,6 +168,43 @@ include::{testDir}/example/DisplayNameGeneratorDemo.java[tags=user_guide]
       '-- Year 2048 is a leap year. [OK]
 ```
 
+[[writing-tests-display-name-generator-default]]
+==== Setting the Default Display Name Generator
+
+You can use the `junit.jupiter.displayname.generator.default`
+<<running-tests-config-params, configuration parameter>> to specify the fully qualified
+class name of the `DisplayNameGenerator` you would like to use by default. Just like for
+display name generators configured via the `@DisplayNameGeneration` annotation, the
+supplied class has to implement the `DisplayNameGenerator` interface. The default display
+name generator will be used for all tests unless the `@DisplayNameGeneration` annotation
+is present on an enclosing test class or test interface. Values provided via
+`@DisplayName` annotations always take precedence over display names generated by a
+`DisplayNameGenerator`.
+
+For example, to use the `ReplaceUnderscores` display name generator by default, you should
+set the configuration parameter to the corresponding fully qualified class name (e.g., in
+`src/test/resources/junit-platform.properties`):
+
+[source,properties,indent=0]
+----
+junit.jupiter.displayname.generator.default = \
+    org.junit.jupiter.api.DisplayNameGenerator$ReplaceUnderscores
+----
+
+Similarly, you can specify the fully qualified name of any custom class that implements
+`DisplayNameGenerator`.
+
+[[writing-tests-display-name-generator-precedence-rules]]
+In summary, the display name for a test class or method is determined according to the
+following precedence rules:
+
+1. value of the `@DisplayName` annotation, if present
+2. by calling the `DisplayNameGenerator` specified in the `@DisplayNameGeneration`
+   annotation, if present
+3. by calling the default `DisplayNameGenerator` configured via the configuration
+   parameter, if present
+4. by calling `org.junit.jupiter.api.DisplayNameGenerator.Standard`
+
 [[writing-tests-assertions]]
 === Assertions
 
@@ -131,6 +217,32 @@ are `static` methods in the `{Assertions}` class.
 include::{testDir}/example/AssertionsDemo.java[tags=user_guide]
 ----
 
+[[writing-tests-assertions-preemptive-timeouts]]
+[WARNING]
+.Preemptive Timeouts with `assertTimeoutPreemptively()`
+====
+Contrary to <<writing-tests-declarative-timeouts, declarative timeouts>>, the various
+`assertTimeoutPreemptively()` methods in the `Assertions` class execute the provided
+`executable` or `supplier` in a different thread than that of the calling code. This
+behavior can lead to undesirable side effects if the code that is executed within the
+`executable` or `supplier` relies on `java.lang.ThreadLocal` storage.
+
+One common example of this is the transactional testing support in the Spring Framework.
+Specifically, Spring's testing support binds transaction state to the current thread (via
+a `ThreadLocal`) before a test method is invoked. Consequently, if an `executable` or
+`supplier` provided to `assertTimeoutPreemptively()` invokes Spring-managed components
+that participate in transactions, any actions taken by those components will not be rolled
+back with the test-managed transaction. On the contrary, such actions will be committed to
+the persistent store (e.g., relational database) even though the test-managed transaction
+is rolled back.
+
+Similar side effects may be encountered with other frameworks that rely on
+`ThreadLocal` storage.
+====
+
+[[writing-tests-assertions-kotlin]]
+==== Kotlin Assertion Support
+
 JUnit Jupiter also comes with a few assertion methods that lend themselves well to being
 used in https://kotlinlang.org/[Kotlin]. All JUnit Jupiter Kotlin assertions are top-level
 functions in the `org.junit.jupiter.api` package.
@@ -138,7 +250,7 @@ functions in the `org.junit.jupiter.api` package.
 // TODO: Change to using kotlin language highlighting after switch to rouge syntax highlighter
 [source,groovy,indent=0]
 ----
-include::{kotlinTestDir}/example/AssertionsKotlinDemo.kt[tags=user_guide]
+include::{kotlinTestDir}/example/KotlinAssertionsDemo.kt[tags=user_guide]
 ----
 
 [[writing-tests-assertions-third-party]]
@@ -153,9 +265,9 @@ are therefore free to use the assertion library of their choice.
 For example, the combination of _matchers_ and a fluent API can be used to make
 assertions more descriptive and readable. However, JUnit Jupiter's `{Assertions}` class
 does not provide an
-http://junit.org/junit4/javadoc/latest/org/junit/Assert.html#assertThat[`assertThat()`]
+https://junit.org/junit4/javadoc/latest/org/junit/Assert.html#assertThat[`assertThat()`]
 method like the one found in JUnit 4's `org.junit.Assert` class which accepts a Hamcrest
-http://junit.org/junit4/javadoc/latest/org/hamcrest/Matcher.html[`Matcher`]. Instead,
+https://junit.org/junit4/javadoc/latest/org/hamcrest/Matcher.html[`Matcher`]. Instead,
 developers are encouraged to use the built-in support for matchers provided by third-party
 assertion libraries.
 
@@ -166,7 +278,7 @@ then use them in tests like in the `assertWithHamcrestMatcher()` method below.
 
 [source,java,indent=0]
 ----
-include::{testDir}/example/HamcrestAssertionDemo.java[tags=user_guide]
+include::{testDir}/example/HamcrestAssertionsDemo.java[tags=user_guide]
 ----
 
 Naturally, legacy tests based on the JUnit 4 programming model can continue using
@@ -229,7 +341,11 @@ conditions _programmatically_. The simplest example of such a condition is the b
 <<writing-tests-disabling>>). In addition to `@Disabled`, JUnit Jupiter also supports
 several other annotation-based conditions in the `org.junit.jupiter.api.condition`
 package that allow developers to enable or disable containers and tests _declaratively_.
-See the following sections for details.
+When multiple `ExecutionCondition` extensions are registered, a container or test is
+disabled as soon as one of the conditions returns _disabled_.
+
+See <<extensions-conditions, `ExecutionCondition`>> and the following sections for
+details.
 
 [TIP]
 .Composed Annotations
@@ -243,13 +359,13 @@ combine `@Test` and `@EnabledOnOs` in a single, reusable annotation.
 
 [WARNING]
 ====
-Each of the _conditional_ annotations listed in the following sections can only be
-declared once on a given test interface, test class, or test method. If a conditional
-annotation is directly present, indirectly present, or meta-present multiple times on a
-given element, only the first such annotation discovered by JUnit will be used; any
-additional declarations will be silently ignored. Note, however, that each conditional
-annotation may be used in conjunction with other conditional annotations in the
-`org.junit.jupiter.api.condition` package.
+Unless otherwise stated, each of the _conditional_ annotations listed in the following
+sections can only be declared once on a given test interface, test class, or test method.
+If a conditional annotation is directly present, indirectly present, or meta-present
+multiple times on a given element, only the first such annotation discovered by JUnit will
+be used; any additional declarations will be silently ignored. Note, however, that each
+conditional annotation may be used in conjunction with other conditional annotations in
+the `org.junit.jupiter.api.condition` package.
 ====
 
 [[writing-tests-conditional-execution-os]]
@@ -267,8 +383,12 @@ include::{testDir}/example/ConditionalTestExecutionDemo.java[tags=user_guide_os]
 [[writing-tests-conditional-execution-jre]]
 ==== Java Runtime Environment Conditions
 
-A container or test may be enabled or disabled on a particular version of the Java
-Runtime Environment (JRE) via the `{EnabledOnJre}` and `{DisabledOnJre}` annotations.
+A container or test may be enabled or disabled on particular versions of the Java
+Runtime Environment (JRE) via the `{EnabledOnJre}` and `{DisabledOnJre}` annotations
+or on a particular range of versions of the JRE via the `{EnabledForJreRange}` and
+`{DisabledForJreRange}` annotations. The range defaults to `{JRE}.JAVA_8` as the lower
+border (`min`) and `{JRE}.OTHER` as the higher border (`max`), which allows usage of
+half open ranges.
 
 [source,java,indent=0]
 ----
@@ -288,6 +408,14 @@ regular expression.
 include::{testDir}/example/ConditionalTestExecutionDemo.java[tags=user_guide_system_property]
 ----
 
+[TIP]
+====
+As of JUnit Jupiter 5.6, `{EnabledIfSystemProperty}` and `{DisabledIfSystemProperty}` are
+_repeatable annotations_. Consequently, these annotations may be declared multiple times
+on a test interface, test class, or test method. Specifically, these annotations will be
+found if they are directly present, indirectly present, or meta-present on a given element.
+====
+
 [[writing-tests-conditional-execution-environment-variables]]
 ==== Environment Variable Conditions
 
@@ -301,52 +429,14 @@ value supplied via the `matches` attribute will be interpreted as a regular expr
 include::{testDir}/example/ConditionalTestExecutionDemo.java[tags=user_guide_environment_variable]
 ----
 
-[[writing-tests-conditional-execution-scripts]]
-==== Script-based Conditions
-
-JUnit Jupiter provides the ability to either _enable_ or _disable_ a container or test
-depending on the evaluation of a script configured via the `{EnabledIf}` or
-`{DisabledIf}` annotation. Scripts can be written in JavaScript, Groovy, or any other
-scripting language for which there is support for the Java Scripting API, defined by JSR
-223.
-
-WARNING: Conditional test execution via `{EnabledIf}` and `{DisabledIf}` is currently an
-_experimental_ feature. Consult the table in <<api-evolution-experimental-apis>> for
-details.
-
-TIP: If the logic of your script depends only on the current operating system, the
-current Java Runtime Environment version, a particular JVM system property, or a
-particular environment variable, you should consider using one of the built-in
-annotations dedicated to that purpose. See the previous sections of this chapter for
-further details.
-
-NOTE: If you find yourself using the same script-based condition many times, consider
-writing a dedicated <<extensions-conditions, ExecutionCondition>> extension in order to
-implement the condition in a faster, type-safe, and more maintainable manner.
-
-[source,java,indent=0]
-----
-include::{testDir}/example/ConditionalTestExecutionDemo.java[tags=user_guide_scripts]
-----
-
-[[writing-tests-conditional-execution-scripts-bindings]]
-===== Script Bindings
-
-The following names are bound to each script context and therefore usable within the
-script. An _accessor_ provides access to a map-like structure via a simple `String
-get(String name)` method.
-
-[cols="25,25,75"]
-|===
-| Name                          | Type          | Description
-
-| `systemEnvironment`           | _accessor_    | Operating system environment variable accessor.
-| `systemProperty`              | _accessor_    | JVM system property accessor.
-| `junitConfigurationParameter` | _accessor_    | Configuration parameter accessor.
-| `junitDisplayName`            | `String`      | Display name of the test or container.
-| `junitTags`                   | `Set<String>` | All tags assigned to the test or container.
-| `junitUniqueId`               | `String`      | Unique ID of the test or container.
-|===
+[TIP]
+====
+As of JUnit Jupiter 5.6, `{EnabledIfEnvironmentVariable}` and
+`{DisabledIfEnvironmentVariable}` are _repeatable annotations_. Consequently, these
+annotations may be declared multiple times on a test interface, test class, or test
+method. Specifically, these annotations will be found if they are directly present,
+indirectly present, or meta-present on a given element.
+====
 
 
 [[writing-tests-tagging-and-filtering]]
@@ -354,6 +444,8 @@ get(String name)` method.
 
 Test classes and methods can be tagged via the `@Tag` annotation. Those tags can later be
 used to filter <<running-tests,test discovery and execution>>.
+
+TIP: See also: <<running-tests-tag-expressions>>
 
 ==== Syntax Rules for Tags
 
@@ -376,6 +468,9 @@ characters have been removed.
 include::{testDir}/example/TaggingDemo.java[tags=user_guide]
 ----
 
+TIP: See <<writing-tests-meta-annotations>> for examples demonstrating how to create
+custom annotations for tags.
+
 [[writing-tests-test-execution-order]]
 === Test Execution Order
 
@@ -383,14 +478,12 @@ By default, test methods will be ordered using an algorithm that is deterministi
 intentionally nonobvious. This ensures that subsequent runs of a test suite execute test
 methods in the same order, thereby allowing for repeatable builds.
 
-NOTE: In this context, a _test method_ is any instance method that is directly annotated
-or meta-annotated with `@Test`, `@RepeatedTest`, `@ParameterizedTest`, `@TestFactory`, or
-`@TestTemplate`.
+NOTE: See <<writing-tests-classes-and-methods>> for a definition of _test method_.
 
 Although true _unit tests_ typically should not rely on the order in which they are
 executed, there are times when it is necessary to enforce a specific test method execution
 order -- for example, when writing _integration tests_ or _functional tests_ where the
-sequence of the tests is important, especially in conjunction
+sequence of the tests is important, especially in conjunction with
 `@TestInstance(Lifecycle.PER_CLASS)`.
 
 To control the order in which test methods are executed, annotate your test class or test
@@ -400,10 +493,15 @@ following built-in `MethodOrderer` implementations.
 
 * `{Alphanumeric}`: sorts test methods _alphanumerically_ based on their names and formal
   parameter lists.
+* `{DisplayName}`: sorts test methods _alphanumerically_ based on their display names (see
+  <<writing-tests-display-name-generator-precedence-rules, display name generation
+  precedence rules>>)
 * `{OrderAnnotation}`: sorts test methods _numerically_ based on values specified via the
   `{Order}` annotation.
 * `{Random}`: orders test methods _pseudo-randomly_ and supports configuration of a custom
   _seed_.
+
+NOTE: See also: <<extensions-execution-order-wrapping-behavior>>
 
 The following example demonstrates how to guarantee that test methods are executed in the
 order specified via the `@Order` annotation.
@@ -481,8 +579,8 @@ configuration file instead of via a JVM system property.
 [[writing-tests-nested]]
 === Nested Tests
 
-Nested tests give the test writer more capabilities to express the relationship among
-several group of tests. Here's an elaborate example.
+`@Nested` tests give the test writer more capabilities to express the relationship among
+several groups of tests. Here's an elaborate example.
 
 [source,java,indent=0]
 .Nested test suite for testing a stack
@@ -508,10 +606,9 @@ parameters. This allows for greater flexibility and enables _Dependency Injectio
 constructors and methods.
 
 `{ParameterResolver}` defines the API for test extensions that wish to _dynamically_
-resolve parameters at runtime. If a test class constructor or a `@Test`, `@RepeatedTest`,
-`@ParameterizedTest`, `@TestFactory`, `@TestTemplate`, `@BeforeEach`, `@AfterEach`,
-`@BeforeAll`, or `@AfterAll` method accepts a parameter, the parameter must be resolved at
-runtime by a registered `ParameterResolver`.
+resolve parameters at runtime. If a _test class_ constructor, a _test method_, or a
+_lifecycle method_ (see <<writing-tests-classes-and-methods>>) accepts a parameter, the
+parameter must be resolved at runtime by a registered `ParameterResolver`.
 
 There are currently three built-in resolvers that are registered automatically.
 
@@ -585,6 +682,11 @@ class MyRandomParametersTest {
 
 For real-world use cases, check out the source code for the `{MockitoExtension}` and the
 `{SpringExtension}`.
+
+When the type of the parameter to inject is the only condition for your
+`{ParameterResolver}`, you can use the generic `{TypeBasedParameterResolver}` base class.
+The `supportsParameters` method is implemented behind the scenes and supports
+parameterized types.
 
 [[writing-tests-test-interfaces-and-default-methods]]
 === Test Interfaces and Default Methods
@@ -826,9 +928,9 @@ following.
 
 ....
 palindromes(String) ✔
-├─ [1] racecar ✔
-├─ [2] radar ✔
-└─ [3] able was I ere I saw elba ✔
+├─ [1] candidate=racecar ✔
+├─ [2] candidate=radar ✔
+└─ [3] candidate=able was I ere I saw elba ✔
 ....
 
 WARNING: Parameterized tests are currently an _experimental_ feature. Consult the table
@@ -887,6 +989,7 @@ The following types of literal values are supported by `@ValueSource`.
 - `float`
 - `double`
 - `char`
+- `boolean`
 - `java.lang.String`
 - `java.lang.Class`
 
@@ -898,24 +1001,82 @@ the values `1`, `2`, and `3` respectively.
 include::{testDir}/example/ParameterizedTestDemo.java[tags=ValueSource_example]
 ----
 
+[[writing-tests-parameterized-tests-sources-null-and-empty]]
+===== Null and Empty Sources
+
+In order to check corner cases and verify proper behavior of our software when it is
+supplied _bad input_, it can be useful to have `null` and _empty_ values supplied to our
+parameterized tests. The following annotations serve as sources of `null` and empty values
+for parameterized tests that accept a single argument.
+
+* `{NullSource}`: provides a single `null` argument to the annotated `@ParameterizedTest`
+  method.
+   - `@NullSource` cannot be used for a parameter that has a primitive type.
+* `{EmptySource}`: provides a single _empty_ argument to the annotated `@ParameterizedTest`
+  method for parameters of the following types: `java.lang.String`, `java.util.List`,
+  `java.util.Set`, `java.util.Map`, primitive arrays (e.g., `int[]`, `char[][]`, etc.),
+  object arrays (e.g.,`String[]`, `Integer[][]`, etc.).
+   - Subtypes of the supported types are not supported.
+* `{NullAndEmptySource}`: a _composed annotation_ that combines the functionality of
+  `@NullSource` and `@EmptySource`.
+
+If you need to supply multiple varying types of _blank_ strings to a parameterized test,
+you can achieve that using <<writing-tests-parameterized-tests-sources-ValueSource>> --
+for example, `@ValueSource(strings = {"{nbsp}", "{nbsp}{nbsp}{nbsp}", "\t", "\n"})`.
+
+You can also combine `@NullSource`, `@EmptySource`, and `@ValueSource` to test a wider
+range of `null`, _empty_, and _blank_ input. The following example demonstrates how to
+achieve this for strings.
+
+[source,java,indent=0]
+----
+include::{testDir}/example/ParameterizedTestDemo.java[tags=NullAndEmptySource_example1]
+----
+
+Making use of the composed `@NullAndEmptySource` annotation simplifies the above as
+follows.
+
+[source,java,indent=0]
+----
+include::{testDir}/example/ParameterizedTestDemo.java[tags=NullAndEmptySource_example2]
+----
+
+NOTE: Both variants of the `nullEmptyAndBlankStrings(String)` parameterized test method
+result in six invocations: 1 for `null`, 1 for the empty string, and 4 for the explicit
+blank strings supplied via `@ValueSource`.
+
 [[writing-tests-parameterized-tests-sources-EnumSource]]
 ===== @EnumSource
 
-`@EnumSource` provides a convenient way to use `Enum` constants. The annotation provides
-an optional `names` parameter that lets you specify which constants shall be used. If
-omitted, all constants will be used like in the following example.
+`@EnumSource` provides a convenient way to use `Enum` constants.
 
 [source,java,indent=0]
 ----
 include::{testDir}/example/ParameterizedTestDemo.java[tags=EnumSource_example]
 ----
 
+The annotation's `value` attribute is optional. When omitted, the declared type of the
+first method parameter is used. The test will fail if it does not reference an enum type.
+Thus, the `value` attribute is required in the above example because the method parameter
+is declared as `TemporalUnit`, i.e. the interface implemented by `ChronoUnit`, which isn't
+an enum type. Changing the method parameter type to `ChronoUnit` allows you to omit the
+explicit enum type from the annotation as follows.
+
+[source,java,indent=0]
+----
+include::{testDir}/example/ParameterizedTestDemo.java[tags=EnumSource_example_autodetection]
+----
+
+The annotation provides an optional `names` attribute that lets you specify which
+constants shall be used, like in the following example. If omitted, all constants will be
+used.
+
 [source,java,indent=0]
 ----
 include::{testDir}/example/ParameterizedTestDemo.java[tags=EnumSource_include_example]
 ----
 
-The `@EnumSource` annotation also provides an optional `mode` parameter that enables
+The `@EnumSource` annotation also provides an optional `mode` attribute that enables
 fine-grained control over which constants are passed to the test method. For example, you
 can exclude names from the enum constant pool or specify regular expressions as in the
 following examples.
@@ -1009,20 +1170,31 @@ include::{testDir}/example/ExternalMethodSourceDemo.java[tags=external_MethodSou
 include::{testDir}/example/ParameterizedTestDemo.java[tags=CsvSource_example]
 ----
 
-`@CsvSource` uses a single quote `'` as its quote character. See the `'baz, qux'` value
+The default delimiter is a comma (`,`), but you can use another character by setting the
+`delimiter` attribute. Alternatively, the `delimiterString` attribute allows you to use a
+`String` delimiter instead of a single character. However, both delimiter attributes
+cannot be set simultaneously.
+
+`@CsvSource` uses a single quote `'` as its quote character. See the `'lemon, lime'` value
 in the example above and in the table below. An empty, quoted value `''` results in an
-empty `String`; whereas, an entirely _empty_ value is interpreted as a `null` reference.
-An `ArgumentConversionException` is raised if the target type of a `null` reference is a
-primitive type.
+empty `String` unless the `emptyValue` attribute is set; whereas, an entirely _empty_
+value is interpreted as a `null` reference. By specifying one or more `nullValues`, a
+custom value can be interpreted as a `null` reference (see the `NIL` example in the table
+below). An `ArgumentConversionException` is thrown if the target type of a `null`
+reference is a primitive type.
+
+NOTE: An _unquoted_ empty value will always be converted to a `null` reference regardless
+of any custom values configured via the `nullValues` attribute.
 
 [cols="50,50"]
 |===
-| Example Input                        | Resulting Argument List
+| Example Input                                                       | Resulting Argument List
 
-| `@CsvSource({ "foo, bar" })`         | `"foo"`, `"bar"`
-| `@CsvSource({ "foo, 'baz, qux'" })`  | `"foo"`, `"baz, qux"`
-| `@CsvSource({ "foo, ''" })`          | `"foo"`, `""`
-| `@CsvSource({ "foo, " })`            | `"foo"`, `null`
+| `@CsvSource({ "apple, banana" })`                                   | `"apple"`, `"banana"`
+| `@CsvSource({ "apple, 'lemon, lime'" })`                            | `"apple"`, `"lemon, lime"`
+| `@CsvSource({ "apple, ''" })`                                       | `"apple"`, `""`
+| `@CsvSource({ "apple, " })`                                         | `"apple"`, `null`
+| `@CsvSource(value = { "apple, banana, NIL" }, nullValues = "NIL")` | `"apple"`, `"banana"`, `null`
 |===
 
 [[writing-tests-parameterized-tests-sources-CsvFileSource]]
@@ -1030,6 +1202,15 @@ primitive type.
 
 `@CsvFileSource` lets you use CSV files from the classpath. Each line from a CSV file
 results in one invocation of the parameterized test.
+
+The default delimiter is a comma (`,`), but you can use another character by setting the
+`delimiter` attribute. Alternatively, the `delimiterString` attribute allows you to use a
+`String` delimiter instead of a single character. However, both delimiter attributes
+cannot be set simultaneously.
+
+.Comments in CSV files
+NOTE: Any line beginning with a `#` symbol will be interpreted as a comment and will be
+ignored.
 
 [source,java,indent=0]
 ----
@@ -1042,12 +1223,16 @@ include::{testDir}/example/ParameterizedTestDemo.java[tags=CsvFileSource_example
 include::{testResourcesDir}/two-column.csv[]
 ----
 
-NOTE: In contrast to the syntax used in `@CsvSource`, `@CsvFileSource` uses a double
-quote `"` as the quote character. See the `"United States of America"` value in the
-example above. An empty, quoted value `""` results in an empty `String`; whereas, an
-entirely _empty_ value is interpreted as a `null` reference. An
-`ArgumentConversionException` is raised if the target type of a `null` reference is a
-primitive type.
+In contrast to the syntax used in `@CsvSource`, `@CsvFileSource` uses a double quote `"`
+as the quote character. See the `"United States of America"` value in the example above.
+An empty, quoted value `""` results in an empty `String` unless the `emptyValue` attribute
+is set; whereas, an entirely _empty_ value is interpreted as a `null` reference. By
+specifying one or more `nullValues`, a custom value can be interpreted as a `null`
+reference. An `ArgumentConversionException` is thrown if the target type of a `null`
+reference is a primitive type.
+
+NOTE: An _unquoted_ empty value will always be converted to a `null` reference regardless
+of any custom values configured via the `nullValues` attribute.
 
 [[writing-tests-parameterized-tests-sources-ArgumentsSource]]
 ===== @ArgumentsSource
@@ -1121,19 +1306,24 @@ integral types: `byte`, `short`, `int`, `long`, and their boxed counterparts.
 | `java.lang.Class`          | `"char[]"`                               -> `char[].class` _(array types are supported)_
 | `java.math.BigDecimal`     | `"123.456e789"`                          -> `new BigDecimal("123.456e789")`
 | `java.math.BigInteger`     | `"1234567890123456789"`                  -> `new BigInteger("1234567890123456789")`
-| `java.net.URI`             | `"http://junit.org/"`                    -> `URI.create("http://junit.org/")`
-| `java.net.URL`             | `"http://junit.org/"`                    -> `new URL("http://junit.org/")`
+| `java.net.URI`             | `"https://junit.org/"`                   -> `URI.create("https://junit.org/")`
+| `java.net.URL`             | `"https://junit.org/"`                   -> `new URL("https://junit.org/")`
 | `java.nio.charset.Charset` | `"UTF-8"`                                -> `Charset.forName("UTF-8")`
 | `java.nio.file.Path`       | `"/path/to/file"`                        -> `Paths.get("/path/to/file")`
+| `java.time.Duration`       | `"PT3S"`                                 -> `Duration.ofSeconds(3)`
 | `java.time.Instant`        | `"1970-01-01T00:00:00Z"`                 -> `Instant.ofEpochMilli(0)`
 | `java.time.LocalDateTime`  | `"2017-03-14T12:34:56.789"`              -> `LocalDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000)`
 | `java.time.LocalDate`      | `"2017-03-14"`                           -> `LocalDate.of(2017, 3, 14)`
 | `java.time.LocalTime`      | `"12:34:56.789"`                         -> `LocalTime.of(12, 34, 56, 789_000_000)`
+| `java.time.MonthDay`       | `"--03-14"`                              -> `MonthDay.of(3, 14)`
 | `java.time.OffsetDateTime` | `"2017-03-14T12:34:56.789Z"`             -> `OffsetDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000, ZoneOffset.UTC)`
 | `java.time.OffsetTime`     | `"12:34:56.789Z"`                        -> `OffsetTime.of(12, 34, 56, 789_000_000, ZoneOffset.UTC)`
+| `java.time.Period`         | `"P2M6D"`                                -> `Period.of(0, 2, 6)`
 | `java.time.YearMonth`      | `"2017-03"`                              -> `YearMonth.of(2017, 3)`
 | `java.time.Year`           | `"2017"`                                 -> `Year.of(2017)`
 | `java.time.ZonedDateTime`  | `"2017-03-14T12:34:56.789Z"`             -> `ZonedDateTime.of(2017, 3, 14, 12, 34, 56, 789_000_000, ZoneOffset.UTC)`
+| `java.time.ZoneId`         | `"Europe/Berlin"`                        -> `ZoneId.of("Europe/Berlin")`
+| `java.time.ZoneOffset`     | `"+02:30"`                               -> `ZoneOffset.ofHoursMinutes(2, 30)`
 | `java.util.Currency`       | `"JPY"`                                  -> `Currency.getInstance("JPY")`
 | `java.util.Locale`         | `"en"`                                   -> `new Locale("en")`
 | `java.util.UUID`           | `"d043e930-7b3b-48e3-bdbe-5a3ccfb833db"` -> `UUID.fromString("d043e930-7b3b-48e3-bdbe-5a3ccfb833db")`
@@ -1266,6 +1456,10 @@ include::{testDir}/example/ParameterizedTestDemo.java[tags=ArgumentsAggregator_w
 
 By default, the display name of a parameterized test invocation contains the invocation
 index and the `String` representation of all arguments for that specific invocation.
+Each of them is preceded by the parameter name (unless the argument is only available via
+an `ArgumentsAccessor` or `ArgumentAggregator`), if present in the bytecode (for Java,
+test code must be compiled with the `-parameters` compiler flag).
+
 However, you can customize invocation display names via the `name` attribute of the
 `@ParameterizedTest` annotation like in the following example.
 
@@ -1274,24 +1468,29 @@ However, you can customize invocation display names via the `name` attribute of 
 include::{testDir}/example/ParameterizedTestDemo.java[tags=custom_display_names]
 ----
 
-When executing the above method using the `ConsoleLauncher` you will see output similar to the following.
+When executing the above method using the `ConsoleLauncher` you will see output similar to
+the following.
 
 ....
 Display name of container ✔
-├─ 1 ==> first='foo', second=1 ✔
-├─ 2 ==> first='bar', second=2 ✔
-└─ 3 ==> first='baz, qux', second=3 ✔
+├─ 1 ==> the rank of 'apple' is 1 ✔
+├─ 2 ==> the rank of 'banana' is 2 ✔
+└─ 3 ==> the rank of 'lemon, lime' is 3 ✔
 ....
+
+Please note that `name` is a `MessageFormat` pattern. Thus, a single quote (`'`) needs to be represented as a doubled single quote (`''`) in order to be displayed.
 
 The following placeholders are supported within custom display names.
 
 [cols="20,80"]
 |===
-| Placeholder       | Description
+| Placeholder              | Description
 
-| `{index}`         | the current invocation index (1-based)
-| `{arguments}`     | the complete, comma-separated arguments list
-| `{0}`, `{1}`, ... | an individual argument
+| `{displayName}`          | the display name of the method
+| `{index}`                | the current invocation index (1-based)
+| `{arguments}`            | the complete, comma-separated arguments list
+| `{argumentsWithNames}`   | the complete, comma-separated arguments list with parameter names
+| `{0}`, `{1}`, ...        | an individual argument
 |===
 
 
@@ -1379,9 +1578,6 @@ As of JUnit Jupiter {jupiter-version}, dynamic tests must always be created by f
 methods; however, this might be complemented by a registration facility in a later
 release.
 
-WARNING: Dynamic tests are currently an _experimental_ feature. Consult the table in
-<<api-evolution-experimental-apis>> for details.
-
 [[writing-tests-dynamic-tests-examples]]
 ==== Dynamic Test Examples
 
@@ -1412,6 +1608,165 @@ The last method generates a nested hierarchy of dynamic tests utilizing
 ----
 include::{testDir}/example/DynamicTestsDemo.java[tags=user_guide]
 ----
+
+[[writing-tests-dynamic-tests-uri-test-source]]
+==== URI Test Sources for Dynamic Tests
+
+The JUnit Platform provides `TestSource`, a representation of the source of a test or
+container used to navigate to its location by IDEs and build tools.
+
+The `TestSource` for a dynamic test or dynamic container can be constructed from a
+`java.net.URI` which can be supplied via the `DynamicTest.dynamicTest(String, URI,
+Executable)` or `DynamicContainer.dynamicContainer(String, URI, Stream)` factory method,
+respectively. The `URI` will be converted to one of the following `TestSource`
+implementations.
+
+`ClasspathResourceSource` ::
+  If the `URI` contains the `classpath` scheme -- for example,
+  `classpath:/test/foo.xml?line=20,column=2`.
+
+`DirectorySource` ::
+  If the `URI` represents a directory present in the file system.
+
+`FileSource` ::
+  If the `URI` represents a file present in the file system.
+
+`MethodSource` ::
+  If the `URI` contains the `method` scheme and the fully qualified method name (FQMN) --
+  for example, `method:org.junit.Foo#bar(java.lang.String, java.lang.String[])`. Please
+  refer to the Javadoc for `DiscoverySelectors.selectMethod(String)` for the supported
+  formats for a FQMN.
+
+`UriSource` ::
+  If none of the above `TestSource` implementations are applicable.
+
+
+[[writing-tests-declarative-timeouts]]
+=== Timeouts
+
+.Declarative timeouts are an experimental feature
+WARNING: You're invited to give it a try and provide feedback to the JUnit team so they
+can improve and eventually <<api-evolution, promote>> this feature.
+
+The `@Timeout` annotation allows one to declare that a test, test factory, test template,
+or lifecycle method should fail if its execution time exceeds a given duration. The time
+unit for the duration defaults to seconds but is configurable.
+
+The following example shows how `@Timeout` is applied to lifecycle and test methods.
+
+[source,java]
+----
+include::{testDir}/example/TimeoutDemo.java[tags=user_guide]
+----
+
+Contrary to the `assertTimeoutPreemptively()` assertion, the execution of the annotated
+method proceeds in the main thread of the test. If the timeout is exceeded, the main
+thread is interrupted from another thread. This is done to ensure interoperability with
+frameworks such as Spring that make use of mechanisms that are sensitive to the currently
+running thread — for example, `ThreadLocal` transaction management.
+
+To apply the same timeout to all test methods within a test class and all of its `@Nested`
+classes, you can declare the `@Timeout` annotation at the class level. It will then be
+applied to all test, test factory, and test template methods within that class and its
+`@Nested` classes unless overridden by a `@Timeout` annotation on a specific method or
+`@Nested` class. Please note that `@Timeout` annotations declared at the class level are
+not applied to lifecycle methods.
+
+Declaring `@Timeout` on a `@TestFactory` method checks that the factory method returns
+within the specified duration but does not verify the execution time of each individual
+`DynamicTest` generated by the factory. Please use
+`assertTimeout()` or `assertTimeoutPreemptively()` for that purpose.
+
+If `@Timeout` is present on a `@TestTemplate` method — for example, a `@RepeatedTest` or
+`@ParameterizedTest` — each invocation will have the given timeout applied to it.
+
+The following <<running-tests-config-params, configuration parameters>> can be used to
+specify global timeouts for all methods of a certain category unless they or an enclosing
+test class is annotated with `@Timeout`:
+
+`junit.jupiter.execution.timeout.default`::
+    Default timeout for all testable and lifecycle methods
+`junit.jupiter.execution.timeout.testable.method.default`::
+    Default timeout for all testable methods
+`junit.jupiter.execution.timeout.test.method.default`::
+    Default timeout for `@Test` methods
+`junit.jupiter.execution.timeout.testtemplate.method.default`::
+    Default timeout for `@TestTemplate` methods
+`junit.jupiter.execution.timeout.testfactory.method.default`::
+    Default timeout for `@TestFactory` methods
+`junit.jupiter.execution.timeout.lifecycle.method.default`::
+    Default timeout for all lifecycle methods
+`junit.jupiter.execution.timeout.beforeall.method.default`::
+    Default timeout for `@BeforeAll` methods
+`junit.jupiter.execution.timeout.beforeeach.method.default`::
+    Default timeout for `@BeforeEach` methods
+`junit.jupiter.execution.timeout.aftereach.method.default`::
+    Default timeout for `@AfterEach` methods
+`junit.jupiter.execution.timeout.afterall.method.default`::
+    Default timeout for `@AfterAll` methods
+
+More specific configuration parameters override less specific ones. For example,
+`junit.jupiter.execution.timeout.test.method.default` overrides
+`junit.jupiter.execution.timeout.testable.method.default` which overrides
+`junit.jupiter.execution.timeout.default`.
+
+The values of such configuration parameters must be in the following, case-insensitive
+format: `<number> [ns|μs|ms|s|m|h|d]`. The space between the number and the unit may be
+omitted. Specifying no unit is equivalent to using seconds.
+
+.Example timeout configuration parameter values
+[cols="20,80"]
+|===
+| Parameter value | Equivalent annotation
+
+| `42`            | `@Timeout(42)`
+| `42 ns`         | `@Timeout(value = 42, unit = NANOSECONDS)`
+| `42 μs`         | `@Timeout(value = 42, unit = MICROSECONDS)`
+| `42 ms`         | `@Timeout(value = 42, unit = MILLISECONDS)`
+| `42 s`          | `@Timeout(value = 42, unit = SECONDS)`
+| `42 m`          | `@Timeout(value = 42, unit = MINUTES)`
+| `42 h`          | `@Timeout(value = 42, unit = HOURS)`
+| `42 d`          | `@Timeout(value = 42, unit = DAYS)`
+|===
+
+
+[[writing-tests-declarative-timeouts-polling]]
+==== Using @Timeout for Polling Tests
+
+When dealing with asynchronous code, it is common to write tests that poll while waiting
+for something to happen before performing any assertions. In some cases you can rewrite
+the logic to use a `CountDownLatch` or another synchronization mechanism, but sometimes
+that is not possible — for example, if the subject under test sends a message to a channel
+in an external message broker and assertions cannot be performed until the message has
+been successfully sent through the channel. Asynchronous tests like these require some
+form of timeout to ensure they don't hang the test suite by executing indefinitely, as
+would be the case if an asynchronous message never gets successfully delivered.
+
+By configuring a timeout for an asynchronous test that polls, you can ensure that the test
+does not execute indefinitely. The following example demonstrates how to achieve this with
+JUnit Jupiter's `@Timeout` annotation. This technique can be used to implement "poll
+until" logic very easily.
+
+[source,java]
+----
+include::{testDir}/example/PollingTimeoutDemo.java[tags=user_guide,indent=0]
+----
+
+NOTE: If you need more control over polling intervals and greater flexibility with
+asynchronous tests, consider using a dedicated library such as
+link:https://github.com/awaitility/awaitility[Awaitility].
+
+
+[[writing-tests-declarative-timeouts-mode]]
+==== Disable @Timeout Globally
+When stepping through your code in a debug session, a fixed timeout limit may influence
+the result of the test, e.g. mark the test as failed although all assertions were met.
+
+JUnit Jupiter supports the `junit.jupiter.execution.timeout.mode` configuration parameter
+to configure when timeouts are applied. There are three modes: `enabled`, `disabled`,
+and `disabled_on_debug`. The default mode is `enabled`.
+A VM runtime is considered to run in debug mode when one of its input parameters starts
+with `-agentlib:jdwp`. This heuristic is queried by the `disabled_on_debug` mode.
 
 
 [[writing-tests-parallel-execution]]
@@ -1468,6 +1823,72 @@ be executed fully in parallel according to the provided
 declarative <<writing-tests-parallel-execution-synchronization, synchronization>>
 mechanism. Please note that <<running-tests-capturing-output>> needs to be enabled
 separately.
+
+In addition, you can configure the default execution mode for top-level classes by setting
+the `junit.jupiter.execution.parallel.mode.classes.default` configuration parameter. By
+combining both configuration parameters, you can configure classes to run in parallel but
+their methods in the same thread:
+
+[source,properties]
+.Configuration parameters to execute top-level classes in parallel but methods in same thread
+----
+junit.jupiter.execution.parallel.enabled = true
+junit.jupiter.execution.parallel.mode.default = same_thread
+junit.jupiter.execution.parallel.mode.classes.default = concurrent
+----
+
+The opposite combination will run all methods within one class in parallel, but top-level
+classes will run sequentially:
+
+[source,properties]
+.Configuration parameters to execute top-level classes in sequentially but their methods in parallel
+----
+junit.jupiter.execution.parallel.enabled = true
+junit.jupiter.execution.parallel.mode.default = concurrent
+junit.jupiter.execution.parallel.mode.classes.default = same_thread
+----
+
+The following diagram illustrates how the execution of two top-level test classes `A` and
+`B` with two test methods per class behaves for all four combinations of
+`junit.jupiter.execution.parallel.mode.default` and
+`junit.jupiter.execution.parallel.mode.classes.default` (see labels in first column).
+
+////
+Source: https://mermaidjs.github.io/mermaid-live-editor/#/view/eyJjb2RlIjoiZ2FudHRcbiAgICBkYXRlRm9ybWF0ICBZWVlZLU1NLUREXG5cbiAgICBzZWN0aW9uIChzYW1lX3RocmVhZCwgc2FtZV90aHJlYWQpXG4gICAgQS50ZXN0MSgpIDphc3MxLCAyMDE5LTAxLTAxLCAxZFxuICAgIEEudGVzdDIoKSA6YXNzMiwgYWZ0ZXIgYXNzMSwgMWRcbiAgICBCLnRlc3QxKCkgOmJzczEsIGFmdGVyIGFzczIsIDFkXG4gICAgQi50ZXN0MigpIDpic3MyLCBhZnRlciBic3MxLCAxZFxuXG4gICAgc2VjdGlvbiAoc2FtZV90aHJlYWQsIGNvbmN1cnJlbnQpXG4gICAgQS50ZXN0MSgpIDphc2MxLCAyMDE5LTAxLTAxLCAxZFxuICAgIEEudGVzdDIoKSA6YXNjMiwgYWZ0ZXIgYXNjMSwgMWRcbiAgICBCLnRlc3QxKCkgOmJzYzEsIDIwMTktMDEtMDEsIDFkXG4gICAgQi50ZXN0MigpIDpic2MyLCBhZnRlciBic2MxLCAxZFxuXG4gICAgc2VjdGlvbiAoY29uY3VycmVudCwgc2FtZV90aHJlYWQpXG4gICAgQS50ZXN0MSgpIDphY3MxLCAyMDE5LTAxLTAxLCAxZFxuICAgIEEudGVzdDIoKSA6YWNzMiwgMjAxOS0wMS0wMSwgMWRcbiAgICBCLnRlc3QxKCkgOmJjczEsIGFmdGVyIGFjczIsIDFkXG4gICAgQi50ZXN0MigpIDpiY3MyLCBhZnRlciBhY3MyLCAxZFxuXG4gICAgc2VjdGlvbiAoY29uY3VycmVudCwgY29uY3VycmVudClcbiAgICBBLnRlc3QxKCkgOmFjYzEsIDIwMTktMDEtMDEsIDFkXG4gICAgQS50ZXN0MigpIDphY2MyLCAyMDE5LTAxLTAxLCAxZFxuICAgIEIudGVzdDEoKSA6YmNjMSwgMjAxOS0wMS0wMSwgMWRcbiAgICBCLnRlc3QyKCkgOmJjYzIsIDIwMTktMDEtMDEsIDFkXG4iLCJtZXJtYWlkIjp7InRoZW1lIjoibmV1dHJhbCIsImdhbnR0Ijp7ImxlZnRQYWRkaW5nIjoyMjUsImJhckdhcCI6NSwiZ3JpZExpbmVTdGFydFBhZGRpbmciOjEwLCJiYXJIZWlnaHQiOjMwLCJmb250U2l6ZSI6MTV9LCJ0aGVtZUNTUyI6Ii50YXNrVGV4dCwgLnNlY3Rpb25UaXRsZSB7IGZvbnQtZmFtaWx5OiAnT3BlbiBTYW5zJzsgZm9udC1zaXplOjE1cHggfSAuZ3JpZCAudGljayB0ZXh0IHsgZGlzcGxheTpub25lIH0gLmdyaWQgLnRpY2s6bnRoLWNoaWxkKDJuKzEpIHsgZGlzcGxheTpub25lIH0ifX0
+
+gantt
+    dateFormat  YYYY-MM-DD
+
+    section (same_thread, same_thread)
+    A.test1() :ass1, 2019-01-01, 1d
+    A.test2() :ass2, after ass1, 1d
+    B.test1() :bss1, after ass2, 1d
+    B.test2() :bss2, after bss1, 1d
+
+    section (same_thread, concurrent)
+    A.test1() :asc1, 2019-01-01, 1d
+    A.test2() :asc2, after asc1, 1d
+    B.test1() :bsc1, 2019-01-01, 1d
+    B.test2() :bsc2, after bsc1, 1d
+
+    section (concurrent, same_thread)
+    A.test1() :acs1, 2019-01-01, 1d
+    A.test2() :acs2, 2019-01-01, 1d
+    B.test1() :bcs1, after acs2, 1d
+    B.test2() :bcs2, after acs2, 1d
+
+    section (concurrent, concurrent)
+    A.test1() :acc1, 2019-01-01, 1d
+    A.test2() :acc2, 2019-01-01, 1d
+    B.test1() :bcc1, 2019-01-01, 1d
+    B.test2() :bcc2, 2019-01-01, 1d
+
+////
+image::writing-tests_execution_mode.svg[caption='',title='Default execution mode configuration combinations']
+
+If the `junit.jupiter.execution.parallel.mode.classes.default` configuration parameter is
+not explicitly set, the value for `junit.jupiter.execution.parallel.mode.default` will be
+used instead.
 
 [[writing-tests-parallel-execution-config]]
 ==== Configuration
@@ -1548,30 +1969,36 @@ another dependency.
 [[writing-tests-built-in-extensions-TempDirectory]]
 ==== The TempDirectory Extension
 
-The `TempDirectory` extension can be used to create and clean up a temporary directory
-for an individual test or all tests in a test class. To use it, register the extension
-and add a parameter of type `java.nio.file.Path` annotated with `@TempDir` to your test
-method, lifecycle method, or test class constructor.
+.`@TempDir` is an experimental feature
+WARNING: You're invited to give it a try and provide feedback to the JUnit team so they
+can improve and eventually <<api-evolution, promote>> this feature.
 
-For example, the following test registers the extension for a single test method, creates
-and writes to a file in the temporary directory, and checks its content.
+The built-in `{TempDirectory}` extension is used to create and clean up a temporary
+directory for an individual test or all tests in a test class. It is registered by
+default. To use it, annotate a non-private field of type `java.nio.file.Path` or
+`java.io.File` with `{TempDir}` or add a parameter of type `java.nio.file.Path` or
+`java.io.File` annotated with `@TempDir` to a lifecycle method or test method.
+
+For example, the following test declares a parameter annotated with `@TempDir` for a
+single test method, creates and writes to a file in the temporary directory, and checks
+its content.
 
 [source,java,indent=0]
 .A test method that requires a temporary directory
 ----
-include::{testDir}/example/TempDirectoryDemo.java[tags=user_guide]
+include::{testDir}/example/TempDirectoryDemo.java[tags=user_guide_parameter_injection]
 ----
 
-In addition to the default file system for the local operating system, the
-`TempDirectory` extension can also be used with any `FileSystem` implementation -- for
-example, https://github.com/google/jimfs[Jimfs]. In order to use a custom file system,
-register the extension _programmatically_ via `@RegisterExtension` and supply a provider
-of a custom parent directory of type `Path`. The following example uses the Jimfs
-`FileSystem` and passes a custom `tmp` parent directory to the
-`createInCustomDirectory()` static factory method.
+WARNING: `@TempDir` is not supported on constructor parameters. If you wish to retain a
+single reference to a temp directory across lifecycle methods and the current test method,
+please use field injection, by annotating a non-private instance field with `@TempDir`.
 
-[source,java]
-.A test class that configures the TempDirectory extension to use a custom file system
+The following example stores a _shared_ temporary directory in a `static` field. This
+allows the same `sharedTempDir` to be used in all lifecycle methods and test methods of
+the test class.
+
+[source,java,indent=0]
+.A test class that shares a temporary directory across test methods
 ----
-include::{testDir}/example/TempDirectoryWithCustomFileSystemDemo.java[tags=user_guide]
+include::{testDir}/example/TempDirectoryDemo.java[tags=user_guide_field_injection]
 ----

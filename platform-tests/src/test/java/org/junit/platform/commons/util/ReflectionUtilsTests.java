@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.commons.util;
@@ -13,6 +13,7 @@ package org.junit.platform.commons.util;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,6 +39,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,17 +49,23 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.support.io.TempDirectory;
-import org.junit.jupiter.api.support.io.TempDirectory.TempDir;
-import org.junit.jupiter.engine.TrackLogRecords;
+import org.junit.jupiter.api.fixtures.TrackLogRecords;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.commons.JUnitException;
+import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.logging.LogRecordListener;
 import org.junit.platform.commons.util.ReflectionUtilsTests.ClassWithNestedClasses.Nested1;
 import org.junit.platform.commons.util.ReflectionUtilsTests.ClassWithNestedClasses.Nested2;
 import org.junit.platform.commons.util.ReflectionUtilsTests.ClassWithNestedClasses.Nested3;
 import org.junit.platform.commons.util.ReflectionUtilsTests.Interface45.Nested5;
 import org.junit.platform.commons.util.ReflectionUtilsTests.InterfaceWithNestedClass.Nested4;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.InnerClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.InnerClass.RecursiveInnerInnerClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.InnerSiblingClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.RecursiveInnerClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.StaticNestedClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClass.StaticNestedSiblingClass;
+import org.junit.platform.commons.util.ReflectionUtilsTests.OuterClassImplementingInterface.InnerClassImplementingInterface;
 
 /**
  * Unit tests for {@link ReflectionUtils}.
@@ -135,6 +143,24 @@ class ReflectionUtilsTests {
 
 		assertFalse(ReflectionUtils.isNotStatic(StaticClass.class));
 		assertFalse(ReflectionUtils.isNotStatic(StaticClass.class.getDeclaredMethod("staticMethod")));
+	}
+
+	@Test
+	void isFinal() throws Exception {
+		assertTrue(ReflectionUtils.isFinal(FinalClass.class));
+		assertTrue(ReflectionUtils.isFinal(FinalClass.class.getDeclaredMethod("finalMethod")));
+
+		assertFalse(ReflectionUtils.isFinal(PublicClass.class));
+		assertFalse(ReflectionUtils.isFinal(PublicClass.class.getDeclaredMethod("publicMethod")));
+	}
+
+	@Test
+	void isNotFinal() throws Exception {
+		assertTrue(ReflectionUtils.isNotFinal(PublicClass.class));
+		assertTrue(ReflectionUtils.isNotFinal(PublicClass.class.getDeclaredMethod("publicMethod")));
+
+		assertFalse(ReflectionUtils.isNotFinal(FinalClass.class));
+		assertFalse(ReflectionUtils.isNotFinal(FinalClass.class.getDeclaredMethod("finalMethod")));
 	}
 
 	@Test
@@ -610,7 +636,6 @@ class ReflectionUtilsTests {
 	}
 
 	@Test
-	@ExtendWith(TempDirectory.class)
 	void getAllClasspathRootDirectories(@TempDir Path tempDirectory) throws Exception {
 		Path root1 = tempDirectory.resolve("root1").toAbsolutePath();
 		Path root2 = tempDirectory.resolve("root2").toAbsolutePath();
@@ -639,9 +664,9 @@ class ReflectionUtilsTests {
 	@Test
 	void findNestedClasses() {
 		// @formatter:off
-		assertThat(ReflectionUtils.findNestedClasses(Object.class, clazz -> true)).isEmpty();
+		assertThat(findNestedClasses(Object.class)).isEmpty();
 
-		assertThat(ReflectionUtils.findNestedClasses(ClassWithNestedClasses.class, clazz -> true))
+		assertThat(findNestedClasses(ClassWithNestedClasses.class))
 			.containsOnly(Nested1.class, Nested2.class, Nested3.class);
 
 		assertThat(ReflectionUtils.findNestedClasses(ClassWithNestedClasses.class, clazz -> clazz.getName().contains("1")))
@@ -650,9 +675,60 @@ class ReflectionUtilsTests {
 		assertThat(ReflectionUtils.findNestedClasses(ClassWithNestedClasses.class, ReflectionUtils::isStatic))
 			.containsExactly(Nested3.class);
 
-		assertThat(ReflectionUtils.findNestedClasses(ClassExtendingClassWithNestedClasses.class, clazz -> true))
+		assertThat(findNestedClasses(ClassExtendingClassWithNestedClasses.class))
 			.containsOnly(Nested1.class, Nested2.class, Nested3.class, Nested4.class, Nested5.class);
+
+		assertThat(findNestedClasses(ClassWithNestedClasses.Nested1.class)).isEmpty();
 		// @formatter:on
+	}
+
+	/**
+	 * @since 1.6
+	 */
+	@Test
+	void findNestedClassesWithSeeminglyRecursiveHierarchies() {
+		assertThat(findNestedClasses(AbstractOuterClass.class))//
+				.containsExactly(AbstractOuterClass.InnerClass.class);
+
+		// Sibling types don't actually result in cycles.
+		assertThat(findNestedClasses(StaticNestedSiblingClass.class))//
+				.containsExactly(AbstractOuterClass.InnerClass.class);
+		assertThat(findNestedClasses(InnerSiblingClass.class))//
+				.containsExactly(AbstractOuterClass.InnerClass.class);
+
+		// Interfaces with static nested classes
+		assertThat(findNestedClasses(OuterClassImplementingInterface.class))//
+				.containsExactly(InnerClassImplementingInterface.class, Nested4.class);
+		assertThat(findNestedClasses(InnerClassImplementingInterface.class))//
+				.containsExactly(Nested4.class);
+	}
+
+	/**
+	 * @since 1.6
+	 */
+	@Test
+	void findNestedClassesWithRecursiveHierarchies() {
+		assertNestedCycle(OuterClass.class, InnerClass.class, OuterClass.class);
+		assertNestedCycle(StaticNestedClass.class, InnerClass.class, OuterClass.class);
+		assertNestedCycle(RecursiveInnerClass.class, OuterClass.class);
+		assertNestedCycle(RecursiveInnerInnerClass.class, OuterClass.class);
+		assertNestedCycle(InnerClass.class, RecursiveInnerInnerClass.class, OuterClass.class);
+	}
+
+	private static List<Class<?>> findNestedClasses(Class<?> clazz) {
+		return ReflectionUtils.findNestedClasses(clazz, c -> true);
+	}
+
+	private void assertNestedCycle(Class<?> from, Class<?> to) {
+		assertNestedCycle(from, from, to);
+	}
+
+	private void assertNestedCycle(Class<?> start, Class<?> from, Class<?> to) {
+		assertThatExceptionOfType(JUnitException.class)//
+				.as("expected cycle from %s to %s", from.getSimpleName(), to.getSimpleName())//
+				.isThrownBy(() -> findNestedClasses(start))//
+				.withMessageMatching(String.format("Detected cycle in inner class hierarchy between .+%s and .+%s",
+					from.getSimpleName(), to.getSimpleName()));
 	}
 
 	/**
@@ -672,7 +748,7 @@ class ReflectionUtilsTests {
 				() -> classWithInvalidNestedClassFile.getDeclaredClasses());
 			assertEquals("tests/NestedInterfaceGroovyTests$NestedInterface$1", noClassDefFoundError.getMessage());
 
-			assertThat(ReflectionUtils.findNestedClasses(classWithInvalidNestedClassFile, clazz -> true)).isEmpty();
+			assertThat(findNestedClasses(classWithInvalidNestedClassFile)).isEmpty();
 			// @formatter:off
 			String logMessage = listener.stream(ReflectionUtils.class, Level.FINE)
 					.findFirst()
@@ -1135,6 +1211,92 @@ class ReflectionUtilsTests {
 		}
 	}
 
+	@Test
+	void readFieldValuesPreconditions() {
+		assertThrows(PreconditionViolationException.class, () -> ReflectionUtils.readFieldValues(null, new Object()));
+		assertThrows(PreconditionViolationException.class,
+			() -> ReflectionUtils.readFieldValues(new ArrayList<>(), new Object(), null));
+	}
+
+	@Test
+	void readFieldValuesFromInstance() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, f -> true, TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, new ClassWithFields());
+
+		assertThat(values).containsExactly("enigma", 3.14, "text", 2.5, null, 42, "constant", 99);
+	}
+
+	@Test
+	void readFieldValuesFromClass() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, ReflectionUtils::isStatic, TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, null);
+
+		assertThat(values).containsExactly(2.5, "constant", 99);
+	}
+
+	@Test
+	void readFieldValuesFromInstanceWithTypeFilterForString() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, isA(String.class), TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, new ClassWithFields(), isA(String.class));
+
+		assertThat(values).containsExactly("enigma", "text", null, "constant");
+	}
+
+	@Test
+	void readFieldValuesFromClassWithTypeFilterForString() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, isA(String.class).and(ReflectionUtils::isStatic),
+			TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, null, isA(String.class));
+
+		assertThat(values).containsExactly("constant");
+	}
+
+	@Test
+	void readFieldValuesFromInstanceWithTypeFilterForInteger() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, isA(int.class), TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, new ClassWithFields(), isA(int.class));
+
+		assertThat(values).containsExactly(42);
+	}
+
+	@Test
+	void readFieldValuesFromClassWithTypeFilterForInteger() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class,
+			isA(Integer.class).and(ReflectionUtils::isStatic), TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, null, isA(Integer.class));
+
+		assertThat(values).containsExactly(99);
+	}
+
+	@Test
+	void readFieldValuesFromInstanceWithTypeFilterForDouble() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, isA(double.class), TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, new ClassWithFields(), isA(double.class));
+
+		assertThat(values).containsExactly(3.14);
+	}
+
+	@Test
+	void readFieldValuesFromClassWithTypeFilterForDouble() {
+		var fields = ReflectionUtils.findFields(ClassWithFields.class, isA(Double.class).and(ReflectionUtils::isStatic),
+			TOP_DOWN);
+
+		var values = ReflectionUtils.readFieldValues(fields, null, isA(Double.class));
+
+		assertThat(values).containsExactly(2.5);
+	}
+
+	private Predicate<Field> isA(Class<?> type) {
+		return f -> f.getType().isAssignableFrom(type);
+	}
+
 	private static void createDirectories(Path... paths) throws IOException {
 		for (Path path : paths) {
 			Files.createDirectory(path);
@@ -1323,6 +1485,13 @@ class ReflectionUtilsTests {
 		}
 	}
 
+	final class FinalClass {
+
+		@SuppressWarnings("unused")
+		final void finalMethod() {
+		}
+	}
+
 	abstract static class AbstractClass {
 
 		abstract void abstractMethod();
@@ -1414,6 +1583,40 @@ class ReflectionUtilsTests {
 	}
 
 	static class ClassExtendingClassWithNestedClasses extends ClassWithNestedClasses implements Interface45 {
+	}
+
+	abstract static class AbstractOuterClass {
+
+		class InnerClass {
+		}
+	}
+
+	static class OuterClass extends AbstractOuterClass {
+
+		// sibling of OuterClass due to common super type
+		static class StaticNestedSiblingClass extends AbstractOuterClass {
+		}
+
+		// sibling of OuterClass due to common super type
+		class InnerSiblingClass extends AbstractOuterClass {
+		}
+
+		static class StaticNestedClass extends OuterClass {
+		}
+
+		class RecursiveInnerClass extends OuterClass {
+		}
+
+		class InnerClass {
+			class RecursiveInnerInnerClass extends OuterClass {
+			}
+		}
+	}
+
+	static class OuterClassImplementingInterface implements InterfaceWithNestedClass {
+
+		class InnerClassImplementingInterface implements InterfaceWithNestedClass {
+		}
 	}
 
 	static class GrandparentClass {
@@ -1534,6 +1737,27 @@ class ReflectionUtilsTests {
 		@Override
 		public void otherMethod2() {
 		}
+	}
+
+	public static class ClassWithFields {
+
+		public static final String CONST = "constant";
+
+		public static final Integer CONST_INTEGER = 99;
+
+		public static final Double CONST_DOUBLE = 2.5;
+
+		public final String stringField = "text";
+
+		@SuppressWarnings("unused")
+		private final String privateStringField = "enigma";
+
+		final String nullStringField = null;
+
+		public final int integerField = 42;
+
+		public final double doubleField = 3.14;
+
 	}
 
 	@SuppressWarnings("unused")

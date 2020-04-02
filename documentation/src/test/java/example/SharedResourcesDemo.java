@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package example;
@@ -50,16 +50,17 @@ class SharedResourcesDemo {
 
 	@Test
 	@ResourceLock(value = SYSTEM_PROPERTIES, mode = READ_WRITE)
-	void canSetCustomPropertyToFoo() {
-		System.setProperty("my.prop", "foo");
-		assertEquals("foo", System.getProperty("my.prop"));
+	void canSetCustomPropertyToApple() {
+		System.setProperty("my.prop", "apple");
+		assertEquals("apple", System.getProperty("my.prop"));
 	}
 
 	@Test
 	@ResourceLock(value = SYSTEM_PROPERTIES, mode = READ_WRITE)
-	void canSetCustomPropertyToBar() {
-		System.setProperty("my.prop", "bar");
-		assertEquals("bar", System.getProperty("my.prop"));
+	void canSetCustomPropertyToBanana() {
+		System.setProperty("my.prop", "banana");
+		assertEquals("banana", System.getProperty("my.prop"));
 	}
+
 }
 // end::user_guide[]

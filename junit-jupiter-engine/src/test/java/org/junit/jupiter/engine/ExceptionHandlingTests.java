@@ -1,16 +1,15 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine;
 
-import static org.assertj.core.api.Assertions.allOf;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_METHOD;
@@ -55,7 +54,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	@Test
 	void failureInTestMethodIsRegistered() {
 		EngineExecutionResults executionResults = executeTests(selectMethod(FailureTestCase.class, "failingTest"));
-		Events tests = executionResults.tests();
+		Events tests = executionResults.testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).failed(1));
 
@@ -68,7 +67,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void uncheckedExceptionInTestMethodIsRegistered() {
 		EngineExecutionResults executionResults = executeTests(
 			selectMethod(FailureTestCase.class, "testWithUncheckedException"));
-		Events tests = executionResults.tests();
+		Events tests = executionResults.testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).failed(1));
 
@@ -81,7 +80,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void checkedExceptionInTestMethodIsRegistered() {
 		EngineExecutionResults executionResults = executeTests(
 			selectMethod(FailureTestCase.class, "testWithCheckedException"));
-		Events tests = executionResults.tests();
+		Events tests = executionResults.testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).failed(1));
 
@@ -95,7 +94,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 		FailureTestCase.exceptionToThrowInBeforeEach = Optional.of(new IOException("checked"));
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(FailureTestCase.class, "succeedingTest"));
-		Events tests = executionResults.tests();
+		Events tests = executionResults.testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).failed(1));
 
@@ -108,7 +107,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 		FailureTestCase.exceptionToThrowInAfterEach = Optional.of(new IOException("checked"));
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(FailureTestCase.class, "succeedingTest"));
-		Events tests = executionResults.tests();
+		Events tests = executionResults.testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).failed(1));
 
@@ -124,7 +123,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(testClass, "testWithUncheckedException"));
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("testWithUncheckedException"), started()), //
@@ -132,7 +131,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 				finishedWithFailure( //
 					instanceOf(RuntimeException.class), //
 					message("unchecked"), //
-					suppressed(0, allOf(instanceOf(IOException.class), message("checked"))))), //
+					suppressed(0, instanceOf(IOException.class), message("checked")))), //
 			event(container(testClass), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
@@ -143,13 +142,13 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(FailureTestCase.class, "abortedTest"));
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(FailureTestCase.class), started()), //
 			event(test("abortedTest"), started()), //
 			event(test("abortedTest"), //
 				finishedWithFailure(instanceOf(IOException.class), message("checked"), //
-					suppressed(0, allOf(instanceOf(TestAbortedException.class))))), //
+					suppressed(0, instanceOf(TestAbortedException.class)))), //
 			event(container(FailureTestCase.class), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
@@ -162,7 +161,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(testClass, "succeedingTest"));
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass), finishedWithFailure(instanceOf(IOException.class), message("checked"))), //
@@ -177,7 +176,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(testClass, "succeedingTest"));
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("succeedingTest"), started()), //
@@ -190,7 +189,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void exceptionInAfterAllCallbackDoesNotHideExceptionInBeforeAllCallback() {
 		Class<?> testClass = TestCaseWithThrowingBeforeAllAndAfterAllCallbacks.class;
 		EngineExecutionResults executionResults = executeTestsForClass(testClass);
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass), finishedWithFailure( //
@@ -203,7 +202,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void exceptionsInConstructorAndAfterAllCallbackAreReportedWhenTestInstancePerMethodIsUsed() {
 		Class<?> testClass = TestCaseWithInvalidConstructorAndThrowingAfterAllCallbackAndPerMethodLifecycle.class;
 		EngineExecutionResults executionResults = executeTestsForClass(testClass);
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("test"), started()), //
@@ -216,7 +215,7 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 	void exceptionInConstructorPreventsExecutionOfAfterAllCallbacksWhenTestInstancePerClassIsUsed() {
 		Class<?> testClass = TestCaseWithInvalidConstructorAndThrowingAfterAllCallbackAndPerClassLifecycle.class;
 		EngineExecutionResults executionResults = executeTestsForClass(testClass);
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass), finishedWithFailure(message("constructor"))),
@@ -230,12 +229,12 @@ class ExceptionHandlingTests extends AbstractJupiterTestEngineTests {
 
 		EngineExecutionResults executionResults = executeTests(selectMethod(FailureTestCase.class, "succeedingTest"));
 
-		executionResults.all().assertEventsMatchExactly( //
+		executionResults.allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(FailureTestCase.class), started()), //
 			event(container(FailureTestCase.class),
 				finishedWithFailure(instanceOf(IOException.class), message("checked"),
-					suppressed(0, allOf(instanceOf(TestAbortedException.class), message("aborted"))))), //
+					suppressed(0, instanceOf(TestAbortedException.class), message("aborted")))), //
 			event(engine(), finishedSuccessfully()));
 	}
 

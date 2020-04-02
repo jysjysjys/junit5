@@ -1,28 +1,26 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.vintage.engine.discovery;
 
-import static java.util.Arrays.asList;
 import static org.apiguardian.api.API.Status.INTERNAL;
-import static org.junit.platform.engine.support.filter.ClasspathScanningSupport.buildClassNamePredicate;
-
-import java.util.List;
-import java.util.Objects;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.ClassFilter;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
-import org.junit.platform.engine.support.descriptor.EngineDescriptor;
+import org.junit.platform.engine.support.discovery.EngineDiscoveryRequestResolver;
+import org.junit.vintage.engine.descriptor.RunnerTestDescriptor;
+import org.junit.vintage.engine.descriptor.TestSourceProvider;
+import org.junit.vintage.engine.descriptor.VintageEngineDescriptor;
 
 /**
  * @since 4.12
@@ -32,38 +30,26 @@ public class VintageDiscoverer {
 
 	private static final IsPotentialJUnit4TestClass isPotentialJUnit4TestClass = new IsPotentialJUnit4TestClass();
 
-	private final TestClassRequestResolver resolver = new TestClassRequestResolver();
-
-	private final List<DiscoverySelectorResolver> selectorResolvers = asList(
 	// @formatter:off
-			new ClasspathRootSelectorResolver(),
-			new ModuleNameSelectorResolver(),
-			new PackageNameSelectorResolver(),
-			new ClassSelectorResolver(),
-			new MethodSelectorResolver(),
-			new UniqueIdSelectorResolver()
+	private static final EngineDiscoveryRequestResolver<TestDescriptor> resolver = EngineDiscoveryRequestResolver.builder()
+			.addClassContainerSelectorResolver(isPotentialJUnit4TestClass)
+			.addSelectorResolver(context -> new ClassSelectorResolver(ClassFilter.of(context.getClassNameFilter(), isPotentialJUnit4TestClass)))
+			.addSelectorResolver(new MethodSelectorResolver())
+			.build();
 	// @formatter:on
-	);
 
-	public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
-		EngineDescriptor engineDescriptor = new EngineDescriptor(uniqueId, "JUnit Vintage");
+	public VintageEngineDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
+		TestSourceProvider testSourceProvider = new TestSourceProvider();
+		VintageEngineDescriptor engineDescriptor = new VintageEngineDescriptor(uniqueId, testSourceProvider);
+		resolver.resolve(discoveryRequest, engineDescriptor);
+		RunnerTestDescriptorPostProcessor postProcessor = new RunnerTestDescriptorPostProcessor(testSourceProvider);
 		// @formatter:off
-		collectTestClasses(discoveryRequest)
-				.toRequests()
-				.map(request -> resolver.createRunnerTestDescriptor(request, uniqueId))
-				.filter(Objects::nonNull)
-				.forEach(engineDescriptor::addChild);
+		engineDescriptor.getChildren().stream()
+				.filter(RunnerTestDescriptor.class::isInstance)
+				.map(RunnerTestDescriptor.class::cast)
+				.forEach(postProcessor::applyFiltersAndCreateDescendants);
 		// @formatter:on
 		return engineDescriptor;
-	}
-
-	private TestClassCollector collectTestClasses(EngineDiscoveryRequest discoveryRequest) {
-		ClassFilter classFilter = ClassFilter.of(buildClassNamePredicate(discoveryRequest), isPotentialJUnit4TestClass);
-		TestClassCollector collector = new TestClassCollector();
-		for (DiscoverySelectorResolver selectorResolver : selectorResolvers) {
-			selectorResolver.resolve(discoveryRequest, classFilter, collector);
-		}
-		return collector;
 	}
 
 }

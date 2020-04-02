@@ -1,29 +1,17 @@
+plugins {
+	`kotlin-library-conventions`
+	groovy
+}
+
 apply(from = "$rootDir/gradle/testing.gradle.kts")
 
 description = "JUnit Jupiter Engine"
 
-tasks.jar {
-	manifest {
-		attributes(
-			"Automatic-Module-Name" to "org.junit.jupiter.engine"
-		)
-	}
-}
-
-val testArtifacts by configurations.creating {
-	extendsFrom(configurations["testRuntime"])
-}
-
-val testJar by tasks.creating(Jar::class) {
-	classifier = "test"
-	from(sourceSets.getByName("test").output)
-}
-
-artifacts {
-	add(testArtifacts.name, testJar)
-}
-
 dependencies {
+	internal(platform(project(":dependencies")))
+
+	api(platform(project(":junit-bom")))
+	api("org.apiguardian:apiguardian-api")
 	api(project(":junit-platform-engine"))
 	api(project(":junit-jupiter-api"))
 
@@ -31,7 +19,6 @@ dependencies {
 	testImplementation(project(":junit-platform-runner"))
 	testImplementation(project(":junit-platform-testkit"))
 	testImplementation("org.jetbrains.kotlin:kotlin-stdlib")
-	testImplementation("com.google.jimfs:jimfs:${Versions.jimfs}") {
-		because("used to test TempDirectory extension")
-	}
+	testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+	testImplementation("org.codehaus.groovy:groovy-all")
 }

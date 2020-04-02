@@ -1,16 +1,16 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.launcher.listeners;
 
-import static org.apiguardian.api.API.Status.MAINTAINED;
+import static org.apiguardian.api.API.Status.DEPRECATED;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.Preconditions;
@@ -23,8 +23,11 @@ import org.junit.platform.launcher.TestPlan;
  * reporting systems built on the Ant-based XML reporting format for JUnit 4.
  *
  * @since 1.0.3
+ * @deprecated Use {@link org.junit.platform.reporting.legacy.LegacyReportingUtils}
+ * instead.
  */
-@API(status = MAINTAINED, since = "1.0.3")
+@Deprecated
+@API(status = DEPRECATED, since = "1.6")
 public class LegacyReportingUtils {
 
 	private LegacyReportingUtils() {

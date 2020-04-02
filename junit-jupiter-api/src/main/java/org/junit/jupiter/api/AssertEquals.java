@@ -1,20 +1,18 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api;
 
 import static org.junit.jupiter.api.AssertionUtils.doublesAreEqual;
-import static org.junit.jupiter.api.AssertionUtils.fail;
+import static org.junit.jupiter.api.AssertionUtils.failNotEqual;
 import static org.junit.jupiter.api.AssertionUtils.floatsAreEqual;
-import static org.junit.jupiter.api.AssertionUtils.format;
-import static org.junit.jupiter.api.AssertionUtils.nullSafeGet;
 import static org.junit.jupiter.api.AssertionUtils.objectsAreEqual;
 
 import java.util.function.Supplier;
@@ -189,14 +187,6 @@ class AssertEquals {
 		if (!objectsAreEqual(expected, actual)) {
 			failNotEqual(expected, actual, messageSupplier);
 		}
-	}
-
-	private static void failNotEqual(Object expected, Object actual, String message) {
-		fail(format(expected, actual, message), expected, actual);
-	}
-
-	private static void failNotEqual(Object expected, Object actual, Supplier<String> messageSupplier) {
-		fail(format(expected, actual, nullSafeGet(messageSupplier)), expected, actual);
 	}
 
 }

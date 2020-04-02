@@ -1,13 +1,14 @@
+plugins {
+	`java-library-conventions`
+	`java-test-fixtures`
+}
+
 description = "JUnit Platform Launcher"
 
 dependencies {
-	api(project(":junit-platform-engine"))
-}
+	internal(platform(project(":dependencies")))
 
-tasks.jar {
-	manifest {
-		attributes(
-			"Automatic-Module-Name" to "org.junit.platform.launcher"
-		)
-	}
+	api(platform(project(":junit-bom")))
+	api("org.apiguardian:apiguardian-api")
+	api(project(":junit-platform-engine"))
 }

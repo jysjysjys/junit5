@@ -1,23 +1,61 @@
+import com.gradle.scan.plugin.internal.api.BuildScanExtensionWithHiddenFeatures
+
 pluginManagement {
-	resolutionStrategy {
-		eachPlugin {
-			when (requested.id.id) {
-				"com.gradle.build-scan" -> useVersion(Versions.buildScanPlugin)
-				"net.nemerosa.versioning" -> useVersion(Versions.versioningPlugin)
-				"com.github.ben-manes.versions" -> useVersion(Versions.versionsPlugin)
-				"com.diffplug.gradle.spotless" -> useVersion(Versions.spotlessPlugin)
-				"org.ajoberstar.git-publish" -> useVersion(Versions.gitPublishPlugin)
-				"org.jetbrains.kotlin.jvm" -> useVersion(Versions.kotlin)
-				"com.github.johnrengelman.shadow" -> useVersion(Versions.shadowPlugin)
-				"org.asciidoctor.convert" -> useVersion(Versions.asciidoctorPlugin)
-				"me.champeau.gradle.jmh" -> useVersion(Versions.jmhPlugin)
-				"de.marcphilipp.nexus-publish" -> useVersion(Versions.nexusPublishPlugin)
+	plugins {
+		id("com.gradle.enterprise") version "3.1.1"
+		id("net.nemerosa.versioning") version "2.10.0"
+		id("com.github.ben-manes.versions") version "0.27.0"
+		id("com.diffplug.gradle.spotless") version "3.27.0"
+		id("org.ajoberstar.git-publish") version "2.1.3"
+		kotlin("jvm") version "1.3.61"
+		id("org.asciidoctor.jvm.convert") version "3.1.0"
+		id("org.asciidoctor.jvm.pdf") version "3.1.0"
+		id("me.champeau.gradle.jmh") version "0.5.0"
+		id("io.spring.nohttp") version "0.0.4.RELEASE"
+	}
+}
+
+plugins {
+	id("com.gradle.enterprise")
+}
+
+val gradleEnterpriseServer = "https://ge.junit.org"
+val isCiServer = System.getenv("CI") != null || System.getenv("GITHUB_ACTIONS") != null
+val junitBuildCacheUsername: String? by extra
+val junitBuildCachePassword: String? by extra
+
+gradleEnterprise {
+	buildScan {
+		server = gradleEnterpriseServer
+		isCaptureTaskInputFiles = true
+		publishAlways()
+		this as BuildScanExtensionWithHiddenFeatures
+		publishIfAuthenticated()
+		obfuscation {
+			if (isCiServer) {
+				username { "github" }
+			} else {
+				hostname { null }
+				ipAddresses { emptyList() }
 			}
 		}
 	}
 }
 
-// Require Java 11 or higher
+buildCache {
+	local {
+		isEnabled = !isCiServer
+	}
+	remote<HttpBuildCache> {
+		url = uri("$gradleEnterpriseServer/cache/")
+		isPush = isCiServer && !junitBuildCacheUsername.isNullOrEmpty() && !junitBuildCachePassword.isNullOrEmpty()
+		credentials {
+			username = junitBuildCacheUsername?.ifEmpty { null }
+			password = junitBuildCachePassword?.ifEmpty { null }
+		}
+	}
+}
+
 val javaVersion = JavaVersion.current()
 require(javaVersion.isJava11Compatible) {
 	"The JUnit 5 build requires Java 11 or higher. Currently executing with Java ${javaVersion.majorVersion}."
@@ -25,6 +63,7 @@ require(javaVersion.isJava11Compatible) {
 
 rootProject.name = "junit5"
 
+include("dependencies")
 include("documentation")
 include("junit-jupiter")
 include("junit-jupiter-api")
@@ -32,7 +71,6 @@ include("junit-jupiter-engine")
 include("junit-jupiter-migrationsupport")
 include("junit-jupiter-params")
 include("junit-platform-commons")
-include("junit-platform-commons-java-9")
 include("junit-platform-console")
 include("junit-platform-console-standalone")
 include("junit-platform-engine")

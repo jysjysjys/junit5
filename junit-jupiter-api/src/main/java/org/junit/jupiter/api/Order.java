@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api;
@@ -22,31 +22,48 @@ import org.apiguardian.api.API;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 
 /**
- * {@code @Order} is a method-level annotation that is used to configure the
- * {@linkplain #value order} in which the annotated method should be executed
- * relative to other methods of the same category.
+ * {@code @Order} is an annotation that is used to configure the
+ * {@linkplain #value order} in which the annotated element (i.e., field or
+ * method) should be evaluated or executed relative to other elements of the
+ * same category.
  *
- * <p>When used with the {@link OrderAnnotation} {@link MethodOrderer}, the
- * category applies to <em>test methods</em>.
+ * <p>When used with
+ * {@link org.junit.jupiter.api.extension.RegisterExtension @RegisterExtension},
+ * the category applies to <em>extension fields</em>. When used with the
+ * {@link OrderAnnotation} {@link MethodOrderer}, the category applies to
+ * <em>test methods</em>.
  *
- * <p>If {@code @Order} is not explicitly declared on a method, the default
- * order value assigned to the method is {@link Integer#MAX_VALUE}.
+ * <p>If {@code @Order} is not explicitly declared on an element, the
+ * {@link #DEFAULT} order value will be assigned to the element.
  *
  * @since 5.4
  * @see MethodOrderer.OrderAnnotation
+ * @see org.junit.jupiter.api.extension.RegisterExtension @RegisterExtension
  */
-@Target(ElementType.METHOD)
+@Target({ ElementType.FIELD, ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @API(status = EXPERIMENTAL, since = "5.4")
 public @interface Order {
 
 	/**
-	 * The order value for the annotated method.
+	 * Default order value for elements not explicitly annotated with {@code @Order},
+	 * equal to the value of {@code Integer.MAX_VALUE / 2}.
 	 *
-	 * <p>Methods are ordered based on priority where a lower value has greater
+	 * @since 5.6
+	 * @see Order#value
+	 */
+	@API(status = EXPERIMENTAL, since = "5.6")
+	int DEFAULT = Integer.MAX_VALUE / 2;
+
+	/**
+	 * The order value for the annotated element (i.e., field or method).
+	 *
+	 * <p>Elements are ordered based on priority where a lower value has greater
 	 * priority than a higher value. For example, {@link Integer#MAX_VALUE} has
 	 * the lowest priority.
+	 *
+	 * @see #DEFAULT
 	 */
 	int value();
 

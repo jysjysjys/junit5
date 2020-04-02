@@ -1,10 +1,14 @@
+import aQute.bnd.gradle.BundleTaskConvention;
+
 plugins {
-	id("com.github.johnrengelman.shadow")
+	`java-library-conventions`
+	`shadow-conventions`
 }
 
 description = "JUnit Platform Console Standalone"
 
 dependencies {
+	internal(platform(project(":dependencies")))
 	shadowed(project(":junit-platform-reporting"))
 	shadowed(project(":junit-platform-console"))
 	shadowed(project(":junit-jupiter-engine"))
@@ -13,29 +17,15 @@ dependencies {
 }
 
 val jupiterVersion = rootProject.version
-val vintageVersion = project.properties["vintageVersion"]
+val vintageVersion: String by project
 
 tasks {
 	jar {
-		enabled = false
 		manifest {
-			// Note: do not add `"Automatic-Module-Name": ...` because this artifact is not
-			// meant to be used on the Java 9 module path.
-			// See https://github.com/junit-team/junit5/issues/866#issuecomment-306017162
 			attributes("Main-Class" to "org.junit.platform.console.ConsoleLauncher")
 		}
-		dependsOn(shadowJar)
 	}
 	shadowJar {
-		// Generate shadow jar only if the underlying manifest was regenerated.
-		// See https://github.com/junit-team/junit5/issues/631
-		onlyIf {
-			(rootProject.extra["generateManifest"] as Boolean || !archivePath.exists())
-		}
-
-		classifier = ""
-		configurations = listOf(project.configurations["shadowed"])
-
 		// https://github.com/junit-team/junit5/issues/761
 		// prevent duplicates, add 3rd-party licenses explicitly
 		exclude("META-INF/LICENSE*.md")
@@ -46,6 +36,19 @@ tasks {
 		from(project(":junit-jupiter-params").projectDir) {
 			include("LICENSE-univocity-parsers.md")
 			into("META-INF")
+		}
+
+		withConvention(BundleTaskConvention::class) {
+			bnd("""
+				# Customize the imports because this is an aggregate jar
+				Import-Package: \
+					!org.apiguardian.api,\
+					kotlin.*;resolution:="optional",\
+					*
+				# Disable the APIGuardian plugin since everything was already
+				# processed, again because this is an aggregate jar
+				-export-apiguardian:
+			""")
 		}
 
 		mergeServiceFiles()
@@ -59,11 +62,19 @@ tasks {
 					"Engine-Version-junit-jupiter" to jupiterVersion,
 					"Engine-Version-junit-vintage" to vintageVersion,
 					// Version-aware binaries are already included - set Multi-Release flag here.
-					// See http://openjdk.java.net/jeps/238 for details
+					// See https://openjdk.java.net/jeps/238 for details
 					// Note: the "jar --update ... --release X" command does not work with the
-					// shadowed JAR as it contains nested classes that do comply multi-release jars.
+					// shadowed JAR as it contains nested classes that do not comply with multi-release jars.
 					"Multi-Release" to true
 			))
 		}
+	}
+
+	// This jar contains some Java 9 code
+	// (org.junit.platform.console.ConsoleLauncherToolProvider which implements
+	// java.util.spi.ToolProvider which is @since 9).
+	// So in order to resolve this, it can only run on Java 9
+	osgiProperties {
+		property("-runee", "JavaSE-9")
 	}
 }

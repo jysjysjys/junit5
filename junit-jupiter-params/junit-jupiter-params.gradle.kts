@@ -1,18 +1,21 @@
 plugins {
-	id("com.github.johnrengelman.shadow")
+	`kotlin-library-conventions`
+	`shadow-conventions`
 }
 
 apply(from = "$rootDir/gradle/testing.gradle.kts")
 
-// TODO workaround for shadow plugin, should be fixed by 4.0.4
-extra["testJavaVersion"] = JavaVersion.VERSION_1_10
-
 description = "JUnit Jupiter Params"
 
 dependencies {
+	internal(platform(project(":dependencies")))
+
+	api(platform(project(":junit-bom")))
+	api("org.apiguardian:apiguardian-api")
 	api(project(":junit-jupiter-api"))
 
-	shadowed("com.univocity:univocity-parsers:${Versions.univocity}")
+	shadowed(platform(project(":dependencies")))
+	shadowed("com.univocity:univocity-parsers")
 
 	testImplementation(project(":junit-platform-testkit"))
 	testImplementation(project(":junit-jupiter-engine"))
@@ -25,32 +28,10 @@ dependencies {
 
 tasks {
 	shadowJar {
-		// Generate shadow jar only if the underlying manifest was regenerated.
-		// See https://github.com/junit-team/junit5/issues/631
-		onlyIf {
-			(rootProject.extra["generateManifest"] as Boolean || !archivePath.exists())
-		}
-		classifier = ""
-		configurations = listOf(project.configurations["shadowed"])
-		exclude("META-INF/maven/**")
 		relocate("com.univocity", "org.junit.jupiter.params.shadow.com.univocity")
 		from(projectDir) {
 			include("LICENSE-univocity-parsers.md")
 			into("META-INF")
-		}
-	}
-	afterEvaluate {
-		test {
-			classpath.minus(sourceSets["main"].output)
-			classpath.plus(files(shadowJar.get().archivePath))
-			dependsOn(shadowJar)
-		}
-	}
-	jar {
-		enabled = false
-		dependsOn(shadowJar)
-		manifest {
-			attributes("Automatic-Module-Name" to "org.junit.jupiter.params")
 		}
 	}
 }

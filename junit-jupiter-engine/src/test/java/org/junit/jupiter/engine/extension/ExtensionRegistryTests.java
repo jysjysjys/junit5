@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine.extension;
@@ -16,8 +16,8 @@ import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.engine.extension.ExtensionRegistry.createRegistryFrom;
-import static org.junit.jupiter.engine.extension.ExtensionRegistry.createRegistryWithDefaultExtensions;
+import static org.junit.jupiter.engine.extension.MutableExtensionRegistry.createRegistryFrom;
+import static org.junit.jupiter.engine.extension.MutableExtensionRegistry.createRegistryWithDefaultExtensions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,28 +26,32 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.Extension;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 
 /**
- * Tests for the {@link ExtensionRegistry}.
+ * Tests for the {@link MutableExtensionRegistry}.
  *
  * @since 5.0
  */
 class ExtensionRegistryTests {
 
+	private static final int NUM_DEFAULT_EXTENSIONS = 6;
+
 	private final JupiterConfiguration configuration = mock(JupiterConfiguration.class);
 
-	private ExtensionRegistry registry = createRegistryWithDefaultExtensions(configuration);
+	private MutableExtensionRegistry registry = createRegistryWithDefaultExtensions(configuration);
 
 	@Test
 	void newRegistryWithoutParentHasDefaultExtensions() {
 		List<Extension> extensions = registry.getExtensions(Extension.class);
 
-		assertEquals(5, extensions.size());
+		assertEquals(NUM_DEFAULT_EXTENSIONS, extensions.size());
 		assertDefaultGlobalExtensionsAreRegistered();
 	}
 
@@ -59,11 +63,11 @@ class ExtensionRegistryTests {
 
 		List<Extension> extensions = registry.getExtensions(Extension.class);
 
-		assertEquals(6, extensions.size());
-		assertDefaultGlobalExtensionsAreRegistered();
+		assertEquals(NUM_DEFAULT_EXTENSIONS + 1, extensions.size());
+		assertDefaultGlobalExtensionsAreRegistered(3);
 
 		assertExtensionRegistered(registry, ServiceLoaderExtension.class);
-		assertEquals(1, countExtensions(registry, BeforeAllCallback.class));
+		assertEquals(3, countExtensions(registry, BeforeAllCallback.class));
 	}
 
 	@Test
@@ -97,10 +101,10 @@ class ExtensionRegistryTests {
 
 	@Test
 	void extensionsAreInheritedFromParent() {
-		ExtensionRegistry parent = registry;
+		MutableExtensionRegistry parent = registry;
 		parent.registerExtension(MyExtension.class);
 
-		ExtensionRegistry child = createRegistryFrom(parent, singletonList(YourExtension.class));
+		MutableExtensionRegistry child = createRegistryFrom(parent, singletonList(YourExtension.class));
 		assertExtensionRegistered(child, MyExtension.class);
 		assertExtensionRegistered(child, YourExtension.class);
 		assertEquals(2, countExtensions(child, MyExtensionApi.class));
@@ -113,11 +117,11 @@ class ExtensionRegistryTests {
 
 	@Test
 	void registeringSameExtensionImplementationInParentAndChildDoesNotResultInDuplicate() {
-		ExtensionRegistry parent = registry;
+		MutableExtensionRegistry parent = registry;
 		parent.registerExtension(MyExtension.class);
 		assertEquals(1, countExtensions(parent, MyExtensionApi.class));
 
-		ExtensionRegistry child = createRegistryFrom(parent, asList(MyExtension.class, YourExtension.class));
+		MutableExtensionRegistry child = createRegistryFrom(parent, asList(MyExtension.class, YourExtension.class));
 		assertExtensionRegistered(child, MyExtension.class);
 		assertExtensionRegistered(child, YourExtension.class);
 		assertEquals(2, countExtensions(child, MyExtensionApi.class));
@@ -152,15 +156,23 @@ class ExtensionRegistryTests {
 	}
 
 	private void assertDefaultGlobalExtensionsAreRegistered() {
+		assertDefaultGlobalExtensionsAreRegistered(2);
+	}
+
+	private void assertDefaultGlobalExtensionsAreRegistered(long bacCount) {
 		assertExtensionRegistered(registry, DisabledCondition.class);
-		assertExtensionRegistered(registry, ScriptExecutionCondition.class);
+		assertExtensionRegistered(registry, TempDirectory.class);
+		assertExtensionRegistered(registry, TimeoutExtension.class);
 		assertExtensionRegistered(registry, RepeatedTestExtension.class);
 		assertExtensionRegistered(registry, TestInfoParameterResolver.class);
 		assertExtensionRegistered(registry, TestReporterParameterResolver.class);
 
-		assertEquals(2, countExtensions(registry, ParameterResolver.class));
-		assertEquals(2, countExtensions(registry, ExecutionCondition.class));
+		assertEquals(bacCount, countExtensions(registry, BeforeAllCallback.class));
+		assertEquals(2, countExtensions(registry, BeforeEachCallback.class));
+		assertEquals(3, countExtensions(registry, ParameterResolver.class));
+		assertEquals(1, countExtensions(registry, ExecutionCondition.class));
 		assertEquals(1, countExtensions(registry, TestTemplateInvocationContextProvider.class));
+		assertEquals(1, countExtensions(registry, InvocationInterceptor.class));
 	}
 
 	// -------------------------------------------------------------------------

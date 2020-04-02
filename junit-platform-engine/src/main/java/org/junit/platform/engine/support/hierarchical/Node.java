@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.engine.support.hierarchical;
@@ -20,6 +20,7 @@ import java.util.Set;
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestDescriptor;
+import org.junit.platform.engine.TestExecutionResult;
 
 /**
  * A <em>node</em> within the execution hierarchy.
@@ -132,6 +133,34 @@ public interface Node<C extends EngineExecutionContext> {
 	@API(status = EXPERIMENTAL, since = "1.4")
 	default void around(C context, Invocation<C> invocation) throws Exception {
 		invocation.invoke(context);
+	}
+
+	/**
+	 * Callback invoked when the execution of this node has been skipped.
+	 *
+	 * <p>The default implementation does nothing.
+	 *
+	 * @param context the execution context
+	 * @param testDescriptor the test descriptor that was skipped
+	 * @param result the result of skipped execution
+	 * @since 1.4
+	 */
+	@API(status = EXPERIMENTAL, since = "1.4", consumers = "org.junit.platform.engine.support.hierarchical")
+	default void nodeSkipped(C context, TestDescriptor testDescriptor, SkipResult result) {
+	}
+
+	/**
+	 * Callback invoked when the execution of this node has finished.
+	 *
+	 * <p>The default implementation does nothing.
+	 *
+	 * @param context the execution context
+	 * @param testDescriptor the test descriptor that was executed
+	 * @param result the result of the execution
+	 * @since 1.4
+	 */
+	@API(status = EXPERIMENTAL, since = "1.4", consumers = "org.junit.platform.engine.support.hierarchical")
+	default void nodeFinished(C context, TestDescriptor testDescriptor, TestExecutionResult result) {
 	}
 
 	/**

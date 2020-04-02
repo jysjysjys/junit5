@@ -1,29 +1,29 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.launcher.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.engine.TestDescriptor;
+import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.engine.support.descriptor.DemoMethodTestDescriptor;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
-import org.junit.platform.launcher.TestPlan;
 
 /**
  * @since 1.0
@@ -36,7 +36,9 @@ class ExecutionListenerAdapterTests {
 		TestDescriptor testDescriptor = getSampleMethodTestDescriptor();
 
 		//cannot mock final classes with mockito
-		TestPlan testPlan = TestPlan.from(Collections.singleton(testDescriptor));
+		Root root = new Root(null);
+		root.add(mock(TestEngine.class), testDescriptor);
+		InternalTestPlan testPlan = InternalTestPlan.from(root);
 		TestIdentifier testIdentifier = testPlan.getTestIdentifier(testDescriptor.getUniqueId().toString());
 
 		//not yet spyable with mockito? -> https://github.com/mockito/mockito/issues/146

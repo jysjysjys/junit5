@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine;
@@ -32,7 +32,7 @@ class OverloadedTestMethodTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	void executeTestCaseWithOverloadedMethodsAndThenRerunOnlyOneOfTheMethodsSelectedByUniqueId() {
-		Events tests = executeTestsForClass(TestCase.class).tests();
+		Events tests = executeTestsForClass(TestCase.class).testEvents();
 
 		tests.assertStatistics(stats -> stats.started(2).succeeded(2).failed(0));
 
@@ -42,7 +42,7 @@ class OverloadedTestMethodTests extends AbstractJupiterTestEngineTests {
 		TestIdentifier testIdentifier = TestIdentifier.from(first.get().getTestDescriptor());
 		String uniqueId = testIdentifier.getUniqueId();
 
-		tests = executeTests(selectUniqueId(uniqueId)).tests();
+		tests = executeTests(selectUniqueId(uniqueId)).testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).succeeded(1).failed(0));
 
@@ -54,7 +54,7 @@ class OverloadedTestMethodTests extends AbstractJupiterTestEngineTests {
 	@Test
 	void executeTestCaseWithOverloadedMethodsWithSingleMethodThatAcceptsArgumentsSelectedByFullyQualifedMethodName() {
 		String fqmn = TestCase.class.getName() + "#test(" + TestInfo.class.getName() + ")";
-		Events tests = executeTests(selectMethod(fqmn)).tests();
+		Events tests = executeTests(selectMethod(fqmn)).testEvents();
 
 		tests.assertStatistics(stats -> stats.started(1).succeeded(1).failed(0));
 

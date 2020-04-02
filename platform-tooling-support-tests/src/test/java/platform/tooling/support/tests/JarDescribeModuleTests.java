@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package platform.tooling.support.tests;
@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertLinesMatch;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static platform.tooling.support.Helper.createJarPath;
 
 import java.lang.module.ModuleFinder;
 import java.nio.file.Files;
@@ -38,7 +39,7 @@ class JarDescribeModuleTests {
 	@ParameterizedTest
 	@MethodSource("platform.tooling.support.Helper#loadModuleDirectoryNames")
 	void describeModule(String module) throws Exception {
-		var modulePath = modulePath(module);
+		var modulePath = createJarPath(module);
 		var result = Request.builder() //
 				.setTool(new Jar()) //
 				.setProject("jar-describe-module") //
@@ -58,24 +59,19 @@ class JarDescribeModuleTests {
 			fail("No such file: " + expected);
 		}
 		var expectedLines = Files.lines(expected).map(Helper::replaceVersionPlaceholders).collect(Collectors.toList());
-		assertLinesMatch(expectedLines, result.getOutputLines("out"));
+		var origin = Path.of("projects", "jar-describe-module", module + ".expected.txt").toUri();
+		assertLinesMatch(expectedLines, result.getOutputLines("out"), () -> String.format("%s\nError", origin));
 	}
 
 	@ParameterizedTest
 	@MethodSource("platform.tooling.support.Helper#loadModuleDirectoryNames")
 	void packageNamesStartWithNameOfTheModule(String module) {
-		var modulePath = modulePath(module);
+		var modulePath = createJarPath(module);
 		var moduleDescriptor = ModuleFinder.of(modulePath).findAll().iterator().next().descriptor();
 		var moduleName = moduleDescriptor.name();
 		for (var packageName : moduleDescriptor.packages()) {
 			assertTrue(packageName.startsWith(moduleName));
 		}
-	}
-
-	private static Path modulePath(String module) {
-		var version = Helper.version(module);
-		var archive = module + '-' + version + ".jar";
-		return Paths.get("..", module, "build", "libs", archive);
 	}
 
 }

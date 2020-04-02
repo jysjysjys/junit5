@@ -1,21 +1,23 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 @file:API(status = EXPERIMENTAL, since = "5.1")
 
 package org.junit.jupiter.api
 
+import java.time.Duration
+import java.util.function.Supplier
+import java.util.stream.Stream
 import org.apiguardian.api.API
 import org.apiguardian.api.API.Status.EXPERIMENTAL
 import org.junit.jupiter.api.function.Executable
-import java.util.function.Supplier
-import java.util.stream.Stream
+import org.junit.jupiter.api.function.ThrowingSupplier
 
 /**
  * @see Assertions.fail
@@ -93,8 +95,11 @@ fun assertAll(heading: String?, vararg executables: () -> Unit) =
  * ```
  * @see Assertions.assertThrows
  */
-inline fun <reified T : Throwable> assertThrows(noinline executable: () -> Unit): T =
-    Assertions.assertThrows(T::class.java, Executable(executable))
+inline fun <reified T : Throwable> assertThrows(executable: () -> Unit): T {
+    val result = runCatching(executable)
+
+    return Assertions.assertThrows(T::class.java) { result.getOrThrow() }
+}
 
 /**
  * Example usage:
@@ -106,7 +111,7 @@ inline fun <reified T : Throwable> assertThrows(noinline executable: () -> Unit)
  * ```
  * @see Assertions.assertThrows
  */
-inline fun <reified T : Throwable> assertThrows(message: String, noinline executable: () -> Unit): T =
+inline fun <reified T : Throwable> assertThrows(message: String, executable: () -> Unit): T =
     assertThrows({ message }, executable)
 
 /**
@@ -119,5 +124,134 @@ inline fun <reified T : Throwable> assertThrows(message: String, noinline execut
  * ```
  * @see Assertions.assertThrows
  */
-inline fun <reified T : Throwable> assertThrows(noinline message: () -> String, noinline executable: () -> Unit): T =
-    Assertions.assertThrows(T::class.java, Executable(executable), Supplier(message))
+inline fun <reified T : Throwable> assertThrows(noinline message: () -> String, executable: () -> Unit): T {
+    val result = runCatching(executable)
+
+    return Assertions.assertThrows(T::class.java, Executable { result.getOrThrow() }, Supplier(message))
+}
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertDoesNotThrow {
+ *     // Code block that is expected to not throw an exception
+ * }
+ * ```
+ * @see Assertions.assertDoesNotThrow
+ * @param R the result type of the [executable]
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertDoesNotThrow(executable: () -> R): R =
+    Assertions.assertDoesNotThrow(ThrowingSupplier(executable))
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertDoesNotThrow("Should not throw an exception") {
+ *     // Code block that is expected to not throw an exception
+ * }
+ * ```
+ * @see Assertions.assertDoesNotThrow
+ * @param R the result type of the [executable]
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertDoesNotThrow(message: String, executable: () -> R): R =
+    assertDoesNotThrow({ message }, executable)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertDoesNotThrow({ "Should not throw an exception" }) {
+ *     // Code block that is expected to not throw an exception
+ * }
+ * ```
+ * @see Assertions.assertDoesNotThrow
+ * @param R the result type of the [executable]
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertDoesNotThrow(message: () -> String, executable: () -> R): R =
+    Assertions.assertDoesNotThrow(ThrowingSupplier(executable), Supplier(message))
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeout(Duration.seconds(1)) {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeout
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeout(timeout: Duration, executable: () -> R): R =
+    Assertions.assertTimeout(timeout, executable)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeout(Duration.seconds(1), "Should only take one second") {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeout
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeout(timeout: Duration, message: String, executable: () -> R): R =
+    Assertions.assertTimeout(timeout, executable, message)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeout(Duration.seconds(1), { "Should only take one second" }) {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeout
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeout(timeout: Duration, message: () -> String, executable: () -> R): R =
+    Assertions.assertTimeout(timeout, executable, message)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeoutPreemptively(Duration.seconds(1)) {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeoutPreemptively
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeoutPreemptively(timeout: Duration, executable: () -> R): R =
+    Assertions.assertTimeoutPreemptively(timeout, executable)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeoutPreemptively(Duration.seconds(1), "Should only take one second") {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeoutPreemptively
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeoutPreemptively(timeout: Duration, message: String, executable: () -> R): R =
+    Assertions.assertTimeoutPreemptively(timeout, executable, message)
+
+/**
+ * Example usage:
+ * ```kotlin
+ * val result = assertTimeoutPreemptively(Duration.seconds(1), { "Should only take one second" }) {
+ *     // Code block that is being timed.
+ * }
+ * ```
+ * @see Assertions.assertTimeoutPreemptively
+ * @paramR the result of the [executable].
+ */
+@API(status = EXPERIMENTAL, since = "5.5")
+fun <R> assertTimeoutPreemptively(timeout: Duration, message: () -> String, executable: () -> R): R =
+    Assertions.assertTimeoutPreemptively(timeout, executable, message)

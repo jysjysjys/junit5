@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.reporting.legacy.xml;
@@ -41,9 +41,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestReporter;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.support.io.TempDirectory;
-import org.junit.jupiter.api.support.io.TempDirectory.TempDir;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
@@ -52,7 +50,6 @@ import org.junit.platform.engine.support.hierarchical.DemoHierarchicalTestDescri
 import org.junit.platform.engine.support.hierarchical.DemoHierarchicalTestEngine;
 import org.junit.platform.fakes.TestDescriptorStub;
 import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.opentest4j.AssertionFailedError;
@@ -62,7 +59,6 @@ import org.opentest4j.AssertionFailedError;
  *
  * @since 1.0
  */
-@ExtendWith(TempDirectory.class)
 class LegacyXmlReportGeneratingListenerTests {
 
 	@Test
@@ -74,7 +70,8 @@ class LegacyXmlReportGeneratingListenerTests {
 		executeTests(engine, tempDirectory);
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
-		//@formatter:off
+
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"0\" failures=\"0\" errors=\"0\"",
@@ -94,7 +91,7 @@ class LegacyXmlReportGeneratingListenerTests {
 			.doesNotContain("<skipped")
 			.doesNotContain("<failure")
 			.doesNotContain("<error");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -106,7 +103,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\"",
@@ -119,7 +116,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</testsuite>")
 			.doesNotContain("<skipped")
 			.doesNotContain("<error");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -133,7 +130,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"0\" failures=\"0\" errors=\"1\"",
@@ -146,7 +143,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</testsuite>")
 			.doesNotContain("<skipped")
 			.doesNotContain("<failure");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -159,7 +156,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"1\" failures=\"0\" errors=\"0\"",
@@ -171,7 +168,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</testsuite>")
 			.doesNotContain("<failure")
 			.doesNotContain("<error");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -183,7 +180,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"1\" failures=\"0\" errors=\"0\"",
@@ -197,7 +194,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</testsuite>")
 			.doesNotContain("<failure")
 			.doesNotContain("<error");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -212,7 +209,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		//               start        end
 		// ----------- ---------- -----------
 		// engine          0 (1)    1,665 (6)
@@ -223,7 +220,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"<testsuite", "time=\"1.665\"",
 				"<testcase name=\"firstTest\" classname=\"dummy\" time=\"0.333\"",
 				"<testcase name=\"secondTest\" classname=\"dummy\" time=\"0.333\"");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -236,12 +233,12 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite",
 				"<testcase name=\"test\" classname=\"dummy\" time=\"0\"");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -254,7 +251,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"1\" failures=\"0\" errors=\"0\"",
@@ -264,7 +261,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</skipped>",
 				"</testcase>",
 				"</testsuite>");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -277,7 +274,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite name=\"dummy\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\"",
@@ -288,7 +285,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</failure>",
 				"</testcase>",
 				"</testsuite>");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -301,7 +298,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite",
@@ -311,7 +308,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</properties>",
 				"<testcase",
 				"</testsuite>");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -327,7 +324,7 @@ class LegacyXmlReportGeneratingListenerTests {
 
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-dummy.xml"));
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite",
@@ -335,7 +332,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"timestamp=\"2016-01-28T14:02:59\"",
 				"<testcase",
 				"</testsuite>");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	@Test
@@ -395,7 +392,7 @@ class LegacyXmlReportGeneratingListenerTests {
 		String content = readValidXmlFile(tempDirectory.resolve("TEST-engine.xml"));
 		//testReporter.publishEntry("xml", content);
 
-		//@formatter:off
+		// @formatter:off
 		assertThat(content)
 			.containsSubsequence(
 				"<testsuite",
@@ -409,7 +406,7 @@ class LegacyXmlReportGeneratingListenerTests {
 				"</system-out>",
 				"</testcase>",
 				"</testsuite>");
-		//@formatter:on
+		// @formatter:on
 	}
 
 	private void executeTests(TestEngine engine, Path tempDirectory) {
@@ -422,8 +419,7 @@ class LegacyXmlReportGeneratingListenerTests {
 			tempDirectory.toString(), out, clock);
 		Launcher launcher = createLauncher(engine);
 		launcher.registerTestExecutionListeners(reportListener);
-		launcher.execute(request().selectors(selectUniqueId(UniqueId.forEngine(engine.getId()))).build(),
-			new TestExecutionListener[0]);
+		launcher.execute(request().selectors(selectUniqueId(UniqueId.forEngine(engine.getId()))).build());
 	}
 
 	private String readValidXmlFile(Path xmlFile) throws Exception {

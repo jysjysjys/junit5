@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package example.testkit;
@@ -48,7 +48,7 @@ class EngineTestKitAllEventsDemo {
 		EngineTestKit.engine("junit-jupiter") // <1>
 			.selectors(selectClass(ExampleTestCase.class)) // <2>
 			.execute() // <3>
-			.all() // <4>
+			.allEvents() // <4>
 			.debug(writer) // <5>
 			.assertEventsMatchExactly( // <6>
 				event(engine(), started()),

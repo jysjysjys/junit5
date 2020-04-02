@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api;
@@ -52,16 +52,31 @@ class DisplayNameGenerationTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
+	void simpleGenerator() {
+		check(SimpleStyleTestCase.class, List.of( //
+			"CONTAINER: DisplayNameGenerationTests$SimpleStyleTestCase", //
+			"TEST: @DisplayName prevails", //
+			"TEST: test", //
+			"TEST: test (TestInfo)", //
+			"TEST: testUsingCamelCaseStyle", //
+			"TEST: testUsingCamelCase_and_also_UnderScores", //
+			"TEST: testUsingCamelCase_and_also_UnderScores_keepingParameterTypeNamesIntact (TestInfo)", //
+			"TEST: test_with_underscores" //
+		));
+	}
+
+	@Test
 	void underscoreGenerator() {
 		var expectedDisplayNames = List.of( //
 			"CONTAINER: DisplayNameGenerationTests\\$UnderscoreStyle.*", //
 			"TEST: @DisplayName prevails", //
-			"TEST: test with underscores()", //
-			"TEST: test()", //
-			"TEST: test(TestInfo)", //
-			"TEST: testUsingCamelCase and also UnderScores keepingParameterTypeNamesIntact(TestInfo)", //
-			"TEST: testUsingCamelCase and also UnderScores()", //
-			"TEST: testUsingCamelCaseStyle()");
+			"TEST: test", //
+			"TEST: test (TestInfo)", //
+			"TEST: test with underscores", //
+			"TEST: testUsingCamelCase and also UnderScores", //
+			"TEST: testUsingCamelCase and also UnderScores keepingParameterTypeNamesIntact (TestInfo)", //
+			"TEST: testUsingCamelCaseStyle" //
+		);
 		check(UnderscoreStyleTestCase.class, expectedDisplayNames);
 		check(UnderscoreStyleInheritedFromSuperClassTestCase.class, expectedDisplayNames);
 	}
@@ -86,13 +101,13 @@ class DisplayNameGenerationTests extends AbstractJupiterTestEngineTests {
 			"CONTAINER: A new stack", //
 			"CONTAINER: A stack", //
 			"CONTAINER: After pushing an element to an empty stack", //
-			"TEST: is empty()", //
-			"TEST: is instantiated using its noarg constructor()", //
-			"TEST: peek returns that element without removing it from the stack()", //
-			"TEST: pop returns that element and leaves an empty stack()", //
-			"TEST: the stack is no longer empty()", //
-			"TEST: throws an EmptyStackException when peeked()", //
-			"TEST: throws an EmptyStackException when popped()" //
+			"TEST: is empty", //
+			"TEST: is instantiated using its noarg constructor", //
+			"TEST: peek returns that element without removing it from the stack", //
+			"TEST: pop returns that element and leaves an empty stack", //
+			"TEST: the stack is no longer empty", //
+			"TEST: throws an EmptyStackException when peeked", //
+			"TEST: throws an EmptyStackException when popped" //
 		));
 	}
 
@@ -163,6 +178,10 @@ class DisplayNameGenerationTests extends AbstractJupiterTestEngineTests {
 
 	@DisplayNameGeneration(DisplayNameGenerator.Standard.class)
 	static class DefaultStyleTestCase extends AbstractTestCase {
+	}
+
+	@DisplayNameGeneration(DisplayNameGenerator.Simple.class)
+	static class SimpleStyleTestCase extends AbstractTestCase {
 	}
 
 	@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)

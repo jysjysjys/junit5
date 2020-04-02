@@ -1,24 +1,29 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.launcher.core;
 
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
+import static org.junit.platform.launcher.LauncherConstants.DEACTIVATE_LISTENERS_PATTERN_PROPERTY_NAME;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.apiguardian.api.API;
-import org.junit.platform.commons.util.PreconditionViolationException;
+import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.util.ClassNamePatternFilterUtils;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.TestExecutionListener;
@@ -91,12 +96,22 @@ public class LauncherFactory {
 		Launcher launcher = new DefaultLauncher(engines);
 
 		if (config.isTestExecutionListenerAutoRegistrationEnabled()) {
-			new ServiceLoaderTestExecutionListenerRegistry().loadListeners().forEach(
-				launcher::registerTestExecutionListeners);
+			loadAndFilterTestExecutionListeners().forEach(launcher::registerTestExecutionListeners);
 		}
 		config.getAdditionalTestExecutionListeners().forEach(launcher::registerTestExecutionListeners);
 
 		return launcher;
+	}
+
+	private static Stream<TestExecutionListener> loadAndFilterTestExecutionListeners() {
+		Iterable<TestExecutionListener> listeners = new ServiceLoaderTestExecutionListenerRegistry().loadListeners();
+		ConfigurationParameters configurationParameters = new LauncherConfigurationParameters();
+		String deactivatedListenersPattern = configurationParameters.get(
+			DEACTIVATE_LISTENERS_PATTERN_PROPERTY_NAME).orElse(null);
+		// @formatter:off
+		return StreamSupport.stream(listeners.spliterator(), false)
+				.filter(ClassNamePatternFilterUtils.excludeMatchingClasses(deactivatedListenersPattern));
+		// @formatter:on
 	}
 
 }

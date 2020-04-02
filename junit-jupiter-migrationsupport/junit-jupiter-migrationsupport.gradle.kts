@@ -1,9 +1,20 @@
+import aQute.bnd.gradle.BundleTaskConvention;
+
+plugins {
+	`java-library-conventions`
+	`junit4-compatibility`
+}
+
 apply(from = "$rootDir/gradle/testing.gradle.kts")
 
 description = "JUnit Jupiter Migration Support"
 
 dependencies {
-	api("junit:junit:${Versions.junit4}")
+	internal(platform(project(":dependencies")))
+
+	api(platform(project(":junit-bom")))
+	api("junit:junit")
+	api("org.apiguardian:apiguardian-api")
 	api(project(":junit-jupiter-api"))
 
 	testImplementation(project(":junit-jupiter-engine"))
@@ -13,9 +24,15 @@ dependencies {
 }
 
 tasks.jar {
-	manifest {
-		attributes(
-			"Automatic-Module-Name" to "org.junit.jupiter.migrationsupport"
-		)
+	withConvention(BundleTaskConvention::class) {
+		bnd("""
+			# Import JUnit4 packages with a version
+			Import-Package: \
+				!org.apiguardian.api,\
+				org.junit;version="[${Versions.junit4Min},5)",\
+				org.junit.platform.commons.logging;status=INTERNAL,\
+				org.junit.rules;version="[${Versions.junit4Min},5)",\
+				*
+		""")
 	}
 }

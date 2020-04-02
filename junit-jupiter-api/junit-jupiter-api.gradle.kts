@@ -1,15 +1,17 @@
+plugins {
+	`kotlin-library-conventions`
+	`java-test-fixtures`
+}
+
 description = "JUnit Jupiter API"
 
 dependencies {
-	api("org.opentest4j:opentest4j:${Versions.ota4j}")
-	api(project(":junit-platform-commons"))
-	compileOnly("org.jetbrains.kotlin:kotlin-stdlib")
-}
+	internal(platform(project(":dependencies")))
 
-tasks.jar {
-	manifest {
-		attributes(
-			"Automatic-Module-Name" to "org.junit.jupiter.api"
-		)
-	}
+	api(platform(project(":junit-bom")))
+	api("org.apiguardian:apiguardian-api")
+	api("org.opentest4j:opentest4j")
+	api(project(":junit-platform-commons"))
+
+	compileOnly("org.jetbrains.kotlin:kotlin-stdlib")
 }

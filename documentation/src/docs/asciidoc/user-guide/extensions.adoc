@@ -68,26 +68,52 @@ class MySecondTests {
 }
 ----
 
+[TIP]
 .Extension Registration Order
-NOTE: Extensions registered declaratively via `@ExtendWith` will be executed in the order
-in which they are declared in the source code. For example, the execution of tests in
-both `MyFirstTests` and `MySecondTests` will be extended by the `DatabaseExtension` and
+====
+Extensions registered declaratively via `@ExtendWith` will be executed in the order in
+which they are declared in the source code. For example, the execution of tests in both
+`MyFirstTests` and `MySecondTests` will be extended by the `DatabaseExtension` and
 `WebServerExtension`, **in exactly that order**.
+====
 
 [[extensions-registration-programmatic]]
 ==== Programmatic Extension Registration
 
-Developers can register extensions _programmatically_ by annotating fields in test
-classes with `{RegisterExtension}`.
+Developers can register extensions _programmatically_ by annotating fields in test classes
+with `{RegisterExtension}`.
 
 When an extension is registered _declaratively_ via
-<<extensions-registration-declarative,`@ExtendWith`>>, it can typically only be
-configured via annotations. In contrast, when an extension is registered via
-`@RegisterExtension`, it can be configured _programmatically_ -- for example, in order to
-pass arguments to the extension's constructor, a static factory method, or a builder API.
+<<extensions-registration-declarative,`@ExtendWith`>>, it can typically only be configured
+via annotations. In contrast, when an extension is registered via `@RegisterExtension`, it
+can be configured _programmatically_ -- for example, in order to pass arguments to the
+extension's constructor, a static factory method, or a builder API.
 
-NOTE: `@RegisterExtension` fields must not be `private` or `null` (at evaluation time)
-but may be either `static` or non-static.
+[[extensions-registration-programmatic-order]]
+[TIP]
+.Extension Registration Order
+====
+By default, extensions registered programmatically via `@RegisterExtension` will be
+ordered using an algorithm that is deterministic but intentionally nonobvious. This
+ensures that subsequent runs of a test suite execute extensions in the same order, thereby
+allowing for repeatable builds. However, there are times when extensions need to be
+registered in an explicit order. To achieve that, annotate `@RegisterExtension` fields
+with `{Order}`.
+
+Any `@RegisterExtension` field not annotated with `@Order` will be ordered using the
+_default_ order which has a value of `Integer.MAX_VALUE / 2`. This allows `@Order`
+annotated extension fields to be explicitly ordered before or after non-annotated
+extension fields. Extensions with an explicit order value less than the default order
+value will be registered before non-annotated extensions. Similarly, extensions with an
+explicit order value greater than the default order value will be registered after
+non-annotated extensions. For example, assigning an extension an explicit order value that
+is greater than the default order value allows _before_ callback extensions to be
+registered last and _after_ callback extensions to be registered first, relative to other
+programmatically registered extensions.
+====
+
+NOTE: `@RegisterExtension` fields must not be `private` or `null` (at evaluation time) but
+may be either `static` or non-static.
 
 [[extensions-registration-programmatic-static-fields]]
 ===== Static Fields
@@ -96,9 +122,9 @@ If a `@RegisterExtension` field is `static`, the extension will be registered af
 extensions that are registered at the class level via `@ExtendWith`. Such _static
 extensions_ are not limited in which extension APIs they can implement. Extensions
 registered via static fields may therefore implement class-level and instance-level
-extension APIs such as `BeforeAllCallback`, `AfterAllCallback`, and
-`TestInstancePostProcessor` as well as method-level extension APIs such as
-`BeforeEachCallback`, etc.
+extension APIs such as `BeforeAllCallback`, `AfterAllCallback`,
+`TestInstancePostProcessor`, and `TestInstancePreDestroyCallback` as well as method-level
+extension APIs such as `BeforeEachCallback`, etc.
 
 In the following example, the `server` field in the test class is initialized
 programmatically by using a builder pattern supported by the `WebServerExtension`. The
@@ -179,10 +205,10 @@ name in a file named `org.junit.jupiter.api.extension.Extension` within the
 ===== Enabling Automatic Extension Detection
 
 Auto-detection is an advanced feature and is therefore not enabled by default. To enable
-it, simply set the `junit.jupiter.extensions.autodetection.enabled` _configuration
-parameter_ to `true`. This can be supplied as a JVM system property, as a _configuration
-parameter_ in the `LauncherDiscoveryRequest` that is passed to the `Launcher`, or via the
-JUnit Platform configuration file (see <<running-tests-config-params>> for details).
+it, set the `junit.jupiter.extensions.autodetection.enabled` _configuration parameter_ to
+`true`. This can be supplied as a JVM system property, as a _configuration parameter_ in
+the `LauncherDiscoveryRequest` that is passed to the `Launcher`, or via the JUnit Platform
+configuration file (see <<running-tests-config-params>> for details).
 
 For example, to enable auto-detection of extensions, you can start your JVM with the
 following system property.
@@ -227,7 +253,7 @@ See the source code of `{DisabledCondition}` and `{Disabled}` for concrete examp
 
 Sometimes it can be useful to run a test suite _without_ certain conditions being active.
 For example, you may wish to run tests even if they are annotated with `@Disabled` in
-order to see if they are still _broken_. To do this, simply provide a pattern for the
+order to see if they are still _broken_. To do this, provide a pattern for the
 `junit.jupiter.conditions.deactivate` _configuration parameter_ to specify which
 conditions should be deactivated (i.e., not evaluated) for the current test run. The
 pattern can be supplied as a JVM system property, as a _configuration parameter_ in the
@@ -242,23 +268,7 @@ following system property.
 [[extensions-conditions-deactivation-patterns]]
 ===== Pattern Matching Syntax
 
-If the `junit.jupiter.conditions.deactivate` pattern consists solely of an asterisk
-(`+*+`), all conditions will be deactivated. Otherwise, the pattern will be used to match
-against the fully qualified class name (_FQCN_) of each registered condition. Any dot
-(`.`) in the pattern will match against a dot (`.`) or a dollar sign (`$`) in the FQCN.
-Any asterisk (`+*+`) will match against one or more characters in the FQCN. All other
-characters in the pattern will be matched one-to-one against the FQCN.
-
-Examples:
-
-- `+*+`: deactivates all conditions.
-- `+org.junit.*+`: deactivates every condition under the `org.junit` base package and any
-  of its subpackages.
-- `+*.MyCondition+`: deactivates every condition whose simple class name is exactly
-  `MyCondition`.
-- `+*System*+`: deactivates every condition whose simple class name contains `System`.
-- `org.example.MyCondition`: deactivates the condition whose FQCN is exactly
-  `org.example.MyCondition`.
+Refer to <<running-tests-config-params-deactivation-pattern>> for details.
 
 [[extensions-test-instance-factories]]
 === Test Instance Factories
@@ -269,7 +279,7 @@ instances.
 Common use cases include acquiring the test instance from a dependency injection
 framework or invoking a static factory method to create the test class instance.
 
-If no `TestInstanceFactory` is registered, the framework will simply invoke the _sole_
+If no `TestInstanceFactory` is registered, the framework will invoke the _sole_
 constructor for the test class to instantiate it, potentially resolving constructor
 arguments via registered `ParameterResolver` extensions.
 
@@ -298,20 +308,34 @@ initialization methods on the test instance, etc.
 For a concrete example, consult the source code for the `{MockitoExtension}` and the
 `{SpringExtension}`.
 
+[[extensions-test-instance-pre-destroy-callback]]
+=== Test Instance Pre-destroy Callback
+
+`{TestInstancePreDestroyCallback}` defines the API for `Extensions` that wish to process
+test instances _after_ they have been used in tests and _before_ they are destroyed.
+
+Common use cases include cleaning dependencies that have been injected into the
+test instance, invoking custom de-initialization methods on the test instance, etc.
+
 [[extensions-parameter-resolution]]
 === Parameter Resolution
 
 `{ParameterResolver}` defines the `Extension` API for dynamically resolving parameters at
 runtime.
 
-If a test constructor or a `@Test`, `@RepeatedTest`, `@ParameterizedTest`,
-`@TestFactory`, `@BeforeEach`, `@AfterEach`, `@BeforeAll`, or `@AfterAll` method accepts
-a parameter, the parameter must be _resolved_ at runtime by a `ParameterResolver`. A
-`ParameterResolver` can either be built-in (see `{TestInfoParameterResolver}`) or
-<<extensions-registration,registered by the user>>. Generally speaking, parameters may be
-resolved by _name_, _type_, _annotation_, or any combination thereof. For concrete
-examples, consult the source code for `{CustomTypeParameterResolver}` and
-`{CustomAnnotationParameterResolver}`.
+If a _test class_ constructor, _test method_, or _lifecycle method_ (see
+<<writing-tests-classes-and-methods>>) declares a parameter, the parameter must be
+_resolved_ at runtime by a `ParameterResolver`. A `ParameterResolver` can either be
+built-in (see `{TestInfoParameterResolver}`) or <<extensions-registration,registered by
+the user>>. Generally speaking, parameters may be resolved by _name_, _type_,
+_annotation_, or any combination thereof.
+
+If you wish to implement a custom `{ParameterResolver}` that resolves parameters based
+solely on the type of the parameter, you may find it convenient to extend the
+`{TypeBasedParameterResolver}` which serves as a generic adapter for such use cases.
+
+For concrete examples, consult the source code for `{CustomTypeParameterResolver}`,
+`{CustomAnnotationParameterResolver}`, and `{MapOfListsTypeBasedParameterResolver}`.
 
 [WARNING]
 ====
@@ -328,6 +352,35 @@ those provided in `java.lang.reflect.Parameter` in order to avoid this bug in th
 * `boolean isAnnotated(Class<? extends Annotation> annotationType)`
 * `Optional<A> findAnnotation(Class<A> annotationType)`
 * `List<A> findRepeatableAnnotations(Class<A> annotationType)`
+====
+
+[[extensions-test-result-processing]]
+=== Test Result Processing
+
+`{TestWatcher}` defines the API for extensions that wish to process the results of _test
+method_ executions. Specifically, a `TestWatcher` will be invoked with contextual
+information for the following events.
+
+* `testDisabled`: invoked after a disabled _test method_ has been skipped
+* `testSuccessful`: invoked after a _test method_ has completed successfully
+* `testAborted`: invoked after a _test method_ has been aborted
+* `testFailed`: invoked after a _test method_ has failed
+
+NOTE: In contrast to the definition of "test method" presented in
+<<writing-tests-classes-and-methods>>, in this context _test method_ refers to any
+`@Test` method or `@TestTemplate` method (for example, a `@RepeatedTest` or
+`@ParameterizedTest`).
+
+Extensions implementing this interface can be registered at the method level or at the
+class level. In the latter case they will be invoked for any contained _test method_
+including those in `@Nested` classes.
+
+[WARNING]
+====
+Any instances of `ExtensionContext.Store.CloseableResource` stored in the `Store` of the
+provided `{ExtensionContext}` will be closed _before_ methods in this API are invoked (see
+<<extensions-keeping-state>>). You can use the parent context's `Store` to work with such
+resources.
 ====
 
 [[extensions-lifecycle-callbacks]]
@@ -389,16 +442,64 @@ INFO: Method [sleep50ms] took 53 ms.
 [[extensions-exception-handling]]
 === Exception Handling
 
-`{TestExecutionExceptionHandler}` defines the API for `Extensions` that wish to handle
-exceptions thrown during test execution.
+Exceptions thrown during the test execution may be intercepted and handled accordingly
+before propagating further, so that certain actions like error logging or resource releasing
+may be defined in specialized `Extensions`. JUnit Jupiter offers API for `Extensions` that
+wish to handle exceptions thrown during `@Test` methods via `{TestExecutionExceptionHandler}`
+and for those thrown during one of test lifecycle methods (`@BeforeAll`, `@BeforeEach`,
+`@AfterEach` and `@AfterAll`) via `{LifecycleMethodExecutionExceptionHandler}`.
 
 The following example shows an extension which will swallow all instances of `IOException`
 but rethrow any other type of exception.
 
 [source,java,indent=0]
-.An exception handling extension
+.An exception handling extension that filters IOExceptions in test execution
 ----
 include::{testDir}/example/exception/IgnoreIOExceptionExtension.java[tags=user_guide]
+----
+
+Another example shows how to record the state of an application under test exactly at
+the point of unexpected exception being thrown during setup and cleanup. Note that unlike
+relying on lifecycle callbacks, which may or may not be executed depending on the test
+status, this solution guarantees execution immediately after failing `@BeforeAll`,
+`@BeforeEach`, `@AfterEach` or `@AfterAll`.
+
+[source,java,indent=0]
+.An exception handling extension that records application state on error
+----
+include::{testDir}/example/exception/RecordStateOnErrorExtension.java[tags=user_guide]
+----
+
+Multiple execution exception handlers may be invoked for the same lifecycle method in
+order of declaration. If one of the handlers swallows the handled exception, subsequent
+ones will not be executed, and no failure will be propagated to JUnit engine, as if the
+exception was never thrown. Handlers may also choose to rethrow the exception or throw
+a different one, potentially wrapping the original.
+
+Extensions implementing `{LifecycleMethodExecutionExceptionHandler}` that wish to handle
+exceptions thrown during `@BeforeAll` or `@AfterAll` need to be registered on a class level,
+while handlers for `BeforeEach` and `AfterEach` may be also registered for individual
+test methods.
+
+[source,java,indent=0]
+.Registering multiple exception handling extensions
+----
+include::{testDir}/example/exception/MultipleHandlersTestCase.java[tags=user_guide]
+----
+
+[[extensions-intercepting-invocations]]
+=== Intercepting Invocations
+
+`{InvocationInterceptor}` defines the API for `Extensions` that wish to intercept calls to
+test code.
+
+The following example shows an extension that executes all test methods in Swing's Event
+Dispatch Thread.
+
+[source,java,indent=0]
+.An extension that executes tests in a user-defined thread
+----
+include::{testDir}/example/interceptor/SwingEdtInterceptor.java[tags=user_guide]
 ----
 
 [[extensions-test-templates]]
@@ -420,14 +521,14 @@ include::{testDir}/example/TestTemplateDemo.java[tags=user_guide]
 ----
 
 In this example, the test template will be invoked twice. The display names of the
-invocations will be "`foo`" and "`bar`" as specified by the invocation context. Each
+invocations will be `apple` and `banana` as specified by the invocation context. Each
 invocation registers a custom `{ParameterResolver}` which is used to resolve the method
 parameter. The output when using the `ConsoleLauncher` is as follows.
 
 ....
 └─ testTemplate(String) ✔
-   ├─ foo ✔
-   └─ bar ✔
+   ├─ apple ✔
+   └─ banana ✔
 ....
 
 The `{TestTemplateInvocationContextProvider}` extension API is primarily intended for
@@ -508,19 +609,24 @@ details.
 === Relative Execution Order of User Code and Extensions
 
 When executing a test class that contains one or more test methods, a number of extension
-callbacks are called in addition to the user-provided test and lifecycle methods. The
-following diagram illustrates the relative order of user-provided code and extension code.
+callbacks are called in addition to the user-supplied test and lifecycle methods.
+
+NOTE: See also: <<writing-tests-test-execution-order>>
+
+[[extensions-execution-order-overview]]
+==== User and Extension Code
+
+The following diagram illustrates the relative order of user-supplied code and extension
+code. User-supplied test and lifecycle methods are shown in orange, with callback code
+implemented by extensions shown in blue. The grey box denotes the execution of a single
+test method and will be repeated for every test method in the test class.
 
 :figure-caption: User code and extension code
 
 [#extensions-execution-order-diagram,reftext='{figure-caption}']
 image::extensions_lifecycle.png[caption='',title='{figure-caption}']
 
-User-provided test and lifecycle methods are shown in orange, with callback code provided
-by extensions shown in blue. The grey box denotes the execution of a single test method
-and will be repeated for every test method in the test class.
-
-The following table further explains the twelve steps in the
+The following table further explains the sixteen steps in the
 <<extensions-execution-order-diagram>> diagram.
 
 [cols="5,15,80"]
@@ -536,48 +642,237 @@ The following table further explains the twelve steps in the
 | user code executed before all tests of the container are executed
 
 | 3
+| interface `org.junit.jupiter.api.extension.LifecycleMethodExecutionExceptionHandler
+#handleBeforeAllMethodExecutionException`
+| extension code for handling exceptions thrown from `@BeforeAll` methods
+
+| 4
 | interface `org.junit.jupiter.api.extension.BeforeEachCallback`
 | extension code executed before each test is executed
 
-| 4
+| 5
 | annotation `org.junit.jupiter.api.BeforeEach`
 | user code executed before each test is executed
 
-| 5
+| 6
+| interface `org.junit.jupiter.api.extension.LifecycleMethodExecutionExceptionHandler
+#handleBeforeEachMethodExecutionException`
+| extension code for handling exceptions thrown from `@BeforeEach` methods
+
+| 7
 | interface `org.junit.jupiter.api.extension.BeforeTestExecutionCallback`
 | extension code executed immediately before a test is executed
 
-| 6
+| 8
 | annotation `org.junit.jupiter.api.Test`
 | user code of the actual test method
 
-| 7
+| 9
 | interface `org.junit.jupiter.api.extension.TestExecutionExceptionHandler`
 | extension code for handling exceptions thrown during a test
 
-| 8
+| 10
 | interface `org.junit.jupiter.api.extension.AfterTestExecutionCallback`
 | extension code executed immediately after test execution and its corresponding exception handlers
 
-| 9
+| 11
 | annotation `org.junit.jupiter.api.AfterEach`
 | user code executed after each test is executed
 
-| 10
+| 12
+| interface `org.junit.jupiter.api.extension.LifecycleMethodExecutionExceptionHandler
+#handleAfterEachMethodExecutionException`
+| extension code for handling exceptions thrown from `@AfterEach` methods
+
+| 13
 | interface `org.junit.jupiter.api.extension.AfterEachCallback`
 | extension code executed after each test is executed
 
-| 11
+| 14
 | annotation `org.junit.jupiter.api.AfterAll`
 | user code executed after all tests of the container are executed
 
-| 12
+| 15
+| interface `org.junit.jupiter.api.extension.LifecycleMethodExecutionExceptionHandler
+#handleAfterAllMethodExecutionException`
+| extension code for handling exceptions thrown from `@AfterAll` methods
+
+| 16
 | interface `org.junit.jupiter.api.extension.AfterAllCallback`
 | extension code executed after all tests of the container are executed
 
 |===
 
-In the simplest case only the actual test method will be executed (step 6); all other
+In the simplest case only the actual test method will be executed (step 8); all other
 steps are optional depending on the presence of user code or extension support for the
 corresponding lifecycle callback. For further details on the various lifecycle callbacks
 please consult the respective Javadoc for each annotation and extension.
+
+All invocations of user code methods in the above table can additionally be intercepted
+by implementing <<extensions-intercepting-invocations, `InvocationInterceptor`>>.
+
+[[extensions-execution-order-wrapping-behavior]]
+==== Wrapping Behavior of Callbacks
+
+JUnit Jupiter always guarantees _wrapping_ behavior for multiple registered extensions
+that implement lifecycle callbacks such as `BeforeAllCallback`, `AfterAllCallback`,
+`BeforeEachCallback`, `AfterEachCallback`, `BeforeTestExecutionCallback`, and
+`AfterTestExecutionCallback`.
+
+That means that, given two extensions `Extension1` and `Extension2` with `Extension1`
+registered before `Extension2`, any "before" callbacks implemented by `Extension1` are
+guaranteed to execute **before** any "before" callbacks implemented by `Extension2`.
+Similarly, given the two same two extensions registered in the same order, any "after"
+callbacks implemented by `Extension1` are guaranteed to execute **after** any "after"
+callbacks implemented by `Extension2`. `Extension1` is therefore said to _wrap_
+`Extension2`.
+
+JUnit Jupiter also guarantees _wrapping_ behavior within class and interface hierarchies
+for user-supplied _lifecycle methods_ (see <<writing-tests-classes-and-methods>>).
+
+* `@BeforeAll` methods are inherited from superclasses as long as they are not _hidden_ or
+  _overridden_. Furthermore, `@BeforeAll` methods from superclasses will be executed
+  **before** `@BeforeAll` methods in subclasses.
+** Similarly, `@BeforeAll` methods declared in an interface are inherited as long as they
+   are not _hidden_ or _overridden_, and `@BeforeAll` methods from an interface will be
+   executed **before** `@BeforeAll` methods in the class that implements the interface.
+* `@AfterAll` methods are inherited from superclasses as long as they are not _hidden_ or
+  _overridden_. Furthermore, `@AfterAll` methods from superclasses will be executed
+  **after** `@AfterAll` methods in subclasses.
+** Similarly, `@AfterAll` methods declared in an interface are inherited as long as they
+   are not _hidden_ or _overridden_, and `@AfterAll` methods from an interface will be
+   executed **after** `@AfterAll` methods in the class that implements the interface.
+* `@BeforeEach` methods are inherited from superclasses as long as they are not
+  _overridden_. Furthermore, `@BeforeEach` methods from superclasses will be executed
+  **before** `@BeforeEach` methods in subclasses.
+** Similarly, `@BeforeEach` methods declared as interface default methods are inherited as
+   long as they are not _overridden_, and `@BeforeEach` default methods will be executed
+   **before** `@BeforeEach` methods in the class that implements the interface.
+* `@AfterEach` methods are inherited from superclasses as long as they are not
+  _overridden_. Furthermore, `@AfterEach` methods from superclasses will be executed
+  **after** `@AfterEach` methods in subclasses.
+** Similarly, `@AfterEach` methods declared as interface default methods are inherited as
+   long as they are not _overridden_, and `@AfterEach` default methods will be executed
+   **after** `@AfterEach` methods in the class that implements the interface.
+
+The following examples demonstrate this behavior. Please note that the examples do not
+actually do anything realistic. Instead, they mimic common scenarios for testing
+interactions with the database. All methods imported statically from the `Logger` class
+log contextual information in order to help us better understand the execution order of
+user-supplied callback methods and callback methods in extensions.
+
+[source,java,indent=0]
+.Extension1
+----
+include::{testDir}/example/callbacks/Extension1.java[tags=user_guide]
+----
+
+[source,java,indent=0]
+.Extension2
+----
+include::{testDir}/example/callbacks/Extension2.java[tags=user_guide]
+----
+
+[source,java,indent=0]
+.AbstractDatabaseTests
+----
+include::{testDir}/example/callbacks/AbstractDatabaseTests.java[tags=user_guide]
+----
+
+[source,java,indent=0]
+.DatabaseTestsDemo
+----
+include::{testDir}/example/callbacks/DatabaseTestsDemo.java[tags=user_guide]
+----
+
+When the `DatabaseTestsDemo` test class is executed, the following is logged.
+
+----
+@BeforeAll AbstractDatabaseTests.createDatabase()
+@BeforeAll DatabaseTestsDemo.beforeAll()
+  Extension1.beforeEach()
+  Extension2.beforeEach()
+    @BeforeEach AbstractDatabaseTests.connectToDatabase()
+    @BeforeEach DatabaseTestsDemo.insertTestDataIntoDatabase()
+      @Test DatabaseTestsDemo.testDatabaseFunctionality()
+    @AfterEach DatabaseTestsDemo.deleteTestDataFromDatabase()
+    @AfterEach AbstractDatabaseTests.disconnectFromDatabase()
+  Extension2.afterEach()
+  Extension1.afterEach()
+@BeforeAll DatabaseTestsDemo.afterAll()
+@AfterAll AbstractDatabaseTests.destroyDatabase()
+----
+
+The following sequence diagram helps to shed further light on what actually goes on within
+the `JupiterTestEngine` when the `DatabaseTestsDemo` test class is executed.
+
+////
+PNG generated using ZenUML: https://app.zenuml.com
+
+See corresponding *.txt file in images folder for the source.
+////
+image::extensions_DatabaseTestsDemo.png[caption='',title='DatabaseTestsDemo']
+
+JUnit Jupiter does **not** guarantee the execution order of multiple lifecycle methods
+that are declared within a _single_ test class or test interface. It may at times appear
+that JUnit Jupiter invokes such methods in alphabetical order. However, that is not
+precisely true. The ordering is analogous to the ordering for `@Test` methods within a
+single test class.
+
+[NOTE]
+====
+Lifecycle methods that are declared within a _single_ test class or test interface will be
+ordered using an algorithm that is deterministic but intentionally non-obvious. This
+ensures that subsequent runs of a test suite execute lifecycle methods in the same order,
+thereby allowing for repeatable builds.
+====
+
+In addition, JUnit Jupiter does **not** support _wrapping_ behavior for multiple lifecycle
+methods declared within a single test class or test interface.
+
+The following example demonstrates this behavior. Specifically, the lifecycle method
+configuration is _broken_ due to the order in which the locally declared lifecycle methods
+are executed.
+
+* Test data is inserted _before_ the database connection has been opened, which results in
+  a failure to connect to the database.
+* The database connection is closed _before_ deleting the test data, which results in a
+  failure to connect to the database.
+
+[source,java,indent=0]
+.BrokenLifecycleMethodConfigDemo
+----
+include::{testDir}/example/callbacks/BrokenLifecycleMethodConfigDemo.java[tags=user_guide]
+----
+
+When the `BrokenLifecycleMethodConfigDemo` test class is executed, the following is logged.
+
+----
+Extension1.beforeEach()
+Extension2.beforeEach()
+  @BeforeEach BrokenLifecycleMethodConfigDemo.insertTestDataIntoDatabase()
+  @BeforeEach BrokenLifecycleMethodConfigDemo.connectToDatabase()
+    @Test BrokenLifecycleMethodConfigDemo.testDatabaseFunctionality()
+  @AfterEach BrokenLifecycleMethodConfigDemo.disconnectFromDatabase()
+  @AfterEach BrokenLifecycleMethodConfigDemo.deleteTestDataFromDatabase()
+Extension2.afterEach()
+Extension1.afterEach()
+----
+
+The following sequence diagram helps to shed further light on what actually goes on within
+the `JupiterTestEngine` when the `BrokenLifecycleMethodConfigDemo` test class is executed.
+
+////
+PNG generated using ZenUML: https://app.zenuml.com
+
+See corresponding *.txt file in images folder for the source.
+////
+image::extensions_BrokenLifecycleMethodConfigDemo.png[caption='',title='BrokenLifecycleMethodConfigDemo']
+
+[TIP]
+====
+Due to the aforementioned behavior, the JUnit Team recommends that developers declare at
+most one of each type of _lifecycle method_ (see <<writing-tests-classes-and-methods>>)
+per test class or test interface unless there are no dependencies between such lifecycle
+methods.
+====

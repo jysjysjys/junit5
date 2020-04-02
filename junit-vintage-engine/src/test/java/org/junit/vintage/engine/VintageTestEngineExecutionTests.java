@@ -1,19 +1,21 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.vintage.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectUniqueId;
 import static org.junit.platform.testkit.engine.EventConditions.abortedWithReason;
 import static org.junit.platform.testkit.engine.EventConditions.container;
+import static org.junit.platform.testkit.engine.EventConditions.displayName;
 import static org.junit.platform.testkit.engine.EventConditions.dynamicTestRegistered;
 import static org.junit.platform.testkit.engine.EventConditions.engine;
 import static org.junit.platform.testkit.engine.EventConditions.event;
@@ -40,16 +42,22 @@ import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.testkit.engine.EngineExecutionResults;
 import org.junit.platform.testkit.engine.EngineTestKit;
-import org.junit.platform.testkit.engine.Events;
 import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 import org.junit.runner.Runner;
 import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
+import org.junit.vintage.engine.samples.junit3.JUnit3ParallelSuiteWithSubsuites;
+import org.junit.vintage.engine.samples.junit3.JUnit3SuiteWithSubsuites;
 import org.junit.vintage.engine.samples.junit3.PlainJUnit3TestCaseWithSingleTestWhichFails;
+import org.junit.vintage.engine.samples.junit4.CompletelyDynamicTestCase;
 import org.junit.vintage.engine.samples.junit4.EmptyIgnoredTestCase;
 import org.junit.vintage.engine.samples.junit4.EnclosedJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.IgnoredJUnit4TestCase;
+import org.junit.vintage.engine.samples.junit4.IgnoredParameterizedTestCase;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteOfSuiteWithIgnoredJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteOfSuiteWithJUnit4TestCaseWithAssumptionFailureInBeforeClass;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteOfSuiteWithJUnit4TestCaseWithErrorInBeforeClass;
@@ -58,14 +66,17 @@ import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithIgnoredJUnit4TestC
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithJUnit3SuiteWithSingleTestCase;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithJUnit4TestCaseWithAssumptionFailureInBeforeClass;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithJUnit4TestCaseWithErrorInBeforeClass;
+import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithJUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished;
 import org.junit.vintage.engine.samples.junit4.JUnit4SuiteWithPlainJUnit4TestCaseWithSingleTestWhichIsIgnored;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithAssumptionFailureInBeforeClass;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithErrorCollectorStoringMultipleFailures;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithErrorInAfterClass;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithErrorInBeforeClass;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithExceptionThrowingRunner;
-import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithOverloadedMethod;
+import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished;
+import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithIndistinguishableOverloadedMethod;
 import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithRunnerWithCustomUniqueIds;
+import org.junit.vintage.engine.samples.junit4.JUnit4TestCaseWithRunnerWithDuplicateChangingChildDescriptions;
 import org.junit.vintage.engine.samples.junit4.MalformedJUnit4TestCase;
 import org.junit.vintage.engine.samples.junit4.ParameterizedTestCase;
 import org.junit.vintage.engine.samples.junit4.PlainJUnit4TestCaseWithFiveTestMethods;
@@ -84,7 +95,7 @@ class VintageTestEngineExecutionTests {
 	void executesPlainJUnit4TestCaseWithSingleTestWhichFails() {
 		Class<?> testClass = PlainJUnit4TestCaseWithSingleTestWhichFails.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("failingTest"), started()), //
@@ -98,7 +109,7 @@ class VintageTestEngineExecutionTests {
 	void executesPlainJUnit4TestCaseWithTwoTests() {
 		Class<?> testClass = PlainJUnit4TestCaseWithTwoTestMethods.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("failingTest"), started()), //
@@ -114,7 +125,7 @@ class VintageTestEngineExecutionTests {
 	void executesPlainJUnit4TestCaseWithFiveTests() {
 		Class<?> testClass = PlainJUnit4TestCaseWithFiveTestMethods.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("abortedTest"), started()), //
@@ -137,7 +148,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> testClass = EnclosedJUnit4TestCase.class;
 		Class<?> nestedClass = EnclosedJUnit4TestCase.NestedClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(nestedClass), started()), //
@@ -156,7 +167,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> junit4SuiteClass = JUnit4SuiteWithJUnit3SuiteWithSingleTestCase.class;
 		Class<?> testClass = PlainJUnit3TestCaseWithSingleTestWhichFails.class;
 
-		execute(junit4SuiteClass).assertEventsMatchExactly( //
+		execute(junit4SuiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(junit4SuiteClass), started()), //
 			event(container("TestSuite with 1 tests"), started()), //
@@ -174,11 +185,12 @@ class VintageTestEngineExecutionTests {
 	void executesMalformedJUnit4TestCase() {
 		Class<?> testClass = MalformedJUnit4TestCase.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("initializationError"), started()), //
-			event(test("initializationError"), finishedWithFailure(message("Method nonPublicTest() should be public"))), //
+			event(test("initializationError"),
+				finishedWithFailure(message(it -> it.contains("Method nonPublicTest() should be public")))), //
 			event(container(testClass), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
@@ -187,7 +199,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4TestCaseWithErrorInBeforeClass() {
 		Class<?> testClass = JUnit4TestCaseWithErrorInBeforeClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass),
@@ -200,7 +212,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> suiteClass = JUnit4SuiteWithJUnit4TestCaseWithErrorInBeforeClass.class;
 		Class<?> testClass = JUnit4TestCaseWithErrorInBeforeClass.class;
 
-		execute(suiteClass).assertEventsMatchExactly( //
+		execute(suiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(suiteClass), started()), //
 			event(container(testClass), started()), //
@@ -216,7 +228,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> suiteClass = JUnit4SuiteWithJUnit4TestCaseWithErrorInBeforeClass.class;
 		Class<?> testClass = JUnit4TestCaseWithErrorInBeforeClass.class;
 
-		execute(suiteOfSuiteClass).assertEventsMatchExactly( //
+		execute(suiteOfSuiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(suiteOfSuiteClass), started()), //
 			event(container(suiteClass), started()), //
@@ -232,7 +244,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4TestCaseWithAssumptionFailureInBeforeClass() {
 		Class<?> testClass = JUnit4TestCaseWithAssumptionFailureInBeforeClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass),
@@ -246,7 +258,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> suiteClass = JUnit4SuiteWithJUnit4TestCaseWithAssumptionFailureInBeforeClass.class;
 		Class<?> testClass = JUnit4TestCaseWithAssumptionFailureInBeforeClass.class;
 
-		execute(suiteOfSuiteClass).assertEventsMatchExactly( //
+		execute(suiteOfSuiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(suiteOfSuiteClass), started()), //
 			event(container(suiteClass), started()), //
@@ -262,7 +274,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4TestCaseWithErrorInAfterClass() {
 		Class<?> testClass = JUnit4TestCaseWithErrorInAfterClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("failingTest"), started()), //
@@ -277,15 +289,19 @@ class VintageTestEngineExecutionTests {
 
 	@Test
 	void executesJUnit4TestCaseWithOverloadedMethod() {
-		Class<?> testClass = JUnit4TestCaseWithOverloadedMethod.class;
+		Class<?> testClass = JUnit4TestCaseWithIndistinguishableOverloadedMethod.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
-			event(test("theory(" + JUnit4TestCaseWithOverloadedMethod.class.getName() + ")[0]"), started()), //
-			event(test("theory(" + JUnit4TestCaseWithOverloadedMethod.class.getName() + ")[0]"), finishedWithFailure()), //
-			event(test("theory(" + JUnit4TestCaseWithOverloadedMethod.class.getName() + ")[1]"), started()), //
-			event(test("theory(" + JUnit4TestCaseWithOverloadedMethod.class.getName() + ")[1]"), finishedWithFailure()), //
+			event(test("theory(" + JUnit4TestCaseWithIndistinguishableOverloadedMethod.class.getName() + ")[0]"),
+				started()), //
+			event(test("theory(" + JUnit4TestCaseWithIndistinguishableOverloadedMethod.class.getName() + ")[0]"),
+				finishedWithFailure()), //
+			event(test("theory(" + JUnit4TestCaseWithIndistinguishableOverloadedMethod.class.getName() + ")[1]"),
+				started()), //
+			event(test("theory(" + JUnit4TestCaseWithIndistinguishableOverloadedMethod.class.getName() + ")[1]"),
+				finishedWithFailure()), //
 			event(container(testClass), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
@@ -294,7 +310,7 @@ class VintageTestEngineExecutionTests {
 	void executesIgnoredJUnit4TestCase() {
 		Class<?> testClass = IgnoredJUnit4TestCase.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), skippedWithReason("complete class is ignored")), //
 			event(engine(), finishedSuccessfully()));
@@ -304,7 +320,7 @@ class VintageTestEngineExecutionTests {
 	void executesEmptyIgnoredTestClass() {
 		Class<?> testClass = EmptyIgnoredTestCase.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(test(testClass.getName()), skippedWithReason("empty")), //
 			event(engine(), finishedSuccessfully()));
@@ -374,7 +390,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> suiteClass = JUnit4SuiteWithPlainJUnit4TestCaseWithSingleTestWhichIsIgnored.class;
 		Class<?> testClass = PlainJUnit4TestCaseWithSingleTestWhichIsIgnored.class;
 
-		execute(suiteClass).assertEventsMatchExactly( //
+		execute(suiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(suiteClass), started()), //
 			event(container(testClass), started()), //
@@ -390,7 +406,7 @@ class VintageTestEngineExecutionTests {
 		Class<?> suiteClass = JUnit4SuiteWithIgnoredJUnit4TestCase.class;
 		Class<?> testClass = IgnoredJUnit4TestCase.class;
 
-		execute(suiteOfSuiteClass).assertEventsMatchExactly( //
+		execute(suiteOfSuiteClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(suiteOfSuiteClass), started()), //
 			event(container(suiteClass), started()), //
@@ -404,7 +420,7 @@ class VintageTestEngineExecutionTests {
 	void executesParameterizedTestCase() {
 		Class<?> testClass = ParameterizedTestCase.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container("[foo]"), started()), //
@@ -421,10 +437,27 @@ class VintageTestEngineExecutionTests {
 	}
 
 	@Test
+	void executesIgnoredParameterizedTestCase() {
+		Class<?> testClass = IgnoredParameterizedTestCase.class;
+
+		execute(testClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(testClass), started()), //
+			event(container("[foo]"), started()), //
+			event(test("test[foo]"), skippedWithReason("")), //
+			event(container("[foo]"), finishedSuccessfully()), //
+			event(container("[bar]"), started()), //
+			event(test("test[bar]"), skippedWithReason("")), //
+			event(container("[bar]"), finishedSuccessfully()), //
+			event(container(testClass), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
 	void executesJUnit4TestCaseWithExceptionThrowingRunner() {
 		Class<?> testClass = JUnit4TestCaseWithExceptionThrowingRunner.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(test(testClass.getName()), started()), //
 			event(test(testClass.getName()), finishedWithFailure()), //
@@ -435,7 +468,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4SuiteWithExceptionThrowingRunner() {
 		Class<?> testClass = JUnit4SuiteWithExceptionThrowingRunner.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(container(testClass), finishedWithFailure()), //
@@ -466,20 +499,74 @@ class VintageTestEngineExecutionTests {
 
 	@RunWith(DynamicSuiteRunner.class)
 	public static class DynamicTestClass {
-
 	}
 
 	@Test
 	void reportsDynamicTestsForUnknownDescriptions() {
 		Class<?> testClass = DynamicTestClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(test(testClass.getName()), started()), //
 			event(dynamicTestRegistered("dynamicTest")), //
 			event(test("dynamicTest"), started()), //
 			event(test("dynamicTest"), finishedSuccessfully()), //
 			event(test(testClass.getName()), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	public static class DynamicAndStaticChildrenRunner extends Runner {
+
+		private final Class<?> testClass;
+
+		public DynamicAndStaticChildrenRunner(Class<?> testClass) {
+			this.testClass = testClass;
+		}
+
+		@Override
+		public Description getDescription() {
+			Description suiteDescription = createSuiteDescription(testClass);
+			suiteDescription.addChild(createTestDescription(testClass, "staticTest"));
+			return suiteDescription;
+		}
+
+		@Override
+		public void run(RunNotifier notifier) {
+			Description staticDescription = getDescription().getChildren().get(0);
+			notifier.fireTestStarted(staticDescription);
+			notifier.fireTestFinished(staticDescription);
+			Description dynamicDescription = createTestDescription(testClass, "dynamicTest");
+			notifier.fireTestStarted(dynamicDescription);
+			notifier.fireTestFinished(dynamicDescription);
+		}
+
+	}
+
+	@RunWith(DynamicAndStaticChildrenRunner.class)
+	public static class DynamicAndStaticTestClass {
+	}
+
+	@RunWith(Suite.class)
+	@SuiteClasses(DynamicAndStaticTestClass.class)
+	public static class SuiteWithDynamicAndStaticTestClass {
+	}
+
+	@Test
+	void reportsIntermediateContainersFinishedAfterTheirDynamicChildren() {
+		Class<?> suiteClass = SuiteWithDynamicAndStaticTestClass.class;
+		Class<?> testClass = DynamicAndStaticTestClass.class;
+
+		execute(suiteClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(suiteClass.getName()), started()), //
+			event(container(testClass.getName()), started()), //
+			event(test("staticTest"), started()), //
+			event(test("staticTest"), finishedSuccessfully()), //
+			event(dynamicTestRegistered("dynamicTest")), //
+			event(test("dynamicTest"), started()), //
+			event(test("dynamicTest"), finishedSuccessfully()), //
+			event(container(testClass.getName()), finishedSuccessfully()), //
+			event(container(suiteClass.getName()), finishedSuccessfully()), //
 			event(engine(), finishedSuccessfully()));
 	}
 
@@ -512,7 +599,7 @@ class VintageTestEngineExecutionTests {
 	void ignoreEventsForUnknownDescriptionsByMisbehavingChildlessRunner() {
 		Class<?> testClass = MisbehavingChildTestClass.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(test(testClass.getName()), started()), //
 			event(dynamicTestRegistered("doesNotExist")), //
@@ -525,7 +612,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4TestCaseWithRunnerWithCustomUniqueIds() {
 		Class<?> testClass = JUnit4TestCaseWithRunnerWithCustomUniqueIds.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(uniqueIdSubstring(testClass.getName()), started()), //
@@ -538,7 +625,7 @@ class VintageTestEngineExecutionTests {
 	void executesJUnit4TestCaseWithErrorCollectorStoringMultipleFailures() {
 		Class<?> testClass = JUnit4TestCaseWithErrorCollectorStoringMultipleFailures.class;
 
-		execute(testClass).assertEventsMatchExactly( //
+		execute(testClass).allEvents().assertEventsMatchExactly( //
 			event(engine(), started()), //
 			event(container(testClass), started()), //
 			event(test("example"), started()), //
@@ -550,8 +637,124 @@ class VintageTestEngineExecutionTests {
 			event(engine(), finishedSuccessfully()));
 	}
 
-	private static Events execute(Class<?> testClass) {
-		return EngineTestKit.execute(new VintageTestEngine(), request(testClass)).all();
+	@Test
+	void executesJUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished() {
+		Class<?> testClass = JUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished.class;
+
+		execute(testClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(testClass), started()), //
+			event(test("testWithMissingEvents"), started()), //
+			event(test("testWithMissingEvents"), finishedWithFailure()), //
+			event(container(testClass), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesJUnit4SuiteWithJUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished() {
+		Class<?> suiteClass = JUnit4SuiteWithJUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished.class;
+		Class<?> firstTestClass = JUnit4TestCaseWithFailingDescriptionThatIsNotReportedAsFinished.class;
+		Class<?> secondTestClass = PlainJUnit4TestCaseWithSingleTestWhichFails.class;
+
+		execute(suiteClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(suiteClass), started()), //
+			event(container(firstTestClass), started()), //
+			event(test("testWithMissingEvents"), started()), //
+			event(test("testWithMissingEvents"), finishedWithFailure()), //
+			event(container(firstTestClass), finishedSuccessfully()), //
+			event(container(secondTestClass), started()), //
+			event(test("failingTest"), started()), //
+			event(test("failingTest"), finishedWithFailure()), //
+			event(container(secondTestClass), finishedSuccessfully()), //
+			event(container(suiteClass), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesCompletelyDynamicTestCaseDiscoveredByUniqueId() {
+		Class<?> testClass = CompletelyDynamicTestCase.class;
+		var request = LauncherDiscoveryRequestBuilder.request().selectors(
+			selectUniqueId(VintageUniqueIdBuilder.uniqueIdForClass(testClass))).build();
+
+		execute(request).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(displayName(testClass.getSimpleName()), started()), //
+			event(dynamicTestRegistered("Test #0")), //
+			event(test("Test #0"), started()), //
+			event(test("Test #0"), finishedSuccessfully()), //
+			event(displayName(testClass.getSimpleName()), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesJUnit3ParallelSuiteWithSubsuites() {
+		var suiteClass = JUnit3ParallelSuiteWithSubsuites.class;
+		var results = execute(suiteClass);
+		results.containerEvents() //
+				.assertStatistics(stats -> stats.started(4).dynamicallyRegistered(0).finished(4).succeeded(4)) //
+				.assertEventsMatchExactly( //
+					event(engine(), started()), //
+					event(container(suiteClass), started()), //
+					event(container("Case"), started()), //
+					event(container("Case")), //
+					event(container("Case")), //
+					event(container("Case"), finishedSuccessfully()), //
+					event(container(suiteClass), finishedSuccessfully()), //
+					event(engine(), finishedSuccessfully()));
+		results.testEvents() //
+				.assertStatistics(stats -> stats.started(2).dynamicallyRegistered(0).finished(2).succeeded(2)) //
+				.assertEventsMatchExactly( //
+					event(test("hello"), started()), //
+					event(test("hello")), //
+					event(test("hello")), //
+					event(test("hello"), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesJUnit3SuiteWithSubsuites() {
+		var suiteClass = JUnit3SuiteWithSubsuites.class;
+		execute(suiteClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(suiteClass), started()), //
+			event(container("Case1"), started()), //
+			event(test("hello"), started()), //
+			event(test("hello"), finishedSuccessfully()), //
+			event(container("Case1"), finishedSuccessfully()), //
+			event(container("Case2"), started()), //
+			event(test("hello"), started()), //
+			event(test("hello"), finishedSuccessfully()), //
+			event(container("Case2"), finishedSuccessfully()), //
+			event(container(suiteClass), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	@Test
+	void executesJUnit4TestCaseWithRunnerWithDuplicateChangingChildDescriptions() {
+		Class<?> testClass = JUnit4TestCaseWithRunnerWithDuplicateChangingChildDescriptions.class;
+		execute(testClass).allEvents().assertEventsMatchExactly( //
+			event(engine(), started()), //
+			event(container(testClass), started()), //
+			event(container("1st"), started()), //
+			event(test("0"), skippedWithReason(__ -> true)), //
+			event(test("1"), started()), //
+			event(test("1"), finishedSuccessfully()), //
+			event(container("1st"), finishedSuccessfully()), //
+			event(container("2nd"), started()), //
+			event(test("0"), skippedWithReason(__ -> true)), //
+			event(test("1"), started()), //
+			event(test("1"), finishedSuccessfully()), //
+			event(container("2nd"), finishedSuccessfully()), //
+			event(container(testClass), finishedSuccessfully()), //
+			event(engine(), finishedSuccessfully()));
+	}
+
+	private static EngineExecutionResults execute(Class<?> testClass) {
+		return execute(request(testClass));
+	}
+
+	private static EngineExecutionResults execute(LauncherDiscoveryRequest request) {
+		return EngineTestKit.execute(new VintageTestEngine(), request);
 	}
 
 	private static void execute(Class<?> testClass, EngineExecutionListener listener) {

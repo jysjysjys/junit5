@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine.descriptor;
@@ -21,7 +21,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
+import org.junit.jupiter.api.DisplayNameGenerator.Simple;
 import org.junit.jupiter.api.DisplayNameGenerator.Standard;
+import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.commons.util.Preconditions;
@@ -44,6 +46,11 @@ final class DisplayNameUtils {
 	 * Pre-defined standard display name generator instance.
 	 */
 	private static final DisplayNameGenerator standardGenerator = new Standard();
+
+	/**
+	 * Pre-defined simple display name generator instance.
+	 */
+	private static final DisplayNameGenerator simpleGenerator = new Simple();
 
 	/**
 	 * Pre-defined display name generator instance replacing underscores.
@@ -70,37 +77,40 @@ final class DisplayNameUtils {
 		return displayNameSupplier.get();
 	}
 
-	static String determineDisplayNameForMethod(Class<?> testClass, Method testMethod) {
-		DisplayNameGenerator generator = getDisplayNameGenerator(testClass);
+	static String determineDisplayNameForMethod(Class<?> testClass, Method testMethod,
+			JupiterConfiguration configuration) {
+		DisplayNameGenerator generator = getDisplayNameGenerator(testClass, configuration);
 		return determineDisplayName(testMethod, () -> generator.generateDisplayNameForMethod(testClass, testMethod));
-
 	}
 
-	static Supplier<String> createDisplayNameSupplierForClass(Class<?> testClass) {
-		return () -> getDisplayNameGenerator(testClass).generateDisplayNameForClass(testClass);
+	static Supplier<String> createDisplayNameSupplierForClass(Class<?> testClass, JupiterConfiguration configuration) {
+		return () -> getDisplayNameGenerator(testClass, configuration).generateDisplayNameForClass(testClass);
 	}
 
-	static Supplier<String> createDisplayNameSupplierForNestedClass(Class<?> testClass) {
-		return () -> getDisplayNameGenerator(testClass).generateDisplayNameForNestedClass(testClass);
+	static Supplier<String> createDisplayNameSupplierForNestedClass(Class<?> testClass,
+			JupiterConfiguration configuration) {
+		return () -> getDisplayNameGenerator(testClass, configuration).generateDisplayNameForNestedClass(testClass);
 	}
 
-	private static DisplayNameGenerator getDisplayNameGenerator(Class<?> testClass) {
+	private static DisplayNameGenerator getDisplayNameGenerator(Class<?> testClass,
+			JupiterConfiguration configuration) {
 		Preconditions.notNull(testClass, "Test class must not be null");
-		DisplayNameGeneration generation = getDisplayNameGeneration(testClass).orElse(null);
-		// trivial case: no user-defined generation annotation present, return default generator
-		if (generation == null) {
-			return standardGenerator;
-		}
-		// check for pre-defined generators and return matching singleton
-		Class<? extends DisplayNameGenerator> displayNameGeneratorClass = generation.value();
-		if (displayNameGeneratorClass == Standard.class) {
-			return standardGenerator;
-		}
-		if (displayNameGeneratorClass == ReplaceUnderscores.class) {
-			return replaceUnderscoresGenerator;
-		}
-		// else: create an instance of the supplied generator implementation class and return it
-		return ReflectionUtils.newInstance(displayNameGeneratorClass);
+
+		return getDisplayNameGeneration(testClass) //
+				.map(DisplayNameGeneration::value) //
+				.map(displayNameGeneratorClass -> {
+					if (displayNameGeneratorClass == Standard.class) {
+						return standardGenerator;
+					}
+					if (displayNameGeneratorClass == Simple.class) {
+						return simpleGenerator;
+					}
+					if (displayNameGeneratorClass == ReplaceUnderscores.class) {
+						return replaceUnderscoresGenerator;
+					}
+					return ReflectionUtils.newInstance(displayNameGeneratorClass);
+				}) //
+				.orElseGet(configuration::getDefaultDisplayNameGenerator);
 	}
 
 	/**

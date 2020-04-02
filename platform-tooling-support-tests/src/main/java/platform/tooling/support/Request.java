@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package platform.tooling.support;
@@ -37,7 +37,7 @@ public class Request {
 	private static final Path TOOLS = Paths.get("build", "test-tools");
 	public static final Path WORKSPACE = Paths.get("build", "test-workspace");
 
-	private static final String MAVEN_VERSION = "3.6.0";
+	private static final String MAVEN_VERSION = "3.6.1";
 
 	public static Builder builder() {
 		return new Builder();
@@ -110,7 +110,10 @@ public class Request {
 			configuration.setTimeout(getTimeout());
 			configuration.getEnvironment().putAll(getEnvironment());
 
-			return tool.run(configuration.build());
+			var result = tool.run(configuration.build());
+			System.out.println(result.getOutput("out"));
+			System.err.println(result.getOutput("err"));
+			return result;
 		}
 		catch (Exception e) {
 			throw new IllegalStateException("run failed", e);
@@ -142,6 +145,11 @@ public class Request {
 
 		public Builder setTool(Tool tool) {
 			request.tool = tool;
+			return this;
+		}
+
+		public Builder setJavaHome(Path javaHome) {
+			putEnvironment("JAVA_HOME", javaHome.normalize().toAbsolutePath().toString());
 			return this;
 		}
 

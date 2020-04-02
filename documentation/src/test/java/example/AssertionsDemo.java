@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package example;
@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.CountDownLatch;
 
 import example.domain.Person;
 import example.util.Calculator;
@@ -44,7 +46,7 @@ class AssertionsDemo {
 
 	@Test
 	void groupedAssertions() {
-		// In a grouped assertion all assertions are executed, and any
+		// In a grouped assertion all assertions are executed, and all
 		// failures will be reported together.
 		assertAll("person",
 			() -> assertEquals("Jane", person.getFirstName()),
@@ -84,10 +86,9 @@ class AssertionsDemo {
 
 	@Test
 	void exceptionTesting() {
-		Throwable exception = assertThrows(IllegalArgumentException.class, () -> {
-			throw new IllegalArgumentException("a message");
-		});
-		assertEquals("a message", exception.getMessage());
+		Exception exception = assertThrows(ArithmeticException.class, () ->
+			calculator.divide(1, 0));
+		assertEquals("/ by zero", exception.getMessage());
 	}
 
 	@Test
@@ -136,7 +137,7 @@ class AssertionsDemo {
 		// execution timed out after 10 ms
 		assertTimeoutPreemptively(ofMillis(10), () -> {
 			// Simulate task that takes more than 10 ms.
-			Thread.sleep(100);
+			new CountDownLatch(1).await();
 		});
 	}
 

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api.condition;
@@ -13,6 +13,7 @@ package org.junit.jupiter.api.condition;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.reflect.Method;
+import java.util.EnumSet;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.logging.Logger;
@@ -34,9 +35,13 @@ import org.junit.platform.commons.util.StringUtils;
  * @see #JAVA_10
  * @see #JAVA_11
  * @see #JAVA_12
+ * @see #JAVA_13
+ * @see #JAVA_14
  * @see #OTHER
  * @see EnabledOnJre
  * @see DisabledOnJre
+ * @see EnabledForJreRange
+ * @see DisabledForJreRange
  */
 @API(status = STABLE, since = "5.1")
 public enum JRE {
@@ -70,8 +75,33 @@ public enum JRE {
 	JAVA_12,
 
 	/**
+	 * Java 13.
+	 *
+	 * @since 5.4
+	 */
+	@API(status = STABLE, since = "5.4")
+	JAVA_13,
+
+	/**
+	 * Java 14.
+	 *
+	 * @since 5.5
+	 */
+	@API(status = STABLE, since = "5.5")
+	JAVA_14,
+
+	/**
+	 * Java 15.
+	 *
+	 * @since 5.6
+	 */
+	@API(status = STABLE, since = "5.6")
+	JAVA_15,
+
+	/**
 	 * A JRE version other than {@link #JAVA_8}, {@link #JAVA_9},
-	 * {@link #JAVA_10}, {@link #JAVA_11}, or {@link #JAVA_12}.
+	 * {@link #JAVA_10}, {@link #JAVA_11}, {@link #JAVA_12},
+	 * {@link #JAVA_13}, {@link #JAVA_14}, or {@link #JAVA_15}.
 	 */
 	OTHER;
 
@@ -109,6 +139,12 @@ public enum JRE {
 					return JAVA_11;
 				case 12:
 					return JAVA_12;
+				case 13:
+					return JAVA_13;
+				case 14:
+					return JAVA_14;
+				case 15:
+					return JAVA_15;
 				default:
 					return OTHER;
 			}
@@ -127,6 +163,20 @@ public enum JRE {
 	 */
 	public boolean isCurrentVersion() {
 		return this == CURRENT_VERSION;
+	}
+
+	/**
+	 * @return the {@link JRE} for the currently executing JVM
+	 *
+	 * @since 5.7
+	 */
+	@API(status = STABLE, since = "5.7")
+	public static JRE currentVersion() {
+		return CURRENT_VERSION;
+	}
+
+	static boolean isCurrentVersionWithinRange(JRE min, JRE max) {
+		return EnumSet.range(min, max).contains(CURRENT_VERSION);
 	}
 
 }

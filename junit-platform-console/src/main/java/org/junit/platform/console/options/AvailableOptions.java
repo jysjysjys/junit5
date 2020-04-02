@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.console.options;
@@ -50,6 +50,12 @@ class AvailableOptions {
 	@Option(names = "-disable-ansi-colors", hidden = true)
 	private boolean disableAnsiColors2;
 
+	@Option(names = "--disable-banner", description = "Disable print out of the welcome message.")
+	private boolean disableBanner;
+
+	@Option(names = "-disable-banner", hidden = true)
+	private boolean disableBanner2;
+
 	@Option(names = "--details", paramLabel = "MODE", description = "Select an output details mode for when tests are executed. " //
 			+ "Use one of: ${COMPLETION-CANDIDATES}. If 'none' is selected, " //
 			+ "then only the summary and test failures are shown. Default: ${DEFAULT-VALUE}.")
@@ -74,7 +80,7 @@ class AvailableOptions {
 	private List<Path> additionalClasspathEntries2 = new ArrayList<>();
 
 	@Option(names = "--fail-if-no-tests", description = "Fail and return exit status code 2 if no tests are found.")
-	private boolean failIfNoTests; // no single-dash equivelent: was introduced in 5.3-M1
+	private boolean failIfNoTests; // no single-dash equivalent: was introduced in 5.3-M1
 
 	// --- Reports ---------------------------------------------------------
 
@@ -286,6 +292,7 @@ class AvailableOptions {
 		// General Purpose
 		result.setDisplayHelp(this.helpRequested || this.helpRequested2);
 		result.setAnsiColorOutputDisabled(this.disableAnsiColors || this.disableAnsiColors2);
+		result.setBannerDisabled(this.disableBanner || this.disableBanner2);
 		result.setDetails(choose(this.details, this.details2, CommandLineOptions.DEFAULT_DETAILS));
 		result.setTheme(choose(this.theme, this.theme2, CommandLineOptions.DEFAULT_THEME));
 		result.setAdditionalClasspathEntries(merge(this.additionalClasspathEntries, this.additionalClasspathEntries2));

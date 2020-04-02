@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.params.provider;
@@ -26,8 +26,9 @@ import org.apiguardian.api.API;
  *
  * <p>Supported types include {@link #shorts}, {@link #bytes}, {@link #ints},
  * {@link #longs}, {@link #floats}, {@link #doubles}, {@link #chars},
- * {@link #strings}, and {@link #classes}. Note, however, that only one of the
- * supported types may be specified per {@code @ValueSource} declaration.
+ * {@link #booleans}, {@link #strings}, and {@link #classes}. Note, however,
+ * that only one of the supported types may be specified per
+ * {@code @ValueSource} declaration.
  *
  * <p>The supplied literal values will be provided as arguments to the
  * annotated {@code @ParameterizedTest} method.
@@ -85,6 +86,13 @@ public @interface ValueSource {
 	 * @since 5.1
 	 */
 	char[] chars() default {};
+
+	/**
+	 * The {@code boolean} values to use as sources of arguments; must not be empty.
+	 *
+	 * @since 5.5
+	 */
+	boolean[] booleans() default {};
 
 	/**
 	 * The {@link String} values to use as sources of arguments; must not be empty.

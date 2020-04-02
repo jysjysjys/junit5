@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.vintage.engine;
@@ -24,6 +24,7 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.UniqueId;
 import org.junit.vintage.engine.descriptor.RunnerTestDescriptor;
+import org.junit.vintage.engine.descriptor.VintageEngineDescriptor;
 import org.junit.vintage.engine.discovery.VintageDiscoverer;
 import org.junit.vintage.engine.execution.RunnerExecutor;
 
@@ -58,22 +59,24 @@ public final class VintageTestEngine implements TestEngine {
 
 	@Override
 	public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
+		JUnit4VersionCheck.checkSupported();
 		return new VintageDiscoverer().discover(discoveryRequest, uniqueId);
 	}
 
 	@Override
 	public void execute(ExecutionRequest request) {
 		EngineExecutionListener engineExecutionListener = request.getEngineExecutionListener();
-		TestDescriptor engineTestDescriptor = request.getRootTestDescriptor();
-		engineExecutionListener.executionStarted(engineTestDescriptor);
-		RunnerExecutor runnerExecutor = new RunnerExecutor(engineExecutionListener);
-		executeAllChildren(runnerExecutor, engineTestDescriptor);
-		engineExecutionListener.executionFinished(engineTestDescriptor, successful());
+		VintageEngineDescriptor engineDescriptor = (VintageEngineDescriptor) request.getRootTestDescriptor();
+		engineExecutionListener.executionStarted(engineDescriptor);
+		RunnerExecutor runnerExecutor = new RunnerExecutor(engineExecutionListener,
+			engineDescriptor.getTestSourceProvider());
+		executeAllChildren(runnerExecutor, engineDescriptor);
+		engineExecutionListener.executionFinished(engineDescriptor, successful());
 	}
 
-	private void executeAllChildren(RunnerExecutor runnerExecutor, TestDescriptor engineTestDescriptor) {
+	private void executeAllChildren(RunnerExecutor runnerExecutor, TestDescriptor engineDescriptor) {
 		// @formatter:off
-		engineTestDescriptor.getChildren()
+		engineDescriptor.getChildren()
 				.stream()
 				.map(RunnerTestDescriptor.class::cast)
 				.forEach(runnerExecutor::execute);

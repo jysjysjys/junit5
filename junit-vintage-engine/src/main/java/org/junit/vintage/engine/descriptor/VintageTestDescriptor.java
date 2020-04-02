@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.vintage.engine.descriptor;
@@ -13,11 +13,8 @@ package org.junit.vintage.engine.descriptor;
 import static java.util.Arrays.stream;
 import static java.util.function.Predicate.isEqual;
 import static org.apiguardian.api.API.Status.INTERNAL;
-import static org.junit.platform.commons.util.CollectionUtils.getOnlyElement;
-import static org.junit.platform.commons.util.FunctionUtils.where;
-import static org.junit.platform.commons.util.ReflectionUtils.findMethods;
+import static org.junit.platform.commons.util.StringUtils.isNotBlank;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -33,8 +30,6 @@ import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.TestTag;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
-import org.junit.platform.engine.support.descriptor.ClassSource;
-import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.runner.Description;
 
 /**
@@ -48,10 +43,10 @@ public class VintageTestDescriptor extends AbstractTestDescriptor {
 	public static final String SEGMENT_TYPE_TEST = "test";
 	public static final String SEGMENT_TYPE_DYNAMIC = "dynamic";
 
-	private final Description description;
+	protected Description description;
 
-	public VintageTestDescriptor(UniqueId uniqueId, Description description) {
-		this(uniqueId, description, generateDisplayName(description), toTestSource(description));
+	public VintageTestDescriptor(UniqueId uniqueId, Description description, TestSource source) {
+		this(uniqueId, description, generateDisplayName(description), source);
 	}
 
 	VintageTestDescriptor(UniqueId uniqueId, Description description, String displayName, TestSource source) {
@@ -65,6 +60,18 @@ public class VintageTestDescriptor extends AbstractTestDescriptor {
 
 	public Description getDescription() {
 		return description;
+	}
+
+	@Override
+	public String getLegacyReportingName() {
+		String methodName = description.getMethodName();
+		if (methodName == null) {
+			String className = description.getClassName();
+			if (isNotBlank(className)) {
+				return className;
+			}
+		}
+		return super.getLegacyReportingName();
 	}
 
 	@Override
@@ -127,32 +134,6 @@ public class VintageTestDescriptor extends AbstractTestDescriptor {
 					.map(TestTag::create)
 					.forEachOrdered(tags::add);
 			// @formatter:on
-		}
-	}
-
-	private static TestSource toTestSource(Description description) {
-		Class<?> testClass = description.getTestClass();
-		if (testClass != null) {
-			String methodName = description.getMethodName();
-			if (methodName != null) {
-				MethodSource methodSource = toMethodSource(testClass, methodName);
-				if (methodSource != null) {
-					return methodSource;
-				}
-			}
-			return ClassSource.from(testClass);
-		}
-		return null;
-	}
-
-	private static MethodSource toMethodSource(Class<?> testClass, String methodName) {
-		if (methodName.contains("[") && methodName.endsWith("]")) {
-			// special case for parameterized tests
-			return toMethodSource(testClass, methodName.substring(0, methodName.indexOf("[")));
-		}
-		else {
-			List<Method> methods = findMethods(testClass, where(Method::getName, isEqual(methodName)));
-			return (methods.size() == 1) ? MethodSource.from(testClass, getOnlyElement(methods)) : null;
 		}
 	}
 

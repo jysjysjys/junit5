@@ -1,15 +1,16 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.engine.descriptor;
 
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.jupiter.engine.descriptor.ExtensionUtils.populateNewExtensionRegistryFromExtendWithAnnotation;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.jupiter.engine.extension.ExtensionRegistry;
+import org.junit.jupiter.engine.extension.MutableExtensionRegistry;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
@@ -40,6 +42,7 @@ import org.junit.platform.engine.UniqueId;
 @API(status = INTERNAL, since = "5.0")
 public class TestTemplateTestDescriptor extends MethodBasedTestDescriptor implements Filterable {
 
+	public static final String SEGMENT_TYPE = "test-template";
 	private final DynamicDescendantFilter dynamicDescendantFilter = new DynamicDescendantFilter();
 
 	public TestTemplateTestDescriptor(UniqueId uniqueId, Class<?> testClass, Method templateMethod,
@@ -70,7 +73,7 @@ public class TestTemplateTestDescriptor extends MethodBasedTestDescriptor implem
 
 	@Override
 	public JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) throws Exception {
-		ExtensionRegistry registry = populateNewExtensionRegistryFromExtendWithAnnotation(
+		MutableExtensionRegistry registry = populateNewExtensionRegistryFromExtendWithAnnotation(
 			context.getExtensionRegistry(), getTestMethod());
 
 		// The test instance should be properly maintained by the enclosing class's ExtensionContext.
@@ -103,7 +106,7 @@ public class TestTemplateTestDescriptor extends MethodBasedTestDescriptor implem
 				.map(Optional::get)
 				.forEach(invocationTestDescriptor -> execute(dynamicTestExecutor, invocationTestDescriptor));
 		// @formatter:on
-		validateWasAtLeastInvokedOnce(invocationIndex.get());
+		validateWasAtLeastInvokedOnce(invocationIndex.get(), providers);
 		return context;
 	}
 
@@ -136,9 +139,14 @@ public class TestTemplateTestDescriptor extends MethodBasedTestDescriptor implem
 		dynamicTestExecutor.execute(testDescriptor);
 	}
 
-	private void validateWasAtLeastInvokedOnce(int invocationIndex) {
-		Preconditions.condition(invocationIndex > 0, () -> "No supporting "
-				+ TestTemplateInvocationContextProvider.class.getSimpleName() + " provided an invocation context");
+	private void validateWasAtLeastInvokedOnce(int invocationIndex,
+			List<TestTemplateInvocationContextProvider> providers) {
+
+		Preconditions.condition(invocationIndex > 0,
+			() -> "None of the supporting " + TestTemplateInvocationContextProvider.class.getSimpleName() + "s "
+					+ providers.stream().map(provider -> provider.getClass().getSimpleName()).collect(
+						joining(", ", "[", "]"))
+					+ " provided a non-empty stream");
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.params.provider;
@@ -42,20 +42,20 @@ class MethodArgumentsProvider implements ArgumentsProvider, AnnotationConsumer<M
 		Object testInstance = context.getTestInstance().orElse(null);
 		// @formatter:off
 		return Arrays.stream(this.methodNames)
-				.map(argumentsMethodName -> getMethod(context, argumentsMethodName))
+				.map(factoryMethodName -> getMethod(context, factoryMethodName))
 				.map(method -> ReflectionUtils.invokeMethod(method, testInstance))
 				.flatMap(CollectionUtils::toStream)
 				.map(MethodArgumentsProvider::toArguments);
 		// @formatter:on
 	}
 
-	private Method getMethod(ExtensionContext context, String argumentsMethodName) {
-		if (StringUtils.isNotBlank(argumentsMethodName)) {
-			if (argumentsMethodName.contains("#")) {
-				return getMethodByFullyQualifiedName(argumentsMethodName);
+	private Method getMethod(ExtensionContext context, String factoryMethodName) {
+		if (StringUtils.isNotBlank(factoryMethodName)) {
+			if (factoryMethodName.contains("#")) {
+				return getMethodByFullyQualifiedName(factoryMethodName);
 			}
 			else {
-				return getMethod(context.getRequiredTestClass(), argumentsMethodName);
+				return getMethod(context.getRequiredTestClass(), factoryMethodName);
 			}
 		}
 		return getMethod(context.getRequiredTestClass(), context.getRequiredTestMethod().getName());

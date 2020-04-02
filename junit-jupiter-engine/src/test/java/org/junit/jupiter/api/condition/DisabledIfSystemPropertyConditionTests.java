@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.jupiter.api.condition;
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExecutionCondition;
-import org.junit.platform.commons.util.PreconditionViolationException;
+import org.junit.platform.commons.PreconditionViolationException;
 
 /**
  * Unit tests for {@link DisabledIfSystemPropertyCondition}.
@@ -40,13 +40,13 @@ class DisabledIfSystemPropertyConditionTests extends AbstractExecutionConditionT
 	}
 
 	@BeforeAll
-	static void setSystemProperty() {
-		DisabledIfSystemPropertyIntegrationTests.setSystemProperty();
+	static void setSystemProperties() {
+		DisabledIfSystemPropertyIntegrationTests.setSystemProperties();
 	}
 
 	@AfterAll
-	static void clearSystemProperty() {
-		DisabledIfSystemPropertyIntegrationTests.clearSystemProperty();
+	static void clearSystemProperties() {
+		DisabledIfSystemPropertyIntegrationTests.clearSystemProperties();
 	}
 
 	/**
@@ -56,7 +56,7 @@ class DisabledIfSystemPropertyConditionTests extends AbstractExecutionConditionT
 	void enabledBecauseAnnotationIsNotPresent() {
 		evaluateCondition();
 		assertEnabled();
-		assertReasonContains("@DisabledIfSystemProperty is not present");
+		assertReasonContains("No @DisabledIfSystemProperty conditions resulting in 'disabled' execution encountered");
 	}
 
 	/**
@@ -88,6 +88,16 @@ class DisabledIfSystemPropertyConditionTests extends AbstractExecutionConditionT
 	}
 
 	/**
+	 * @see DisabledIfSystemPropertyIntegrationTests#disabledBecauseSystemPropertyForComposedAnnotationMatchesExactly()
+	 */
+	@Test
+	void disabledBecauseSystemPropertyForComposedAnnotationMatchesExactly() {
+		evaluateCondition();
+		assertDisabled();
+		assertReasonContains("matches regular expression");
+	}
+
+	/**
 	 * @see DisabledIfSystemPropertyIntegrationTests#disabledBecauseSystemPropertyMatchesPattern()
 	 */
 	@Test
@@ -104,7 +114,7 @@ class DisabledIfSystemPropertyConditionTests extends AbstractExecutionConditionT
 	void enabledBecauseSystemPropertyDoesNotMatch() {
 		evaluateCondition();
 		assertEnabled();
-		assertReasonContains("does not match regular expression");
+		assertReasonContains("No @DisabledIfSystemProperty conditions resulting in 'disabled' execution encountered");
 	}
 
 	/**
@@ -114,7 +124,7 @@ class DisabledIfSystemPropertyConditionTests extends AbstractExecutionConditionT
 	void enabledBecauseSystemPropertyDoesNotExist() {
 		evaluateCondition();
 		assertEnabled();
-		assertReasonContains("does not exist");
+		assertReasonContains("No @DisabledIfSystemProperty conditions resulting in 'disabled' execution encountered");
 	}
 
 }

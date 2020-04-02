@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.engine;
@@ -17,10 +17,11 @@ import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,7 +51,7 @@ class UniqueIdFormat implements Serializable {
 
 	private static String encode(char c) {
 		try {
-			return URLEncoder.encode(String.valueOf(c), "UTF-8");
+			return URLEncoder.encode(String.valueOf(c), StandardCharsets.UTF_8.name());
 		}
 		catch (UnsupportedEncodingException e) {
 			throw new AssertionError("UTF-8 should be supported", e);
@@ -62,7 +63,7 @@ class UniqueIdFormat implements Serializable {
 	private final char segmentDelimiter;
 	private final char typeValueSeparator;
 	private final Pattern segmentPattern;
-	private final Map<Character, String> encodedCharacterMap = new TreeMap<>();
+	private final Map<Character, String> encodedCharacterMap = new HashMap<>();
 
 	UniqueIdFormat(char openSegment, char typeValueSeparator, char closeSegment, char segmentDelimiter) {
 		this.openSegment = openSegment;
@@ -136,8 +137,9 @@ class UniqueIdFormat implements Serializable {
 	}
 
 	private String encode(String s) {
-		StringBuilder builder = new StringBuilder();
-		for (char c : s.toCharArray()) {
+		StringBuilder builder = new StringBuilder(s.length());
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
 			String value = encodedCharacterMap.get(c);
 			if (value == null) {
 				builder.append(c);
@@ -148,9 +150,9 @@ class UniqueIdFormat implements Serializable {
 		return builder.toString();
 	}
 
-	private String decode(String s) {
+	private static String decode(String s) {
 		try {
-			return URLDecoder.decode(s, "UTF-8");
+			return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
 		}
 		catch (UnsupportedEncodingException e) {
 			throw new JUnitException("UTF-8 should be supported", e);

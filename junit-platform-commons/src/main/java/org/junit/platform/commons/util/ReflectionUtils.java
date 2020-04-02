@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.commons.util;
@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -118,6 +119,16 @@ public final class ReflectionUtils {
 
 	private static final ClasspathScanner classpathScanner = new ClasspathScanner(
 		ClassLoaderUtils::getDefaultClassLoader, ReflectionUtils::tryToLoadClass);
+
+	/**
+	 * Set of fully qualified class names for which no cycles have been detected
+	 * in inner class hierarchies.
+	 * <p>This serves as a cache to avoid repeated cycle detection for classes
+	 * that have already been checked.
+	 * @since 1.6
+	 * @see #detectInnerClassCycle(Class)
+	 */
+	private static final Set<String> noCyclesDetectedCache = new HashSet<>();
 
 	/**
 	 * Internal cache of common class names mapped to their types.
@@ -215,51 +226,97 @@ public final class ReflectionUtils {
 	}
 
 	public static boolean isPublic(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
 		return Modifier.isPublic(clazz.getModifiers());
 	}
 
 	public static boolean isPublic(Member member) {
+		Preconditions.notNull(member, "Member must not be null");
 		return Modifier.isPublic(member.getModifiers());
 	}
 
 	public static boolean isPrivate(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
 		return Modifier.isPrivate(clazz.getModifiers());
 	}
 
 	public static boolean isPrivate(Member member) {
+		Preconditions.notNull(member, "Member must not be null");
 		return Modifier.isPrivate(member.getModifiers());
 	}
 
+	@API(status = INTERNAL, since = "1.4")
 	public static boolean isNotPrivate(Class<?> clazz) {
 		return !isPrivate(clazz);
 	}
 
+	@API(status = INTERNAL, since = "1.1")
 	public static boolean isNotPrivate(Member member) {
 		return !isPrivate(member);
 	}
 
 	public static boolean isAbstract(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
 		return Modifier.isAbstract(clazz.getModifiers());
 	}
 
 	public static boolean isAbstract(Member member) {
+		Preconditions.notNull(member, "Member must not be null");
 		return Modifier.isAbstract(member.getModifiers());
 	}
 
 	public static boolean isStatic(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
 		return Modifier.isStatic(clazz.getModifiers());
 	}
 
+	@API(status = INTERNAL, since = "1.4")
 	public static boolean isNotStatic(Class<?> clazz) {
 		return !isStatic(clazz);
 	}
 
 	public static boolean isStatic(Member member) {
+		Preconditions.notNull(member, "Member must not be null");
 		return Modifier.isStatic(member.getModifiers());
 	}
 
+	@API(status = INTERNAL, since = "1.1")
 	public static boolean isNotStatic(Member member) {
 		return !isStatic(member);
+	}
+
+	/**
+	 * @since 1.5
+	 */
+	@API(status = INTERNAL, since = "1.5")
+	public static boolean isFinal(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
+		return Modifier.isFinal(clazz.getModifiers());
+	}
+
+	/**
+	 * @since 1.5
+	 */
+	@API(status = INTERNAL, since = "1.5")
+	public static boolean isNotFinal(Class<?> clazz) {
+		return !isFinal(clazz);
+	}
+
+	/**
+	 * @since 1.5
+	 */
+	@API(status = INTERNAL, since = "1.5")
+	public static boolean isFinal(Member member) {
+		Preconditions.notNull(member, "Member must not be null");
+		return Modifier.isFinal(member.getModifiers());
+	}
+
+	/**
+	 * @since 1.5
+	 */
+	@API(status = INTERNAL, since = "1.5")
+	public static boolean isNotFinal(Member member) {
+		return !isFinal(member);
 	}
 
 	/**
@@ -275,6 +332,7 @@ public final class ReflectionUtils {
 	 * @return {@code true} if the class is an <em>inner class</em>
 	 */
 	public static boolean isInnerClass(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
 		return !isStatic(clazz) && clazz.isMemberClass();
 	}
 
@@ -556,20 +614,12 @@ public final class ReflectionUtils {
 	 */
 	@API(status = DEPRECATED, since = "1.4")
 	@Deprecated
-	public static <T> Optional<Object> readFieldValue(Field field, T instance) {
+	public static Optional<Object> readFieldValue(Field field, Object instance) {
 		return tryToReadFieldValue(field, instance).toOptional();
 	}
 
 	/**
-	 * Try to read the value of a potentially inaccessible field.
-	 *
-	 * <p>If an exception occurs while reading the field, a failed {@link Try}
-	 * is returned that contains the corresponding exception.
-	 *
-	 * @param field the field to read; never {@code null}
-	 * @param instance the instance from which the value is to be read; may
-	 * be {@code null} for a static field
-	 * @see #tryToReadFieldValue(Field)
+	 * @see org.junit.platform.commons.support.ReflectionSupport#tryToReadFieldValue(Field, Object)
 	 * @see #tryToReadFieldValue(Class, String, Object)
 	 * @since 1.4
 	 */
@@ -580,6 +630,48 @@ public final class ReflectionUtils {
 			() -> String.format("Cannot read non-static field [%s] on a null instance.", field));
 
 		return Try.call(() -> makeAccessible(field).get(instance));
+	}
+
+	/**
+	 * Read the values of the supplied fields, making each field accessible if
+	 * necessary and {@linkplain ExceptionUtils#throwAsUncheckedException masking}
+	 * any checked exception as an unchecked exception.
+	 *
+	 * @param fields the list of fields to read; never {@code null}
+	 * @param instance the instance from which the values are to be read; may
+	 * be {@code null} for static fields
+	 * @return an immutable list of the values of the specified fields; never
+	 * {@code null} but may be empty or contain {@code null} entries
+	 */
+	public static List<Object> readFieldValues(List<Field> fields, Object instance) {
+		return readFieldValues(fields, instance, field -> true);
+	}
+
+	/**
+	 * Read the values of the supplied fields, making each field accessible if
+	 * necessary, {@linkplain ExceptionUtils#throwAsUncheckedException masking}
+	 * any checked exception as an unchecked exception, and filtering out fields
+	 * that do not pass the supplied {@code predicate}.
+	 *
+	 * @param fields the list of fields to read; never {@code null}
+	 * @param instance the instance from which the values are to be read; may
+	 * be {@code null} for static fields
+	 * @param predicate the field filter; never {@code null}
+	 * @return an immutable list of the values of the specified fields; never
+	 * {@code null} but may be empty or contain {@code null} entries
+	 */
+	public static List<Object> readFieldValues(List<Field> fields, Object instance, Predicate<Field> predicate) {
+		Preconditions.notNull(fields, "fields list must not be null");
+		Preconditions.notNull(predicate, "Predicate must not be null");
+
+		// @formatter:off
+		return fields.stream()
+				.filter(predicate)
+				.map(field ->
+					tryToReadFieldValue(field, instance)
+						.getOrThrow(ExceptionUtils::throwAsUncheckedException))
+				.collect(toUnmodifiableList());
+		// @formatter:on
 	}
 
 	/**
@@ -711,12 +803,35 @@ public final class ReflectionUtils {
 
 	/**
 	 * Build the <em>fully qualified method name</em> for the method described by the
+	 * supplied class and method.
+	 *
+	 * <p>Note that the class is not necessarily the class in which the method is
+	 * declared.
+	 *
+	 * @param clazz the class from which the method should be referenced; never {@code null}
+	 * @param method the method; never {@code null}
+	 * @return fully qualified method name; never {@code null}
+	 * @since 1.4
+	 * @see #getFullyQualifiedMethodName(Class, String, Class...)
+	 */
+	public static String getFullyQualifiedMethodName(Class<?> clazz, Method method) {
+		Preconditions.notNull(method, "Method must not be null");
+
+		return getFullyQualifiedMethodName(clazz, method.getName(), method.getParameterTypes());
+	}
+
+	/**
+	 * Build the <em>fully qualified method name</em> for the method described by the
 	 * supplied class, method name, and parameter types.
 	 *
-	 * @param clazz the class that declares the method; never {@code null}
+	 * <p>Note that the class is not necessarily the class in which the method is
+	 * declared.
+	 *
+	 * @param clazz the class from which the method should be referenced; never {@code null}
 	 * @param methodName the name of the method; never {@code null} or blank
 	 * @param parameterTypes the parameter types of the method; may be {@code null} or empty
 	 * @return fully qualified method name; never {@code null}
+	 * @see #getFullyQualifiedMethodName(Class, Method)
 	 */
 	public static String getFullyQualifiedMethodName(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
 		Preconditions.notNull(clazz, "Class must not be null");
@@ -781,6 +896,8 @@ public final class ReflectionUtils {
 	 * @param requiredType the required type of the outermost instance; never {@code null}
 	 * @return an {@code Optional} containing the outermost instance; never {@code null}
 	 * but potentially empty
+	 * @deprecated Please discontinue use of this method since it relies on internal
+	 * implementation details of the JDK that may not work in the future.
 	 */
 	@API(status = DEPRECATED, since = "1.4")
 	@Deprecated
@@ -892,13 +1009,18 @@ public final class ReflectionUtils {
 	}
 
 	private static void findNestedClasses(Class<?> clazz, Set<Class<?>> candidates) {
-		if (clazz == Object.class || clazz == null) {
+		if (!isSearchable(clazz)) {
 			return;
 		}
 
+		detectInnerClassCycle(clazz);
+
 		try {
 			// Candidates in current class
-			Collections.addAll(candidates, clazz.getDeclaredClasses());
+			for (Class<?> nestedClass : clazz.getDeclaredClasses()) {
+				detectInnerClassCycle(nestedClass);
+				candidates.add(nestedClass);
+			}
 		}
 		catch (NoClassDefFoundError error) {
 			logger.debug(error, () -> "Failed to retrieve declared classes for " + clazz.getName());
@@ -914,24 +1036,64 @@ public final class ReflectionUtils {
 	}
 
 	/**
-	 * Get the sole declared {@link Constructor} for the supplied class.
+	 * Detect a cycle in the inner class hierarchy in which the supplied class
+	 * resides &mdash; from the supplied class up to the outermost enclosing class
+	 * &mdash; and throw a {@link JUnitException} if a cycle is detected.
 	 *
-	 * <p>Throws a {@link PreconditionViolationException} if the supplied
-	 * class declares more than one constructor.
+	 * <p>This method does <strong>not</strong> detect cycles within inner class
+	 * hierarchies <em>below</em> the supplied class.
+	 *
+	 * <p>If the supplied class is not an inner class and does not have a
+	 * searchable superclass, this method is effectively a no-op.
+	 *
+	 * @since 1.6
+	 * @see #isInnerClass(Class)
+	 * @see #isSearchable(Class)
+	 */
+	private static void detectInnerClassCycle(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
+		String className = clazz.getName();
+
+		if (noCyclesDetectedCache.contains(className)) {
+			return;
+		}
+
+		Class<?> superclass = clazz.getSuperclass();
+		if (isInnerClass(clazz) && isSearchable(superclass)) {
+			for (Class<?> enclosing = clazz.getEnclosingClass(); enclosing != null; enclosing = enclosing.getEnclosingClass()) {
+				if (superclass.equals(enclosing)) {
+					throw new JUnitException(String.format("Detected cycle in inner class hierarchy between %s and %s",
+						className, enclosing.getName()));
+				}
+			}
+		}
+
+		noCyclesDetectedCache.add(className);
+	}
+
+	/**
+	 * Get the sole declared, non-synthetic {@link Constructor} for the supplied class.
+	 *
+	 * <p>Throws a {@link org.junit.platform.commons.PreconditionViolationException}
+	 * if the supplied class declares more than one non-synthetic constructor.
 	 *
 	 * @param clazz the class to get the constructor for
 	 * @return the sole declared constructor; never {@code null}
 	 * @see Class#getDeclaredConstructors()
+	 * @see Class#isSynthetic()
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Constructor<T> getDeclaredConstructor(Class<T> clazz) {
 		Preconditions.notNull(clazz, "Class must not be null");
 		try {
-			Constructor<?>[] constructors = clazz.getDeclaredConstructors();
-			Preconditions.condition(constructors.length == 1,
+			List<Constructor<?>> constructors = Arrays.stream(clazz.getDeclaredConstructors())//
+					.filter(ctor -> !ctor.isSynthetic())//
+					.collect(toList());
+
+			Preconditions.condition(constructors.size() == 1,
 				() -> String.format("Class [%s] must declare a single constructor", clazz.getName()));
 
-			return (Constructor<T>) constructors[0];
+			return (Constructor<T>) constructors.get(0);
 		}
 		catch (Throwable t) {
 			throw ExceptionUtils.throwAsUncheckedException(getUnderlyingCause(t));
@@ -941,10 +1103,17 @@ public final class ReflectionUtils {
 	/**
 	 * Find all constructors in the supplied class that match the supplied predicate.
 	 *
+	 * <p>Note that this method may return {@linkplain Class#isSynthetic() synthetic}
+	 * constructors. If you wish to ignore synthetic constructors, you may filter
+	 * them out with the supplied {@code predicate} or filter them out of the list
+	 * returned by this method.
+	 *
 	 * @param clazz the class in which to search for constructors; never {@code null}
 	 * @param predicate the predicate to use to test for a match; never {@code null}
 	 * @return an immutable list of all such constructors found; never {@code null}
 	 * but potentially empty
+	 * @see Class#getDeclaredConstructors()
+	 * @see Class#isSynthetic()
 	 */
 	public static List<Constructor<?>> findConstructors(Class<?> clazz, Predicate<Constructor<?>> predicate) {
 		Preconditions.notNull(clazz, "Class must not be null");
@@ -963,16 +1132,7 @@ public final class ReflectionUtils {
 	}
 
 	/**
-	 * Find all {@linkplain Field fields} of the supplied class or interface
-	 * that match the specified {@code predicate}.
-	 *
-	 * <p>The results will not contain fields that are <em>hidden</em>.
-	 *
-	 * @param clazz the class or interface in which to find the fields; never {@code null}
-	 * @param predicate the field filter; never {@code null}
-	 * @param traversalMode the hierarchy traversal mode; never {@code null}
-	 * @return an immutable list of all such fields found; never {@code null}
-	 * but potentially empty
+	 * @see org.junit.platform.commons.support.ReflectionSupport#findFields(Class, Predicate, org.junit.platform.commons.support.HierarchyTraversalMode)
 	 */
 	public static List<Field> findFields(Class<?> clazz, Predicate<Field> predicate,
 			HierarchyTraversalMode traversalMode) {
@@ -1133,7 +1293,7 @@ public final class ReflectionUtils {
 		Preconditions.notNull(clazz, "Class must not be null");
 		Preconditions.notNull(predicate, "Predicate must not be null");
 
-		for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
+		for (Class<?> current = clazz; isSearchable(current); current = current.getSuperclass()) {
 			// Search for match in current type
 			List<Method> methods = current.isInterface() ? getMethods(current) : getDeclaredMethods(current, BOTTOM_UP);
 			for (Method method : methods) {
@@ -1321,16 +1481,7 @@ public final class ReflectionUtils {
 	 * implementation.
 	 */
 	private static int defaultFieldSorter(Field field1, Field field2) {
-		String name1 = field1.getName();
-		String name2 = field2.getName();
-		int comparison = Integer.compare(name1.hashCode(), name2.hashCode());
-		if (comparison == 0) {
-			comparison = name1.compareTo(name2);
-			if (comparison == 0) {
-				comparison = field1.toString().compareTo(field2.toString());
-			}
-		}
-		return comparison;
+		return Integer.compare(field1.getName().hashCode(), field2.getName().hashCode());
 	}
 
 	/**
@@ -1399,7 +1550,7 @@ public final class ReflectionUtils {
 
 	private static List<Field> getSuperclassFields(Class<?> clazz, HierarchyTraversalMode traversalMode) {
 		Class<?> superclass = clazz.getSuperclass();
-		if (superclass == null || superclass == Object.class) {
+		if (!isSearchable(superclass)) {
 			return Collections.emptyList();
 		}
 		return findAllFieldsInHierarchy(superclass, traversalMode);
@@ -1411,7 +1562,7 @@ public final class ReflectionUtils {
 
 	private static List<Method> getSuperclassMethods(Class<?> clazz, HierarchyTraversalMode traversalMode) {
 		Class<?> superclass = clazz.getSuperclass();
-		if (superclass == null || superclass == Object.class) {
+		if (!isSearchable(superclass)) {
 			return Collections.emptyList();
 		}
 		return findAllMethodsInHierarchy(superclass, traversalMode);
@@ -1499,6 +1650,18 @@ public final class ReflectionUtils {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Determine if the supplied class is <em>searchable</em>: is non-null and is
+	 * not equal to the class reference for {@code java.lang.Object}.
+	 *
+	 * <p>This method is often used to determine if a superclass should be
+	 * searched but may be applicable for other use cases as well.
+	 * @since 1.6
+	 */
+	private static boolean isSearchable(Class<?> clazz) {
+		return (clazz != null && clazz != Object.class);
 	}
 
 	/**

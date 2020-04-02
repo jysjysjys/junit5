@@ -1,11 +1,11 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
  * accompanies this distribution and is available at
  *
- * http://www.eclipse.org/legal/epl-v20.html
+ * https://www.eclipse.org/legal/epl-v20.html
  */
 
 package org.junit.platform.launcher.core;
@@ -22,7 +22,10 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectModul
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectUniqueId;
 import static org.junit.platform.launcher.EngineFilter.includeEngines;
+import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME;
 import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
+import static org.junit.platform.launcher.listeners.discovery.LauncherDiscoveryListeners.abortOnFailure;
+import static org.junit.platform.launcher.listeners.discovery.LauncherDiscoveryListeners.logging;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -31,7 +34,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.platform.commons.util.PreconditionViolationException;
+import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.DiscoveryFilter;
 import org.junit.platform.engine.TestEngine;
@@ -45,7 +48,6 @@ import org.junit.platform.fakes.TestEngineStub;
 import org.junit.platform.launcher.DiscoveryFilterStub;
 import org.junit.platform.launcher.EngineFilter;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.PostDiscoveryFilter;
 import org.junit.platform.launcher.PostDiscoveryFilterStub;
 
 /**
@@ -199,36 +201,31 @@ class LauncherDiscoveryRequestBuilderTests {
 		}
 
 		@Test
-		@SuppressWarnings("rawtypes")
 		void discoveryFiltersAreStoredInDiscoveryRequest() {
+			var filter1 = new DiscoveryFilterStub<>("filter1");
+			var filter2 = new DiscoveryFilterStub<>("filter2");
 			// @formatter:off
 			LauncherDiscoveryRequest discoveryRequest = request()
-					.filters(
-							new DiscoveryFilterStub("filter1"),
-							new DiscoveryFilterStub("filter2")
-					).build();
+					.filters(filter1, filter2)
+					.build();
 			// @formatter:on
 
-			List<String> filterStrings = discoveryRequest.getFiltersByType(DiscoveryFilter.class).stream().map(
-				DiscoveryFilter::toString).collect(toList());
-			assertThat(filterStrings).hasSize(2);
-			assertThat(filterStrings).contains("filter1", "filter2");
+			var filters = discoveryRequest.getFiltersByType(DiscoveryFilter.class);
+			assertThat(filters).containsOnly(filter1, filter2);
 		}
 
 		@Test
 		void postDiscoveryFiltersAreStoredInDiscoveryRequest() {
+			var postFilter1 = new PostDiscoveryFilterStub("postFilter1");
+			var postFilter2 = new PostDiscoveryFilterStub("postFilter2");
 			// @formatter:off
 			LauncherDiscoveryRequest discoveryRequest = request()
-					.filters(
-							new PostDiscoveryFilterStub("postFilter1"),
-							new PostDiscoveryFilterStub("postFilter2")
-					).build();
+					.filters(postFilter1, postFilter2)
+					.build();
 			// @formatter:on
 
-			List<String> filterStrings = discoveryRequest.getPostDiscoveryFilters().stream().map(
-				PostDiscoveryFilter::toString).collect(toList());
-			assertThat(filterStrings).hasSize(2);
-			assertThat(filterStrings).contains("postFilter1", "postFilter2");
+			var filters = discoveryRequest.getPostDiscoveryFilters();
+			assertThat(filters).containsOnly(postFilter1, postFilter2);
 		}
 
 		@Test
@@ -320,6 +317,47 @@ class LauncherDiscoveryRequestBuilderTests {
 			assertThat(configParams.get("key1")).contains("value1");
 			assertThat(configParams.get("key2")).contains("value2");
 		}
+	}
+
+	@Nested
+	class DiscoveryListenerTests {
+
+		@Test
+		void usesAbortOnFailureByDefault() {
+			var request = request().build();
+
+			assertThat(request.getDiscoveryListener()).isEqualTo(abortOnFailure());
+		}
+
+		@Test
+		void onlyAddsAbortOnFailureOnce() {
+			var request = request() //
+					.listeners(abortOnFailure()) //
+					.configurationParameter(DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME, "abortOnFailure") //
+					.build();
+
+			assertThat(request.getDiscoveryListener()).isEqualTo(abortOnFailure());
+		}
+
+		@Test
+		void onlyAddsLoggingOnce() {
+			var request = request() //
+					.listeners(logging()) //
+					.configurationParameter(DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME, "logging") //
+					.build();
+
+			assertThat(request.getDiscoveryListener()).isEqualTo(logging());
+		}
+
+		@Test
+		void createsCompositeForMultipleListeners() {
+			var request = request() //
+					.listeners(logging(), abortOnFailure()) //
+					.build();
+
+			assertThat(request.getDiscoveryListener().getClass().getSimpleName()).startsWith("Composite");
+		}
+
 	}
 
 	private static class SampleTestClass {
