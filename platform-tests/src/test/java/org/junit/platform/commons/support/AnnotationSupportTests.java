@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,7 +20,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Tag;
@@ -36,15 +35,15 @@ class AnnotationSupportTests {
 
 	@Test
 	void isAnnotatedPreconditions() {
-		Optional<Class<Probe>> optional = Optional.of(Probe.class);
+		var optional = Optional.of(Probe.class);
 		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.isAnnotated(optional, null));
 		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.isAnnotated(Probe.class, null));
 	}
 
 	@Test
 	void isAnnotatedDelegates() {
-		Class<Probe> element = Probe.class;
-		Optional<Class<Probe>> optional = Optional.of(element);
+		var element = Probe.class;
+		var optional = Optional.of(element);
 
 		assertEquals(AnnotationUtils.isAnnotated(optional, Tag.class),
 			AnnotationSupport.isAnnotated(optional, Tag.class));
@@ -58,17 +57,17 @@ class AnnotationSupportTests {
 	}
 
 	@Test
-	void findAnnotationPreconditions() {
-		Optional<Class<Probe>> optional = Optional.of(Probe.class);
+	void findAnnotationOnElementPreconditions() {
+		var optional = Optional.of(Probe.class);
 		assertPreconditionViolationException("annotationType", () -> AnnotationSupport.findAnnotation(optional, null));
 		assertPreconditionViolationException("annotationType",
 			() -> AnnotationSupport.findAnnotation(Probe.class, null));
 	}
 
 	@Test
-	void findAnnotationDelegates() {
-		Class<Probe> element = Probe.class;
-		Optional<Class<Probe>> optional = Optional.of(element);
+	void findAnnotationOnElementDelegates() {
+		var element = Probe.class;
+		var optional = Optional.of(element);
 
 		assertEquals(AnnotationUtils.findAnnotation(optional, Tag.class),
 			AnnotationSupport.findAnnotation(optional, Tag.class));
@@ -79,6 +78,37 @@ class AnnotationSupportTests {
 			AnnotationSupport.findAnnotation(element, Tag.class));
 		assertEquals(AnnotationUtils.findAnnotation(element, Override.class),
 			AnnotationSupport.findAnnotation(element, Override.class));
+	}
+
+	@Test
+	void findAnnotationOnClassPreconditions() {
+		assertPreconditionViolationException("annotationType",
+			() -> AnnotationSupport.findAnnotation(Probe.class, null, SearchOption.INCLUDE_ENCLOSING_CLASSES));
+		assertPreconditionViolationException("SearchOption",
+			() -> AnnotationSupport.findAnnotation(Probe.class, Override.class, null));
+	}
+
+	@Test
+	void findAnnotationOnClassDelegates() {
+		Class<?> clazz = Probe.class;
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Tag.class, false),
+			AnnotationSupport.findAnnotation(clazz, Tag.class, SearchOption.DEFAULT));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Tag.class, true),
+			AnnotationSupport.findAnnotation(clazz, Tag.class, SearchOption.INCLUDE_ENCLOSING_CLASSES));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Override.class, false),
+			AnnotationSupport.findAnnotation(clazz, Override.class, SearchOption.DEFAULT));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Override.class, true),
+			AnnotationSupport.findAnnotation(clazz, Override.class, SearchOption.INCLUDE_ENCLOSING_CLASSES));
+
+		clazz = Probe.InnerClass.class;
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Tag.class, false),
+			AnnotationSupport.findAnnotation(clazz, Tag.class, SearchOption.DEFAULT));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Tag.class, true),
+			AnnotationSupport.findAnnotation(clazz, Tag.class, SearchOption.INCLUDE_ENCLOSING_CLASSES));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Override.class, false),
+			AnnotationSupport.findAnnotation(clazz, Override.class, SearchOption.DEFAULT));
+		assertEquals(AnnotationUtils.findAnnotation(clazz, Override.class, true),
+			AnnotationSupport.findAnnotation(clazz, Override.class, SearchOption.INCLUDE_ENCLOSING_CLASSES));
 	}
 
 	@Test
@@ -132,7 +162,7 @@ class AnnotationSupportTests {
 
 	@Test
 	void findRepeatableAnnotationsDelegates() throws Throwable {
-		Method bMethod = Probe.class.getDeclaredMethod("bMethod");
+		var bMethod = Probe.class.getDeclaredMethod("bMethod");
 		assertEquals(AnnotationUtils.findRepeatableAnnotations(bMethod, Tag.class),
 			AnnotationSupport.findRepeatableAnnotations(bMethod, Tag.class));
 		Object expected = assertThrows(PreconditionViolationException.class,
@@ -185,7 +215,7 @@ class AnnotationSupportTests {
 
 	@Test
 	void findAnnotatedFieldValuesForNonStaticFields() {
-		Fields instance = new Fields();
+		var instance = new Fields();
 
 		assertThat(AnnotationSupport.findAnnotatedFieldValues(instance, Tag.class)).isEmpty();
 
@@ -203,7 +233,7 @@ class AnnotationSupportTests {
 
 	@Test
 	void findAnnotatedFieldValuesForNonStaticFieldsByType() {
-		Fields instance = new Fields();
+		var instance = new Fields();
 
 		assertThat(AnnotationSupport.findAnnotatedFieldValues(instance, FieldMarker.class, Number.class)).isEmpty();
 
@@ -227,7 +257,7 @@ class AnnotationSupportTests {
 			() -> AnnotationSupport.findAnnotatedFieldValues(this, null));
 
 		assertPreconditionViolationException("Class",
-			() -> AnnotationSupport.findAnnotatedFieldValues((Class<?>) null, FieldMarker.class));
+			() -> AnnotationSupport.findAnnotatedFieldValues(null, FieldMarker.class));
 		assertPreconditionViolationException("annotationType",
 			() -> AnnotationSupport.findAnnotatedFieldValues(Probe.class, null));
 
@@ -239,7 +269,7 @@ class AnnotationSupportTests {
 			() -> AnnotationSupport.findAnnotatedFieldValues(this, FieldMarker.class, null));
 
 		assertPreconditionViolationException("Class",
-			() -> AnnotationSupport.findAnnotatedFieldValues((Class<?>) null, FieldMarker.class, Number.class));
+			() -> AnnotationSupport.findAnnotatedFieldValues(null, FieldMarker.class, Number.class));
 		assertPreconditionViolationException("annotationType",
 			() -> AnnotationSupport.findAnnotatedFieldValues(Probe.class, null, Number.class));
 		assertPreconditionViolationException("fieldType",
@@ -269,6 +299,9 @@ class AnnotationSupportTests {
 		@Tag("method-tag-1")
 		@Tag("method-tag-2")
 		void bMethod() {
+		}
+
+		class InnerClass {
 		}
 
 	}

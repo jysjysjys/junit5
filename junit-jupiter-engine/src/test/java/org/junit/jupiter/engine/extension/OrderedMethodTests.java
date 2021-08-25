@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,11 +11,11 @@
 package org.junit.jupiter.engine.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.junit.jupiter.api.MethodOrderer.Random.RANDOM_SEED_PROPERTY_NAME;
 import static org.junit.jupiter.api.Order.DEFAULT;
 import static org.junit.jupiter.engine.Constants.DEFAULT_PARALLEL_EXECUTION_MODE;
+import static org.junit.jupiter.engine.Constants.DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME;
 import static org.junit.jupiter.engine.Constants.PARALLEL_EXECUTION_ENABLED_PROPERTY_NAME;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
@@ -27,14 +27,13 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.MethodDescriptor;
 import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.MethodOrderer.Alphanumeric;
+import org.junit.jupiter.api.MethodOrderer.MethodName;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.MethodOrderer.Random;
 import org.junit.jupiter.api.MethodOrdererContext;
@@ -84,7 +83,29 @@ class OrderedMethodTests {
 		// on the class names.
 		assertThat(testClass.getSuperclass().getName()).isGreaterThan(testClass.getName());
 
-		var tests = executeTestsInParallel(AlphanumericTestCase.class);
+		var tests = executeTestsInParallel(testClass);
+
+		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+
+		assertThat(callSequence).containsExactly("$()", "AAA()", "AAA(org.junit.jupiter.api.TestInfo)",
+			"AAA(org.junit.jupiter.api.TestReporter)", "ZZ_Top()", "___()", "a1()", "a2()", "b()", "c()", "zzz()");
+		assertThat(threadNames).hasSize(1);
+	}
+
+	@Test
+	void methodName() {
+		Class<?> testClass = MethodNameTestCase.class;
+
+		// The name of the base class MUST start with a letter alphanumerically
+		// greater than "A" so that BaseTestCase comes after AlphanumericTestCase
+		// if methods are sorted by class name for the fallback ordering if two
+		// methods have the same name but different parameter lists. Note, however,
+		// that Alphanumeric actually does not order methods like that, but we want
+		// this check to remain in place to ensure that the ordering does not rely
+		// on the class names.
+		assertThat(testClass.getSuperclass().getName()).isLessThan(testClass.getName());
+
+		var tests = executeTestsInParallel(testClass);
 
 		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
@@ -148,29 +169,39 @@ class OrderedMethodTests {
 	}
 
 	@Test
+	void defaultOrderer() {
+		var tests = executeTestsInParallel(WithoutTestMethodOrderTestCase.class, OrderAnnotation.class);
+
+		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+
+		assertThat(callSequence).containsExactly("test1()", "test2()", "test3()");
+		assertThat(threadNames).hasSize(1);
+	}
+
+	@Test
 	@TrackLogRecords
 	void randomWithBogusSeedRepeatedly(LogRecordListener listener) {
-		String seed = "explode";
-		String expectedMessagePattern = "Failed to convert configuration parameter \\["
-				+ Pattern.quote(Random.RANDOM_SEED_PROPERTY_NAME) + "\\] with value \\[" + seed
-				+ "\\] to a long\\. Using default seed \\[\\d+\\] as fallback\\.";
+		var seed = "explode";
+		var expectedMessagePattern = Pattern.compile(
+			"Failed to convert configuration parameter \\[" + Pattern.quote(Random.RANDOM_SEED_PROPERTY_NAME)
+					+ "] with value \\[" + seed + "] to a long\\. Using default seed \\[\\d+] as fallback\\.");
 
 		Set<String> uniqueSequences = new HashSet<>();
 
-		for (int i = 0; i < 10; i++) {
+		for (var i = 0; i < 10; i++) {
 			callSequence.clear();
 			listener.clear();
 
-			var tests = executeTestsInParallelWithRandomSeed(RandomTestCase.class, seed);
+			var tests = executeRandomTestCaseInParallelWithRandomSeed(seed);
 
 			tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
-			uniqueSequences.add(callSequence.stream().collect(Collectors.joining(",")));
+			uniqueSequences.add(String.join(",", callSequence));
 
 			// @formatter:off
-			assertTrue(listener.stream(Random.class, Level.WARNING)
-				.map(LogRecord::getMessage)
-				.anyMatch(msg -> msg.matches(expectedMessagePattern)));
+			assertThat(listener.stream(Random.class, Level.WARNING)
+					.map(LogRecord::getMessage))
+					.anyMatch(expectedMessagePattern.asMatchPredicate());
 			// @formatter:on
 		}
 
@@ -182,23 +213,23 @@ class OrderedMethodTests {
 	void randomWithDifferentSeedConsecutively(LogRecordListener listener) {
 		Set<String> uniqueSequences = new HashSet<>();
 
-		for (int i = 0; i < 10; i++) {
-			String seed = String.valueOf(i);
-			String expectedMessage = "Using custom seed for configuration parameter ["
-					+ Random.RANDOM_SEED_PROPERTY_NAME + "] with value [" + seed + "].";
+		for (var i = 0; i < 10; i++) {
+			var seed = String.valueOf(i);
+			var expectedMessage = "Using custom seed for configuration parameter [" + Random.RANDOM_SEED_PROPERTY_NAME
+					+ "] with value [" + seed + "].";
 			callSequence.clear();
 			listener.clear();
 
-			var tests = executeTestsInParallelWithRandomSeed(RandomTestCase.class, seed);
+			var tests = executeRandomTestCaseInParallelWithRandomSeed(seed);
 
 			tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
-			uniqueSequences.add(callSequence.stream().collect(Collectors.joining(",")));
+			uniqueSequences.add(String.join(",", callSequence));
 
 			// @formatter:off
-			assertTrue(listener.stream(Random.class, Level.CONFIG)
-				.map(LogRecord::getMessage)
-				.anyMatch(expectedMessage::equals));
+			assertThat(listener.stream(Random.class, Level.CONFIG)
+					.map(LogRecord::getMessage))
+					.contains(expectedMessage);
 			// @formatter:on
 
 			assertThat(threadNames).hasSize(i + 1);
@@ -211,15 +242,15 @@ class OrderedMethodTests {
 	@Test
 	@TrackLogRecords
 	void randomWithCustomSeed(LogRecordListener listener) {
-		String seed = "42";
-		String expectedMessage = "Using custom seed for configuration parameter [" + Random.RANDOM_SEED_PROPERTY_NAME
+		var seed = "42";
+		var expectedMessage = "Using custom seed for configuration parameter [" + Random.RANDOM_SEED_PROPERTY_NAME
 				+ "] with value [" + seed + "].";
 
-		for (int i = 0; i < 10; i++) {
+		for (var i = 0; i < 10; i++) {
 			callSequence.clear();
 			listener.clear();
 
-			var tests = executeTestsInParallelWithRandomSeed(RandomTestCase.class, seed);
+			var tests = executeRandomTestCaseInParallelWithRandomSeed(seed);
 
 			tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
@@ -227,9 +258,9 @@ class OrderedMethodTests {
 			assertThat(callSequence).containsExactly("test2()", "test3()", "test4()", "repetition 1 of 1", "test1()");
 
 			// @formatter:off
-			assertTrue(listener.stream(Random.class, Level.CONFIG)
-				.map(LogRecord::getMessage)
-				.anyMatch(expectedMessage::equals));
+			assertThat(listener.stream(Random.class, Level.CONFIG)
+					.map(LogRecord::getMessage))
+					.contains(expectedMessage);
 			// @formatter:on
 		}
 
@@ -245,7 +276,7 @@ class OrderedMethodTests {
 
 		assertThat(callSequence).containsExactlyInAnyOrder("test1()", "test2()");
 
-		String expectedMessage = "MethodOrderer [" + MisbehavingByAdding.class.getName()
+		var expectedMessage = "MethodOrderer [" + MisbehavingByAdding.class.getName()
 				+ "] added 2 MethodDescriptor(s) for test class [" + testClass.getName() + "] which will be ignored.";
 
 		assertExpectedLogMessage(listener, expectedMessage);
@@ -260,7 +291,7 @@ class OrderedMethodTests {
 
 		assertThat(callSequence).containsExactlyInAnyOrder("test1()", "test2()", "test3()");
 
-		String expectedMessage = "MethodOrderer [" + MisbehavingByRemoving.class.getName()
+		var expectedMessage = "MethodOrderer [" + MisbehavingByRemoving.class.getName()
 				+ "] removed 2 MethodDescriptor(s) for test class [" + testClass.getName()
 				+ "] which will be retained with arbitrary ordering.";
 
@@ -269,27 +300,33 @@ class OrderedMethodTests {
 
 	private void assertExpectedLogMessage(LogRecordListener listener, String expectedMessage) {
 		// @formatter:off
-		assertTrue(listener.stream(Level.WARNING)
-			.map(LogRecord::getMessage)
-			.anyMatch(expectedMessage::equals));
+		assertThat(listener.stream(Level.WARNING)
+				.map(LogRecord::getMessage))
+				.contains(expectedMessage);
 		// @formatter:on
 	}
 
 	private Events executeTestsInParallel(Class<?> testClass) {
+		return executeTestsInParallel(testClass, Random.class);
+	}
+
+	private Events executeTestsInParallel(Class<?> testClass, Class<? extends MethodOrderer> defaultOrderer) {
 		// @formatter:off
 		return EngineTestKit
 				.engine("junit-jupiter")
 				.configurationParameter(PARALLEL_EXECUTION_ENABLED_PROPERTY_NAME, "true")
 				.configurationParameter(DEFAULT_PARALLEL_EXECUTION_MODE, "concurrent")
+				.configurationParameter(DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME, defaultOrderer.getName())
 				.selectors(selectClass(testClass))
 				.execute()
 				.testEvents();
 		// @formatter:on
 	}
 
-	private Events executeTestsInParallelWithRandomSeed(Class<?> testClass, String seed) {
+	private Events executeRandomTestCaseInParallelWithRandomSeed(String seed) {
 		var configurationParameters = Map.of(//
 			PARALLEL_EXECUTION_ENABLED_PROPERTY_NAME, "true", //
+			DEFAULT_PARALLEL_EXECUTION_MODE, "concurrent", //
 			RANDOM_SEED_PROPERTY_NAME, seed //
 		);
 
@@ -297,7 +334,7 @@ class OrderedMethodTests {
 		return EngineTestKit
 				.engine("junit-jupiter")
 				.configurationParameters(configurationParameters)
-				.selectors(selectClass(testClass))
+				.selectors(selectClass(RandomTestCase.class))
 				.execute()
 				.testEvents();
 		// @formatter:on
@@ -317,12 +354,66 @@ class OrderedMethodTests {
 
 	}
 
-	@TestMethodOrder(Alphanumeric.class)
+	@SuppressWarnings("unused")
+	@TestMethodOrder(MethodName.class)
+	static class MethodNameTestCase extends BaseTestCase {
+
+		@BeforeEach
+		void trackInvocations(TestInfo testInfo) {
+			var method = testInfo.getTestMethod().orElseThrow(AssertionError::new);
+			var signature = String.format("%s(%s)", method.getName(),
+				ClassUtils.nullSafeToString(method.getParameterTypes()));
+
+			callSequence.add(signature);
+			threadNames.add(Thread.currentThread().getName());
+		}
+
+		@TestFactory
+		DynamicTest b() {
+			return dynamicTest("dynamic", () -> {
+			});
+		}
+
+		@Test
+		void $() {
+		}
+
+		@Test
+		void ___() {
+		}
+
+		@Test
+		void AAA(TestReporter testReporter) {
+		}
+
+		@Test
+		void AAA(TestInfo testInfo) {
+		}
+
+		@Test
+		void ZZ_Top() {
+		}
+
+		@Test
+		void a1() {
+		}
+
+		@Test
+		void a2() {
+		}
+
+		@RepeatedTest(1)
+		void zzz() {
+		}
+	}
+
+	@SuppressWarnings({ "deprecation", "unused" })
+	@TestMethodOrder(org.junit.jupiter.api.MethodOrderer.Alphanumeric.class)
 	static class AlphanumericTestCase extends BaseTestCase {
 
 		@BeforeEach
 		void trackInvocations(TestInfo testInfo) {
-			var method = testInfo.getTestMethod().get();
+			var method = testInfo.getTestMethod().orElseThrow(AssertionError::new);
 			var signature = String.format("%s(%s)", method.getName(),
 				ClassUtils.nullSafeToString(method.getParameterTypes()));
 
@@ -580,6 +671,7 @@ class OrderedMethodTests {
 
 	static class OrderAnnotationWithNestedClassTestCase extends OrderAnnotationTestCase {
 		@Nested
+		@TestMethodOrder(OrderAnnotation.class)
 		class NestedTests {
 
 			@BeforeEach
@@ -605,13 +697,13 @@ class OrderedMethodTests {
 
 		@Override
 		public void orderMethods(MethodOrdererContext context) {
-			context.getMethodDescriptors().add(mock(MethodDescriptor.class));
-			context.getMethodDescriptors().add(mock(MethodDescriptor.class));
+			context.getMethodDescriptors().add(mockMethodDescriptor());
+			context.getMethodDescriptors().add(mockMethodDescriptor());
 		}
 
 		@SuppressWarnings("unchecked")
-		static <T> T mock(Class<? super T> type) {
-			return (T) Mockito.mock(type);
+		static <T> T mockMethodDescriptor() {
+			return (T) Mockito.mock((Class<? super T>) MethodDescriptor.class);
 		}
 
 	}
@@ -623,6 +715,31 @@ class OrderedMethodTests {
 			context.getMethodDescriptors().remove(0);
 			context.getMethodDescriptors().remove(0);
 		}
+	}
+
+	static class WithoutTestMethodOrderTestCase {
+
+		@BeforeEach
+		void trackInvocations(TestInfo testInfo) {
+			callSequence.add(testInfo.getDisplayName());
+			threadNames.add(Thread.currentThread().getName());
+		}
+
+		@Test
+		@Order(2)
+		void test2() {
+		}
+
+		@Test
+		@Order(3)
+		void test3() {
+		}
+
+		@Test
+		@Order(1)
+		void test1() {
+		}
+
 	}
 
 }

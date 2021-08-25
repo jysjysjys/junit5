@@ -1,29 +1,26 @@
 plugins {
 	`kotlin-library-conventions`
 	`shadow-conventions`
+	`testing-conventions`
 }
-
-apply(from = "$rootDir/gradle/testing.gradle.kts")
 
 description = "JUnit Jupiter Params"
 
 dependencies {
-	internal(platform(project(":dependencies")))
+	api(platform(projects.junitBom))
+	api(projects.junitJupiterApi)
 
-	api(platform(project(":junit-bom")))
-	api("org.apiguardian:apiguardian-api")
-	api(project(":junit-jupiter-api"))
+	compileOnlyApi(libs.apiguardian)
 
-	shadowed(platform(project(":dependencies")))
-	shadowed("com.univocity:univocity-parsers")
+	shadowed(libs.univocity.parsers)
 
-	testImplementation(project(":junit-platform-testkit"))
-	testImplementation(project(":junit-jupiter-engine"))
-	testImplementation(project(":junit-platform-launcher"))
-	testImplementation(project(":junit-platform-runner"))
+	testImplementation(projects.junitPlatformTestkit)
+	testImplementation(projects.junitJupiterEngine)
+	testImplementation(projects.junitPlatformLauncher)
+	testImplementation(projects.junitPlatformRunner)
 
-	compileOnly("org.jetbrains.kotlin:kotlin-stdlib")
-	testImplementation("org.jetbrains.kotlin:kotlin-stdlib")
+	compileOnly(kotlin("stdlib"))
+	testImplementation(kotlin("stdlib"))
 }
 
 tasks {

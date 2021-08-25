@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.migrationsupport.rules;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -38,7 +38,7 @@ import org.junit.rules.ExternalResource;
  * @see org.junit.rules.TestRule
  * @see org.junit.Rule
  */
-@API(status = EXPERIMENTAL, since = "5.0")
+@API(status = STABLE, since = "5.7")
 public class ExternalResourceSupport implements BeforeEachCallback, AfterEachCallback {
 
 	private final TestRuleSupport support = new TestRuleSupport(ExternalResourceAdapter::new, ExternalResource.class);

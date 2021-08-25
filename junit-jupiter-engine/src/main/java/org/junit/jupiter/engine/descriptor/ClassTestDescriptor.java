@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -29,6 +29,7 @@ import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestTag;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 
 /**
  * {@link TestDescriptor} for tests based on Java classes.
@@ -73,7 +74,8 @@ public class ClassTestDescriptor extends ClassBasedTestDescriptor {
 
 	@Override
 	protected TestInstances instantiateTestClass(JupiterEngineExecutionContext parentExecutionContext,
-			ExtensionRegistry registry, ExtensionRegistrar registrar, ExtensionContext extensionContext) {
+			ExtensionRegistry registry, ExtensionRegistrar registrar, ExtensionContext extensionContext,
+			ThrowableCollector throwableCollector) {
 		return instantiateTestClass(Optional.empty(), registry, extensionContext);
 	}
 

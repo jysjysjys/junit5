@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -54,9 +54,14 @@ class AsciidocApiReportWriter extends AbstractApiReportWriter {
 
 	@Override
 	protected void printDeclarationTableRow(Class<?> type, PrintWriter out) {
+		String packageName = type.getPackage().getName();
+		String typeName = type.getCanonicalName();
+		if (typeName.startsWith(packageName + '.')) {
+			typeName = typeName.substring(packageName.length() + 1);
+		}
 		out.printf(ASCIIDOC_FORMAT, //
-			code(type.getPackage().getName()), //
-			code(type.getSimpleName()) + " " + italic("(" + getKind(type) + ")"), //
+			code(packageName), //
+			code(typeName) + " " + italic("(" + getKind(type) + ")"), //
 			code(type.getAnnotation(API.class).since()) //
 		);
 	}

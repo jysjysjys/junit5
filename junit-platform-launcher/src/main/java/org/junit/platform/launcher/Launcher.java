@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.launcher;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
@@ -52,6 +53,15 @@ import org.apiguardian.api.API;
 public interface Launcher {
 
 	/**
+	 * Register one or more listeners for test discovery.
+	 *
+	 * @param listeners the listeners to be notified of test discovery events;
+	 * never {@code null} or empty
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	void registerLauncherDiscoveryListeners(LauncherDiscoveryListener... listeners);
+
+	/**
 	 * Register one or more listeners for test execution.
 	 *
 	 * @param listeners the listeners to be notified of test execution events;
@@ -66,7 +76,8 @@ public interface Launcher {
 	 *
 	 * @apiNote This method may be called to generate a preview of the test
 	 * tree. The resulting {@link TestPlan} is unmodifiable and may be passed to
-	 * {@link #execute(TestPlan, TestExecutionListener...)} for execution.
+	 * {@link #execute(TestPlan, TestExecutionListener...)} for execution at
+	 * most once.
 	 *
 	 * @param launcherDiscoveryRequest the launcher discovery request; never
 	 * {@code null}
@@ -106,6 +117,9 @@ public interface Launcher {
 	 * <p>Supplied test execution listeners are registered in addition to
 	 * already registered listeners but only for the execution of the supplied
 	 * test plan.
+	 *
+	 * @apiNote The supplied {@link TestPlan} must not have been executed
+	 * previously.
 	 *
 	 * @param testPlan the test plan to execute; never {@code null}
 	 * @param listeners additional test execution listeners; never {@code null}

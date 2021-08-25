@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.function.Executable;
-import org.junit.platform.commons.util.BlacklistedExceptions;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.opentest4j.MultipleFailuresError;
 
 /**
@@ -69,7 +69,7 @@ class AssertAll {
 						return null;
 					}
 					catch (Throwable t) {
-						BlacklistedExceptions.rethrowIfBlacklisted(t);
+						UnrecoverableExceptions.rethrowIfUnrecoverable(t);
 						return t;
 					}
 				}) //

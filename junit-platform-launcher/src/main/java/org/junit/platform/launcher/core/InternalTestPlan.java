@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,8 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.junit.platform.commons.PreconditionViolationException;
-import org.junit.platform.commons.logging.Logger;
-import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
@@ -26,41 +24,41 @@ import org.junit.platform.launcher.TestPlan;
  */
 class InternalTestPlan extends TestPlan {
 
-	private static final Logger logger = LoggerFactory.getLogger(InternalTestPlan.class);
-
-	private final AtomicBoolean warningEmitted = new AtomicBoolean(false);
-	private final Root root;
+	private final AtomicBoolean executionStarted = new AtomicBoolean(false);
+	private final LauncherDiscoveryResult discoveryResult;
 	private final TestPlan delegate;
 
-	static InternalTestPlan from(Root root) {
-		TestPlan delegate = TestPlan.from(root.getEngineDescriptors());
-		return new InternalTestPlan(root, delegate);
+	static InternalTestPlan from(LauncherDiscoveryResult discoveryResult) {
+		TestPlan delegate = TestPlan.from(discoveryResult.getEngineTestDescriptors(),
+			discoveryResult.getConfigurationParameters());
+		return new InternalTestPlan(discoveryResult, delegate);
 	}
 
-	private InternalTestPlan(Root root, TestPlan delegate) {
-		super(delegate.containsTests());
-		this.root = root;
+	private InternalTestPlan(LauncherDiscoveryResult discoveryResult, TestPlan delegate) {
+		super(delegate.containsTests(), delegate.getConfigurationParameters());
+		this.discoveryResult = discoveryResult;
 		this.delegate = delegate;
 	}
 
-	Root getRoot() {
-		return root;
+	void markStarted() {
+		if (!executionStarted.compareAndSet(false, true)) {
+			throw new PreconditionViolationException("TestPlan must only be executed once");
+		}
+	}
+
+	LauncherDiscoveryResult getDiscoveryResult() {
+		return discoveryResult;
 	}
 
 	@Override
 	@SuppressWarnings("deprecation")
 	public void add(TestIdentifier testIdentifier) {
-		if (warningEmitted.compareAndSet(false, true)) {
-			logger.warn(() -> "Attempt to modify the TestPlan was detected. "
-					+ "A future version of the JUnit Platform will ignore this call and eventually even throw an exception. "
-					+ "Please contact your IDE/tool vendor and request a fix (see https://github.com/junit-team/junit5/issues/1732 for details).");
-		}
-		addInternal(testIdentifier);
+		delegate.add(testIdentifier);
 	}
 
-	@SuppressWarnings("deprecation")
-	void addInternal(TestIdentifier testIdentifier) {
-		delegate.add(testIdentifier);
+	@Override
+	public void addInternal(TestIdentifier testIdentifier) {
+		delegate.addInternal(testIdentifier);
 	}
 
 	@Override

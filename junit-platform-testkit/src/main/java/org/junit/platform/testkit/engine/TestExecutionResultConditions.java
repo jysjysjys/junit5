@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,7 @@ package org.junit.platform.testkit.engine;
 
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.Collectors.toList;
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.junit.platform.commons.util.FunctionUtils.where;
 
 import java.util.Arrays;
@@ -32,7 +32,7 @@ import org.junit.platform.engine.TestExecutionResult.Status;
  * @since 1.4
  * @see EventConditions
  */
-@API(status = EXPERIMENTAL, since = "1.4")
+@API(status = MAINTAINED, since = "1.7")
 public final class TestExecutionResultConditions {
 
 	private TestExecutionResultConditions() {

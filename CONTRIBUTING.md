@@ -87,6 +87,11 @@ possible.
 
 In multi-line bullet point entries, subsequent lines should be indented.
 
+### Spelling
+
+Use American English spelling rules when writing documentation as well as for
+code -- class names, method names, variable names, etc.
+
 ### Javadoc
 
 - Javadoc comments should be wrapped after 80 characters whenever possible.
@@ -95,8 +100,17 @@ In multi-line bullet point entries, subsequent lines should be indented.
 - Insert a blank line before at-clauses/tags.
 - Favor `{@code foo}` over `<code>foo</code>`.
 - Favor literals (e.g., `{@literal @}`) over HTML entities.
+- New classes and methods should have `@since ...` annotation.
 - Use `@since 5.0` instead of `@since 5.0.0`.
 - Do not use `@author` tags. Instead, contributors are listed on [GitHub](https://github.com/junit-team/junit5/graphs/contributors).
+- Do not use verbs in third person form (e.g. use "Discover tests..." instead of "Discovers tests...")
+  in the first sentence describing a method.
+
+#### Examples
+
+See [`ExtensionContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/extension/ExtensionContext.java) and
+[`ParameterContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/extension/ParameterContext.java) for example Javadoc.
+
 
 ### Tests
 
@@ -118,11 +132,28 @@ In multi-line bullet point entries, subsequent lines should be indented.
 ### Logging
 
 - In general, logging should be used sparingly.
-- All logging must be performed via the internal `Logger` façade provided via the JUnit [LoggerFactory](https://junit.org/junit5/docs/current/api/org/junit/platform/commons/logging/LoggerFactory.html).
-- Levels defined in JUnit's [Logger](https://junit.org/junit5/docs/current/api/org/junit/platform/commons/logging/Logger.html) façade.
+- All logging must be performed via the internal `Logger` façade provided via the JUnit [LoggerFactory](https://github.com/junit-team/junit5/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/LoggerFactory.java).
+- Levels defined in JUnit's [Logger](https://github.com/junit-team/junit5/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/Logger.java) façade, which delegates to Java Util Logging (JUL) for the actual logging.
   - _error_ (JUL: `SEVERE`, Log4J: `ERROR`): extra information (in addition to an Exception) about errors that will halt execution
   - _warn_ (JUL: `WARNING`, Log4J: `WARN`): potential usage or configuration errors that should not halt execution
   - _info_ (JUL: `INFO`, Log4J: `INFO`): information the users might want to know but not by default
   - _config_ (JUL: `CONFIG`, Log4J: `CONFIG`): information related to configuration of the system (Example: `ServiceLoaderTestEngineRegistry` logs IDs of discovered engines)
   - _debug_ (JUL: `FINE`, Log4J: `DEBUG`)
   - _trace_ (JUL: `FINER`, Log4J: `TRACE`)
+
+### Deprecation
+
+Publicly available interfaces, classes and methods have a defined lifecycle
+which is described in detail in the [User Guide](https://junit.org/junit5/docs/current/user-guide/#api-evolution).
+This process is using the `@API` annotation from [API Guardian](https://github.com/apiguardian-team/apiguardian).
+It also describes the deprecation process followed for API items.
+
+To deprecate an item:
+- Update the `@API.status` to `DEPRECATED`.
+- Update `@API.since`. Please note `since` describes the version when the
+  status was changed and not the introduction of the element.
+- Add the `@Deprecated` Java annotation on the item.
+- Add the `@deprecated` JavaDoc tag to describe the deprecation, and refer to
+  an eventual replacement.
+- If the item is used in existing code, add `@SuppressWarnings("deprecation")`
+  to make the build pass.

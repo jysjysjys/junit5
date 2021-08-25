@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 import org.apiguardian.api.API;
 
 /**
- * Class-related predicate holder used by reflection utilities.
+ * Class-related predicate used by reflection utilities.
  *
  * <h3>DISCLAIMER</h3>
  *

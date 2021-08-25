@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,8 +24,8 @@ import com.univocity.parsers.csv.CsvParser;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.support.AnnotationConsumer;
 import org.junit.platform.commons.PreconditionViolationException;
-import org.junit.platform.commons.util.BlacklistedExceptions;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 
 /**
  * @since 5.0
@@ -75,7 +75,7 @@ class CsvArgumentsProvider implements ArgumentsProvider, AnnotationConsumer<CsvS
 	}
 
 	static void handleCsvException(Throwable throwable, Annotation annotation) {
-		BlacklistedExceptions.rethrowIfBlacklisted(throwable);
+		UnrecoverableExceptions.rethrowIfUnrecoverable(throwable);
 		if (throwable instanceof PreconditionViolationException) {
 			throw (PreconditionViolationException) throwable;
 		}

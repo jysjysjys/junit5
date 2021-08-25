@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.jupiter.params;
 
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -119,7 +120,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@API(status = EXPERIMENTAL, since = "5.0")
+@API(status = STABLE, since = "5.7")
 @TestTemplate
 @ExtendWith(ParameterizedTestExtension.class)
 public @interface ParameterizedTest {
@@ -128,20 +129,18 @@ public @interface ParameterizedTest {
 	 * Placeholder for the {@linkplain org.junit.jupiter.api.TestInfo#getDisplayName
 	 * display name} of a {@code @ParameterizedTest} method: <code>{displayName}</code>
 	 *
-	 * @see #name
 	 * @since 5.3
+	 * @see #name
 	 */
-	@API(status = EXPERIMENTAL, since = "5.3")
 	String DISPLAY_NAME_PLACEHOLDER = "{displayName}";
 
 	/**
 	 * Placeholder for the current invocation index of a {@code @ParameterizedTest}
 	 * method (1-based): <code>{index}</code>
 	 *
-	 * @see #name
 	 * @since 5.3
+	 * @see #name
 	 */
-	@API(status = EXPERIMENTAL, since = "5.3")
 	String INDEX_PLACEHOLDER = "{index}";
 
 	/**
@@ -149,10 +148,9 @@ public @interface ParameterizedTest {
 	 * current invocation of a {@code @ParameterizedTest} method:
 	 * <code>{arguments}</code>
 	 *
-	 * @see #name
 	 * @since 5.3
+	 * @see #name
 	 */
-	@API(status = EXPERIMENTAL, since = "5.3")
 	String ARGUMENTS_PLACEHOLDER = "{arguments}";
 
 	/**
@@ -160,10 +158,9 @@ public @interface ParameterizedTest {
 	 * of the current invocation of a {@code @ParameterizedTest} method:
 	 * <code>{argumentsWithNames}</code>
 	 *
-	 * @see #name
 	 * @since 5.6
+	 * @see #name
 	 */
-	@API(status = EXPERIMENTAL, since = "5.6")
 	String ARGUMENTS_WITH_NAMES_PLACEHOLDER = "{argumentsWithNames}";
 
 	/**
@@ -174,20 +171,23 @@ public @interface ParameterizedTest {
 	 * {@linkplain #DISPLAY_NAME_PLACEHOLDER display name} of the
 	 * {@code @ParameterizedTest} method.
 	 *
+	 * @since 5.3
 	 * @see #name
 	 * @see #DISPLAY_NAME_PLACEHOLDER
 	 * @see #INDEX_PLACEHOLDER
 	 * @see #ARGUMENTS_WITH_NAMES_PLACEHOLDER
-	 * @since 5.3
 	 */
-	@API(status = EXPERIMENTAL, since = "5.3")
 	String DEFAULT_DISPLAY_NAME = "[" + INDEX_PLACEHOLDER + "] " + ARGUMENTS_WITH_NAMES_PLACEHOLDER;
 
 	/**
 	 * The display name to be used for individual invocations of the
 	 * parameterized test; never blank or consisting solely of whitespace.
 	 *
-	 * <p>Defaults to {@link #DEFAULT_DISPLAY_NAME}.
+	 * <p> If "{default_display_name}" is returned when invoking name(), we will:
+	 * <ul>
+	 * <li>Look up the new config param from junit-platform.properties, and if it has been set, use it</li>
+	 * <li>otherwise, we will use the value of the {@link #DEFAULT_DISPLAY_NAME} constant.</li>
+	 * </ul>
 	 *
 	 * <h4>Supported placeholders</h4>
 	 * <ul>
@@ -197,11 +197,27 @@ public @interface ParameterizedTest {
 	 * <li><code>{0}</code>, <code>{1}</code>, etc.: an individual argument (0-based)</li>
 	 * </ul>
 	 *
+	 * <p>Note that "{default_display_name}" is a flag rather than a placeholder.
+	 *
 	 * <p>For the latter, you may use {@link java.text.MessageFormat} patterns
-	 * to customize formatting.
+	 * to customize formatting. Please note that the original arguments are
+	 * passed when formatting, regardless of any implicit or explicit argument
+	 * conversions.
 	 *
 	 * @see java.text.MessageFormat
 	 */
-	String name() default DEFAULT_DISPLAY_NAME;
+	String name() default "{default_display_name}";
+
+	/**
+	 * If true, all arguments of the parameterized test implementing {@link AutoCloseable}
+	 * will be closed after {@code @AfterEach} methods and {@code AfterEachCallbacks}
+	 * have been called.
+	 *
+	 * @since 5.8
+	 * @see java.lang.AutoCloseable
+	 * @see ParameterizedTestParameterResolver
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	boolean autoCloseArguments() default true;
 
 }

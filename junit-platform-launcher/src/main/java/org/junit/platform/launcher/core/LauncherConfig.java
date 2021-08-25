@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.platform.launcher.core;
 
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -20,6 +21,9 @@ import org.apiguardian.api.API;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.launcher.Launcher;
+import org.junit.platform.launcher.LauncherDiscoveryListener;
+import org.junit.platform.launcher.LauncherSessionListener;
+import org.junit.platform.launcher.PostDiscoveryFilter;
 import org.junit.platform.launcher.TestExecutionListener;
 
 /**
@@ -46,8 +50,14 @@ import org.junit.platform.launcher.TestExecutionListener;
  * @see LauncherFactory
  * @since 1.3
  */
-@API(status = EXPERIMENTAL, since = "1.3")
+@API(status = STABLE, since = "1.7")
 public interface LauncherConfig {
+
+	/**
+	 * The default {@code LauncherConfig} which uses automatic registration for
+	 * test engines, supported listeners, and post-discovery filters.
+	 */
+	LauncherConfig DEFAULT = builder().build();
 
 	/**
 	 * Determine if test engines should be discovered at runtime using the
@@ -57,6 +67,30 @@ public interface LauncherConfig {
 	 * @return {@code true} if test engines should be automatically registered
 	 */
 	boolean isTestEngineAutoRegistrationEnabled();
+
+	/**
+	 * Determine if launcher session listeners should be discovered at runtime
+	 * using the {@link java.util.ServiceLoader ServiceLoader} mechanism and
+	 * automatically registered.
+	 *
+	 * @return {@code true} if launcher session listeners should be
+	 * automatically registered
+	 * @since 1.8
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	boolean isLauncherSessionListenerAutoRegistrationEnabled();
+
+	/**
+	 * Determine if launcher discovery listeners should be discovered at runtime
+	 * using the {@link java.util.ServiceLoader ServiceLoader} mechanism and
+	 * automatically registered.
+	 *
+	 * @return {@code true} if launcher discovery listeners should be
+	 * automatically registered
+	 * @since 1.8
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	boolean isLauncherDiscoveryListenerAutoRegistrationEnabled();
 
 	/**
 	 * Determine if test execution listeners should be discovered at runtime
@@ -69,6 +103,18 @@ public interface LauncherConfig {
 	boolean isTestExecutionListenerAutoRegistrationEnabled();
 
 	/**
+	 * Determine if post discovery filters should be discovered at runtime
+	 * using the {@link java.util.ServiceLoader ServiceLoader} mechanism and
+	 * automatically registered.
+	 *
+	 * @return {@code true} if post discovery filters should be automatically
+	 * registered
+	 * @since 1.7
+	 */
+	@API(status = EXPERIMENTAL, since = "1.7")
+	boolean isPostDiscoveryFilterAutoRegistrationEnabled();
+
+	/**
 	 * Get the collection of additional test engines that should be added to
 	 * the {@link Launcher}.
 	 *
@@ -78,6 +124,28 @@ public interface LauncherConfig {
 	Collection<TestEngine> getAdditionalTestEngines();
 
 	/**
+	 * Get the collection of additional launcher session listeners that should
+	 * be added to the {@link Launcher}.
+	 *
+	 * @return the collection of additional launcher session listeners; never
+	 * {@code null} but potentially empty
+	 * @since 1.8
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	Collection<LauncherSessionListener> getAdditionalLauncherSessionListeners();
+
+	/**
+	 * Get the collection of additional launcher discovery listeners that should
+	 * be added to the {@link Launcher}.
+	 *
+	 * @return the collection of additional launcher discovery listeners; never
+	 * {@code null} but potentially empty
+	 * @since 1.8
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	Collection<LauncherDiscoveryListener> getAdditionalLauncherDiscoveryListeners();
+
+	/**
 	 * Get the collection of additional test execution listeners that should be
 	 * added to the {@link Launcher}.
 	 *
@@ -85,6 +153,17 @@ public interface LauncherConfig {
 	 * {@code null} but potentially empty
 	 */
 	Collection<TestExecutionListener> getAdditionalTestExecutionListeners();
+
+	/**
+	 * Get the collection of additional post discovery filters that should be
+	 * added to the {@link Launcher}.
+	 *
+	 * @return the collection of additional post discovery filters; never
+	 * {@code null} but potentially empty
+	 * @since 1.7
+	 */
+	@API(status = EXPERIMENTAL, since = "1.7")
+	Collection<PostDiscoveryFilter> getAdditionalPostDiscoveryFilters();
 
 	/**
 	 * Create a new {@link LauncherConfig.Builder}.
@@ -100,16 +179,53 @@ public interface LauncherConfig {
 	 */
 	class Builder {
 
-		private boolean listenerAutoRegistrationEnabled = true;
-
 		private boolean engineAutoRegistrationEnabled = true;
-
+		private boolean launcherSessionListenerAutoRegistrationEnabled = true;
+		private boolean launcherDiscoveryListenerAutoRegistrationEnabled = true;
+		private boolean testExecutionListenerAutoRegistrationEnabled = true;
+		private boolean postDiscoveryFilterAutoRegistrationEnabled = true;
 		private final Collection<TestEngine> engines = new LinkedHashSet<>();
-
-		private final Collection<TestExecutionListener> listeners = new LinkedHashSet<>();
+		private final Collection<LauncherSessionListener> sessionListeners = new LinkedHashSet<>();
+		private final Collection<LauncherDiscoveryListener> discoveryListeners = new LinkedHashSet<>();
+		private final Collection<TestExecutionListener> executionListeners = new LinkedHashSet<>();
+		private final Collection<PostDiscoveryFilter> postDiscoveryFilters = new LinkedHashSet<>();
 
 		private Builder() {
 			/* no-op */
+		}
+
+		/**
+		 * Configure the auto-registration flag for launcher session
+		 * listeners.
+		 *
+		 * <p>Defaults to {@code true}.
+		 *
+		 * @param enabled {@code true} if launcher session listeners should be
+		 * automatically registered
+		 * @return this builder for method chaining
+		 * @since 1.8
+		 */
+		@API(status = EXPERIMENTAL, since = "1.8")
+		public Builder enableLauncherSessionListenerAutoRegistration(boolean enabled) {
+			this.launcherSessionListenerAutoRegistrationEnabled = enabled;
+			return this;
+		}
+
+		/**
+		 * Configure the auto-registration flag for launcher discovery
+		 * listeners.
+		 *
+		 * <p>Defaults to {@code true}.
+		 *
+		 * @param enabled {@code true} if launcher discovery listeners should be
+		 * automatically registered
+		 * @return this builder for method chaining
+		 * @since 1.8
+		 */
+		@API(status = EXPERIMENTAL, since = "1.8")
+		public Builder enableLauncherDiscoveryListenerAutoRegistration(boolean enabled) {
+			this.launcherDiscoveryListenerAutoRegistrationEnabled = enabled;
+			return this;
 		}
 
 		/**
@@ -122,7 +238,7 @@ public interface LauncherConfig {
 		 * @return this builder for method chaining
 		 */
 		public Builder enableTestExecutionListenerAutoRegistration(boolean enabled) {
-			this.listenerAutoRegistrationEnabled = enabled;
+			this.testExecutionListenerAutoRegistrationEnabled = enabled;
 			return this;
 		}
 
@@ -141,7 +257,23 @@ public interface LauncherConfig {
 		}
 
 		/**
-		 * Add all of the supplied {@code engines} to the configuration.
+		 * Configure the auto-registration flag for post discovery filters.
+		 *
+		 * <p>Defaults to {@code true}.
+		 *
+		 * @param enabled {@code true} if post discovery filters should be automatically
+		 * registered
+		 * @return this builder for method chaining
+		 * @since 1.7
+		 */
+		@API(status = EXPERIMENTAL, since = "1.7")
+		public Builder enablePostDiscoveryFilterAutoRegistration(boolean enabled) {
+			this.postDiscoveryFilterAutoRegistrationEnabled = enabled;
+			return this;
+		}
+
+		/**
+		 * Add all of the supplied test engines to the configuration.
 		 *
 		 * @param engines additional test engines to register; never {@code null}
 		 * or containing {@code null}
@@ -155,7 +287,37 @@ public interface LauncherConfig {
 		}
 
 		/**
-		 * Add all of the supplied {@code listeners} to the configuration.
+		 * Add all of the supplied launcher session listeners to the configuration.
+		 *
+		 * @param listeners additional launcher session listeners to register;
+		 * never {@code null} or containing {@code null}
+		 * @return this builder for method chaining
+		 */
+		public Builder addLauncherSessionListeners(LauncherSessionListener... listeners) {
+			Preconditions.notNull(listeners, "LauncherSessionListener array must not be null");
+			Preconditions.containsNoNullElements(listeners,
+				"LauncherSessionListener array must not contain null elements");
+			Collections.addAll(this.sessionListeners, listeners);
+			return this;
+		}
+
+		/**
+		 * Add all of the supplied launcher discovery listeners to the configuration.
+		 *
+		 * @param listeners additional launcher discovery listeners to register;
+		 * never {@code null} or containing {@code null}
+		 * @return this builder for method chaining
+		 */
+		public Builder addLauncherDiscoveryListeners(LauncherDiscoveryListener... listeners) {
+			Preconditions.notNull(listeners, "LauncherDiscoveryListener array must not be null");
+			Preconditions.containsNoNullElements(listeners,
+				"LauncherDiscoveryListener array must not contain null elements");
+			Collections.addAll(this.discoveryListeners, listeners);
+			return this;
+		}
+
+		/**
+		 * Add all of the supplied test execution listeners to the configuration.
 		 *
 		 * @param listeners additional test execution listeners to register;
 		 * never {@code null} or containing {@code null}
@@ -165,7 +327,23 @@ public interface LauncherConfig {
 			Preconditions.notNull(listeners, "TestExecutionListener array must not be null");
 			Preconditions.containsNoNullElements(listeners,
 				"TestExecutionListener array must not contain null elements");
-			Collections.addAll(this.listeners, listeners);
+			Collections.addAll(this.executionListeners, listeners);
+			return this;
+		}
+
+		/**
+		 * Add all of the supplied {@code filters} to the configuration.
+		 *
+		 * @param filters additional post discovery filters to register;
+		 * never {@code null} or containing {@code null}
+		 * @return this builder for method chaining
+		 * @since 1.7
+		 */
+		@API(status = EXPERIMENTAL, since = "1.7")
+		public Builder addPostDiscoveryFilters(PostDiscoveryFilter... filters) {
+			Preconditions.notNull(filters, "PostDiscoveryFilter array must not be null");
+			Preconditions.containsNoNullElements(filters, "PostDiscoveryFilter array must not contain null elements");
+			Collections.addAll(this.postDiscoveryFilters, filters);
 			return this;
 		}
 
@@ -174,8 +352,12 @@ public interface LauncherConfig {
 		 * builder.
 		 */
 		public LauncherConfig build() {
-			return new DefaultLauncherConfig(this.engineAutoRegistrationEnabled, this.listenerAutoRegistrationEnabled,
-				this.engines, this.listeners);
+			return new DefaultLauncherConfig(this.engineAutoRegistrationEnabled,
+				this.launcherSessionListenerAutoRegistrationEnabled,
+				this.launcherDiscoveryListenerAutoRegistrationEnabled,
+				this.testExecutionListenerAutoRegistrationEnabled, this.postDiscoveryFilterAutoRegistrationEnabled,
+				this.engines, this.sessionListeners, this.discoveryListeners, this.executionListeners,
+				this.postDiscoveryFilters);
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -167,8 +167,7 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 	@Test
 	void instanceLevelWithPrivateField() {
 		Class<?> testClass = InstanceLevelExtensionRegistrationWithPrivateFieldTestCase.class;
-		executeTestsForClass(testClass).testEvents().assertThatEvents().haveExactly(1, finishedWithFailure(
-			instanceOf(PreconditionViolationException.class), message(expectedNotPrivateMessage(testClass))));
+		executeTestsForClass(testClass).testEvents().assertStatistics(stats -> stats.succeeded(1));
 	}
 
 	/**
@@ -177,8 +176,7 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 	@Test
 	void classLevelWithPrivateField() {
 		Class<?> testClass = ClassLevelExtensionRegistrationWithPrivateFieldTestCase.class;
-		executeTestsForClass(testClass).containerEvents().assertThatEvents().haveExactly(1, finishedWithFailure(
-			instanceOf(PreconditionViolationException.class), message(expectedNotPrivateMessage(testClass))));
+		executeTestsForClass(testClass).testEvents().assertStatistics(stats -> stats.succeeded(1));
 	}
 
 	@Test
@@ -217,11 +215,6 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 
 		executeTestsForClass(testClass).containerEvents().assertThatEvents().haveExactly(1, finishedWithFailure(
 			instanceOf(PreconditionViolationException.class), message(expectedMessage(testClass, String.class))));
-	}
-
-	private String expectedNotPrivateMessage(Class<?> testClass) {
-		return "Failed to register extension via @RegisterExtension field [" + field(testClass)
-				+ "]: field must not be private.";
 	}
 
 	private String expectedMessage(Class<?> testClass, Class<?> valueType) {
@@ -602,14 +595,16 @@ class ProgrammaticExtensionRegistrationTests extends AbstractJupiterTestEngineTe
 	static class InstanceLevelExtensionRegistrationWithPrivateFieldTestCase extends AbstractTestCase {
 
 		@RegisterExtension
-		private Extension extension;
+		private Extension extension = new Extension() {
+		};
 
 	}
 
 	static class ClassLevelExtensionRegistrationWithPrivateFieldTestCase extends AbstractTestCase {
 
 		@RegisterExtension
-		private static Extension extension;
+		private static Extension extension = new Extension() {
+		};
 
 	}
 

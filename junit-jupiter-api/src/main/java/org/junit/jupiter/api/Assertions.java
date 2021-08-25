@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.jupiter.api;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.time.Duration;
@@ -32,6 +33,22 @@ import org.opentest4j.MultipleFailuresError;
  *
  * <p>Unless otherwise noted, a <em>failed</em> assertion will throw an
  * {@link org.opentest4j.AssertionFailedError} or a subclass thereof.
+ *
+ * <h3>Object Equality</h3>
+ *
+ * <p>Assertion methods comparing two objects for <em>equality</em>, such as the
+ * {@code assertEquals(expected, actual)} and {@code assertNotEquals(unexpected, actual)}
+ * variants, are <em>only</em> intended to test equality for an (un-)expected value
+ * and an actual value. They are not designed for testing whether a class correctly
+ * implements {@link Object#equals(Object)}. For example, {@code assertEquals()}
+ * might immediately return {@code true} when provided the same object for the
+ * expected and actual values, without calling {@code equals(Object)} at all.
+ * Tests that aim to verify the {@code equals(Object)} implementation should instead
+ * be written to explicitly verify the {@link Object#equals(Object)} contract by
+ * using {@link #assertTrue(boolean) assertTrue()} or {@link #assertFalse(boolean)
+ * assertFalse()} &mdash; for example, {@code assertTrue(expected.equals(actual))},
+ * {@code assertTrue(actual.equals(expected))}, {@code assertFalse(expected.equals(null))},
+ * etc.
  *
  * <h3>Kotlin Support</h3>
  *
@@ -91,8 +108,8 @@ public class Assertions {
 	 * <p>Although failing <em>with</em> an explicit failure message is recommended,
 	 * this method may be useful when maintaining legacy code.
 	 *
-	 * <p>See Javadoc for {@link #fail(String, Throwable)} for an explanation of
-	 * this method's generic return type {@code V}.
+	 * <p>See Javadoc for {@link #fail(String)} for an explanation of this method's
+	 * generic return type {@code V}.
 	 */
 	public static <V> V fail() {
 		AssertionUtils.fail();
@@ -101,18 +118,6 @@ public class Assertions {
 
 	/**
 	 * <em>Fail</em> the test with the given failure {@code message}.
-	 *
-	 * <p>See Javadoc for {@link #fail(String, Throwable)} for an explanation of
-	 * this method's generic return type {@code V}.
-	 */
-	public static <V> V fail(String message) {
-		AssertionUtils.fail(message);
-		return null; // appeasing the compiler: this line will never be executed.
-	}
-
-	/**
-	 * <em>Fail</em> the test with the given failure {@code message} as well
-	 * as the underlying {@code cause}.
 	 *
 	 * <p>The generic return type {@code V} allows this method to be used
 	 * directly as a single-statement lambda expression, thereby avoiding the
@@ -125,6 +130,18 @@ public class Assertions {
 	 * Stream.of().map(entry -> fail("should not be called"));
 	 * }</pre>
 	 */
+	public static <V> V fail(String message) {
+		AssertionUtils.fail(message);
+		return null; // appeasing the compiler: this line will never be executed.
+	}
+
+	/**
+	 * <em>Fail</em> the test with the given failure {@code message} as well
+	 * as the underlying {@code cause}.
+	 *
+	 * <p>See Javadoc for {@link #fail(String)} for an explanation of this method's
+	 * generic return type {@code V}.
+	 */
 	public static <V> V fail(String message, Throwable cause) {
 		AssertionUtils.fail(message, cause);
 		return null; // appeasing the compiler: this line will never be executed.
@@ -133,8 +150,8 @@ public class Assertions {
 	/**
 	 * <em>Fail</em> the test with the given underlying {@code cause}.
 	 *
-	 * <p>See Javadoc for {@link #fail(String, Throwable)} for an explanation of
-	 * this method's generic return type {@code V}.
+	 * <p>See Javadoc for {@link #fail(String)} for an explanation of this method's
+	 * generic return type {@code V}.
 	 */
 	public static <V> V fail(Throwable cause) {
 		AssertionUtils.fail(cause);
@@ -145,8 +162,8 @@ public class Assertions {
 	 * <em>Fail</em> the test with the failure message retrieved from the
 	 * given {@code messageSupplier}.
 	 *
-	 * <p>See Javadoc for {@link #fail(String, Throwable)} for an explanation of
-	 * this method's generic return type {@code V}.
+	 * <p>See Javadoc for {@link #fail(String)} for an explanation of this method's
+	 * generic return type {@code V}.
 	 */
 	public static <V> V fail(Supplier<String> messageSupplier) {
 		AssertionUtils.fail(messageSupplier);
@@ -1613,6 +1630,61 @@ public class Assertions {
 		AssertLinesMatch.assertLinesMatch(expectedLines, actualLines, messageSupplier);
 	}
 
+	/**
+	 * <em>Assert</em> that {@code expected} stream of {@linkplain String}s matches {@code actual}
+	 * stream.
+	 *
+	 * <p>Find a detailed description of the matching algorithm in {@link #assertLinesMatch(List, List)}.
+	 *
+	 * <p>Note: An implementation of this method may consume all lines of both streams eagerly and
+	 * delegate the evaluation to {@link #assertLinesMatch(List, List)}.
+	 *
+	 * @since 5.7
+	 * @see #assertLinesMatch(List, List)
+	 */
+	public static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines) {
+		AssertLinesMatch.assertLinesMatch(expectedLines, actualLines);
+	}
+
+	/**
+	 * <em>Assert</em> that {@code expected} stream of {@linkplain String}s matches {@code actual}
+	 * stream.
+	 *
+	 * <p>Find a detailed description of the matching algorithm in {@link #assertLinesMatch(List, List)}.
+	 *
+	 * <p>Fails with the supplied failure {@code message} and the generated message.
+	 *
+	 * <p>Note: An implementation of this method may consume all lines of both streams eagerly and
+	 * delegate the evaluation to {@link #assertLinesMatch(List, List)}.
+	 *
+	 * @since 5.7
+	 * @see #assertLinesMatch(List, List)
+	 */
+	public static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines, String message) {
+		AssertLinesMatch.assertLinesMatch(expectedLines, actualLines, message);
+	}
+
+	/**
+	 * <em>Assert</em> that {@code expected} stream of {@linkplain String}s matches {@code actual}
+	 * stream.
+	 *
+	 * <p>Find a detailed description of the matching algorithm in {@link #assertLinesMatch(List, List)}.
+	 *
+	 * <p>If necessary, a custom failure message will be retrieved lazily from the supplied
+	 * {@code messageSupplier}. Fails with the custom failure message prepended to
+	 * a generated failure message describing the difference.
+	 *
+	 * <p>Note: An implementation of this method may consume all lines of both streams eagerly and
+	 * delegate the evaluation to {@link #assertLinesMatch(List, List)}.
+	 *
+	 * @since 5.7
+	 * @see #assertLinesMatch(List, List)
+	 */
+	public static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines,
+			Supplier<String> messageSupplier) {
+		AssertLinesMatch.assertLinesMatch(expectedLines, actualLines, messageSupplier);
+	}
+
 	// --- assertNotEquals -----------------------------------------------------
 
 	/**
@@ -2916,9 +2988,9 @@ public class Assertions {
 	 * and all exceptions will be aggregated and reported in a {@link MultipleFailuresError}.
 	 * In addition, all aggregated exceptions will be added as {@linkplain
 	 * Throwable#addSuppressed(Throwable) suppressed exceptions} to the
-	 * {@code MultipleFailuresError}. However, if an {@code executable} throws a
-	 * <em>blacklisted</em> exception &mdash; for example, an {@link OutOfMemoryError}
-	 * &mdash; execution will halt immediately, and the blacklisted exception will be
+	 * {@code MultipleFailuresError}. However, if an {@code executable} throws an
+	 * <em>unrecoverable</em> exception &mdash; for example, an {@link OutOfMemoryError}
+	 * &mdash; execution will halt immediately, and the unrecoverable exception will be
 	 * rethrown <em>as is</em> but <em>masked</em> as an unchecked exception.
 	 *
 	 * <p>The supplied {@code heading} will be included in the message string for the
@@ -2940,13 +3012,71 @@ public class Assertions {
 
 	/**
 	 * <em>Assert</em> that execution of the supplied {@code executable} throws
+	 * an exception of exactly the {@code expectedType} and return the exception.
+	 *
+	 * <p>If no exception is thrown, or if an exception of a different type is
+	 * thrown, this method will fail.
+	 *
+	 * <p>If you do not want to perform additional checks on the exception instance,
+	 * ignore the return value.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T extends Throwable> T assertThrowsExactly(Class<T> expectedType, Executable executable) {
+		return AssertThrowsExactly.assertThrowsExactly(expectedType, executable);
+	}
+
+	/**
+	 * <em>Assert</em> that execution of the supplied {@code executable} throws
+	 * an exception of exactly the {@code expectedType} and return the exception.
+	 *
+	 * <p>If no exception is thrown, or if an exception of a different type is
+	 * thrown, this method will fail.
+	 *
+	 * <p>If you do not want to perform additional checks on the exception instance,
+	 * ignore the return value.
+	 *
+	 * <p>Fails with the supplied failure {@code message}.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T extends Throwable> T assertThrowsExactly(Class<T> expectedType, Executable executable,
+			String message) {
+		return AssertThrowsExactly.assertThrowsExactly(expectedType, executable, message);
+	}
+
+	/**
+	 * <em>Assert</em> that execution of the supplied {@code executable} throws
+	 * an exception of exactly the {@code expectedType} and return the exception.
+	 *
+	 * <p>If no exception is thrown, or if an exception of a different type is
+	 * thrown, this method will fail.
+	 *
+	 * <p>If necessary, the failure message will be retrieved lazily from the
+	 * supplied {@code messageSupplier}.
+	 *
+	 * <p>If you do not want to perform additional checks on the exception instance,
+	 * ignore the return value.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T extends Throwable> T assertThrowsExactly(Class<T> expectedType, Executable executable,
+			Supplier<String> messageSupplier) {
+		return AssertThrowsExactly.assertThrowsExactly(expectedType, executable, messageSupplier);
+	}
+
+	/**
+	 * <em>Assert</em> that execution of the supplied {@code executable} throws
 	 * an exception of the {@code expectedType} and return the exception.
 	 *
 	 * <p>If no exception is thrown, or if an exception of a different type is
 	 * thrown, this method will fail.
 	 *
 	 * <p>If you do not want to perform additional checks on the exception instance,
-	 * simply ignore the return value.
+	 * ignore the return value.
 	 */
 	public static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable) {
 		return AssertThrows.assertThrows(expectedType, executable);
@@ -2960,7 +3090,7 @@ public class Assertions {
 	 * thrown, this method will fail.
 	 *
 	 * <p>If you do not want to perform additional checks on the exception instance,
-	 * simply ignore the return value.
+	 * ignore the return value.
 	 *
 	 * <p>Fails with the supplied failure {@code message}.
 	 */
@@ -2979,7 +3109,7 @@ public class Assertions {
 	 * supplied {@code messageSupplier}.
 	 *
 	 * <p>If you do not want to perform additional checks on the exception instance,
-	 * simply ignore the return value.
+	 * ignore the return value.
 	 */
 	public static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable,
 			Supplier<String> messageSupplier) {
@@ -3391,6 +3521,55 @@ public class Assertions {
 	public static <T> T assertTimeoutPreemptively(Duration timeout, ThrowingSupplier<T> supplier,
 			Supplier<String> messageSupplier) {
 		return AssertTimeout.assertTimeoutPreemptively(timeout, supplier, messageSupplier);
+	}
+
+	// --- assertInstanceOf ----------------------------------------------------
+
+	/**
+	 * <em>Assert</em> that the supplied {@code actualValue} is an instance of the
+	 * {@code expectedType}.
+	 *
+	 * <p>Like the {@code instanceof} operator a {@code null} value is not
+	 * considered to be of the {@code expectedType} and does not pass the assertion.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T> T assertInstanceOf(Class<T> expectedType, Object actualValue) {
+		return AssertInstanceOf.assertInstanceOf(expectedType, actualValue);
+	}
+
+	/**
+	 * <em>Assert</em> that the supplied {@code actualValue} is an instance of the
+	 * {@code expectedType}.
+	 *
+	 * <p>Like the {@code instanceof} operator a {@code null} value is not
+	 * considered to be of the {@code expectedType} and does not pass the assertion.
+	 *
+	 * <p>Fails with the supplied failure {@code message}.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T> T assertInstanceOf(Class<T> expectedType, Object actualValue, String message) {
+		return AssertInstanceOf.assertInstanceOf(expectedType, actualValue, message);
+	}
+
+	/**
+	 * <em>Assert</em> that the supplied {@code actualValue} is an instance of the
+	 * {@code expectedType}.
+	 *
+	 * <p>Like the {@code instanceof} operator a {@code null} value is not
+	 * considered to be of the {@code expectedType} and does not pass the assertion.
+	 *
+	 * <p>If necessary, the failure message will be retrieved lazily from the
+	 * supplied {@code messageSupplier}.
+	 *
+	 * @since 5.8
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static <T> T assertInstanceOf(Class<T> expectedType, Object actualValue, Supplier<String> messageSupplier) {
+		return AssertInstanceOf.assertInstanceOf(expectedType, actualValue, messageSupplier);
 	}
 
 }

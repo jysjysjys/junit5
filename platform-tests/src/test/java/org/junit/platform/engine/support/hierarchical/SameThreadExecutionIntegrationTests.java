@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,7 +16,7 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import org.junit.jupiter.api.MethodOrderer.Alphanumeric;
+import org.junit.jupiter.api.MethodOrderer.MethodName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.fixtures.TrackLogRecords;
@@ -54,7 +54,7 @@ class SameThreadExecutionIntegrationTests {
 
 	// -------------------------------------------------------------------------
 
-	@TestMethodOrder(Alphanumeric.class)
+	@TestMethodOrder(MethodName.class)
 	static class InterruptedThreadTestCase {
 
 		@Test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.commons.support;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import java.lang.annotation.Annotation;
@@ -127,6 +128,43 @@ public final class AnnotationSupport {
 	}
 
 	/**
+	 * Find the first annotation of the specified type that is either
+	 * <em>directly present</em>, <em>meta-present</em>, or <em>indirectly
+	 * present</em> on the supplied class.
+	 *
+	 * <p>If the annotation is neither <em>directly present</em> nor <em>meta-present</em>
+	 * on the class, this method will additionally search on interfaces implemented
+	 * by the class before searching for an annotation that is <em>indirectly present</em>
+	 * on the class (i.e., within the class inheritance hierarchy).
+	 *
+	 * <p>If the annotation still has not been found, this method will optionally
+	 * search recursively through the enclosing class hierarchy if
+	 * {@link SearchOption#INCLUDE_ENCLOSING_CLASSES} is specified.
+	 *
+	 * <p>If {@link SearchOption#DEFAULT} is specified, this method has the same
+	 * semantics as {@link #findAnnotation(AnnotatedElement, Class)}.
+	 *
+	 * @param <A> the annotation type
+	 * @param clazz the class on which to search for the annotation; may be {@code null}
+	 * @param annotationType the annotation type to search for; never {@code null}
+	 * @param searchOption the {@code SearchOption} to use; never {@code null}
+	 * @return an {@code Optional} containing the annotation; never {@code null} but
+	 * potentially empty
+	 * @since 1.8
+	 * @see SearchOption
+	 * @see #findAnnotation(AnnotatedElement, Class)
+	 */
+	@API(status = EXPERIMENTAL, since = "1.8")
+	public static <A extends Annotation> Optional<A> findAnnotation(Class<?> clazz, Class<A> annotationType,
+			SearchOption searchOption) {
+
+		Preconditions.notNull(searchOption, "SearchOption must not be null");
+
+		return AnnotationUtils.findAnnotation(clazz, annotationType,
+			searchOption == SearchOption.INCLUDE_ENCLOSING_CLASSES);
+	}
+
+	/**
 	 * Find all <em>repeatable</em> {@linkplain Annotation annotations} of the
 	 * supplied {@code annotationType} that are either <em>present</em>,
 	 * <em>indirectly present</em>, or <em>meta-present</em> on the supplied
@@ -177,8 +215,8 @@ public final class AnnotationSupport {
 	 * discovered within the class hierarchy, this method will additionally
 	 * search on interfaces implemented by each class in the hierarchy.
 	 *
-	 * <p>If the supplied {@code element} is {@code null}, this method simply
-	 * returns an empty list.
+	 * <p>If the supplied {@code element} is {@code null}, this method returns
+	 * an empty list.
 	 *
 	 * <p>As of JUnit Platform 1.5, the search algorithm will also find
 	 * repeatable annotations used as meta-annotations on other repeatable

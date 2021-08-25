@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -7,7 +7,7 @@
  *
  * https://www.eclipse.org/legal/epl-v20.html
  */
-@file:API(status = EXPERIMENTAL, since = "5.1")
+@file:API(status = STABLE, since = "5.7")
 
 package org.junit.jupiter.api
 
@@ -16,6 +16,7 @@ import java.util.function.Supplier
 import java.util.stream.Stream
 import org.apiguardian.api.API
 import org.apiguardian.api.API.Status.EXPERIMENTAL
+import org.apiguardian.api.API.Status.STABLE
 import org.junit.jupiter.api.function.Executable
 import org.junit.jupiter.api.function.ThrowingSupplier
 
@@ -96,9 +97,17 @@ fun assertAll(heading: String?, vararg executables: () -> Unit) =
  * @see Assertions.assertThrows
  */
 inline fun <reified T : Throwable> assertThrows(executable: () -> Unit): T {
-    val result = runCatching(executable)
+    val throwable: Throwable? = try {
+        executable()
+    } catch (caught: Throwable) {
+        caught
+    } as? Throwable
 
-    return Assertions.assertThrows(T::class.java) { result.getOrThrow() }
+    return Assertions.assertThrows(T::class.java) {
+        if (throwable != null) {
+            throw throwable
+        }
+    }
 }
 
 /**
@@ -125,9 +134,17 @@ inline fun <reified T : Throwable> assertThrows(message: String, executable: () 
  * @see Assertions.assertThrows
  */
 inline fun <reified T : Throwable> assertThrows(noinline message: () -> String, executable: () -> Unit): T {
-    val result = runCatching(executable)
+    val throwable: Throwable? = try {
+        executable()
+    } catch (caught: Throwable) {
+        caught
+    } as? Throwable
 
-    return Assertions.assertThrows(T::class.java, Executable { result.getOrThrow() }, Supplier(message))
+    return Assertions.assertThrows(T::class.java, Executable {
+        if (throwable != null) {
+            throw throwable
+        }
+    }, Supplier(message))
 }
 
 /**
@@ -141,8 +158,8 @@ inline fun <reified T : Throwable> assertThrows(noinline message: () -> String, 
  * @param R the result type of the [executable]
  */
 @API(status = EXPERIMENTAL, since = "5.5")
-fun <R> assertDoesNotThrow(executable: () -> R): R =
-    Assertions.assertDoesNotThrow(ThrowingSupplier(executable))
+inline fun <R> assertDoesNotThrow(executable: () -> R): R =
+    Assertions.assertDoesNotThrow(evaluateAndWrap(executable))
 
 /**
  * Example usage:
@@ -155,7 +172,7 @@ fun <R> assertDoesNotThrow(executable: () -> R): R =
  * @param R the result type of the [executable]
  */
 @API(status = EXPERIMENTAL, since = "5.5")
-fun <R> assertDoesNotThrow(message: String, executable: () -> R): R =
+inline fun <R> assertDoesNotThrow(message: String, executable: () -> R): R =
     assertDoesNotThrow({ message }, executable)
 
 /**
@@ -169,8 +186,19 @@ fun <R> assertDoesNotThrow(message: String, executable: () -> R): R =
  * @param R the result type of the [executable]
  */
 @API(status = EXPERIMENTAL, since = "5.5")
-fun <R> assertDoesNotThrow(message: () -> String, executable: () -> R): R =
-    Assertions.assertDoesNotThrow(ThrowingSupplier(executable), Supplier(message))
+inline fun <R> assertDoesNotThrow(noinline message: () -> String, executable: () -> R): R =
+    Assertions.assertDoesNotThrow(
+        evaluateAndWrap(executable),
+        Supplier(message)
+    )
+
+@PublishedApi
+internal inline fun <R> evaluateAndWrap(executable: () -> R): ThrowingSupplier<R> = try {
+    val result = executable()
+    ThrowingSupplier { result }
+} catch (throwable: Throwable) {
+    ThrowingSupplier { throw throwable }
+}
 
 /**
  * Example usage:

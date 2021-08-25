@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -50,7 +50,7 @@ class DisabledOnOsIntegrationTests {
 	}
 
 	@Test
-	@DisabledOnOs({ LINUX, MAC, WINDOWS, SOLARIS, OTHER })
+	@DisabledOnOs(value = { LINUX, MAC, WINDOWS, SOLARIS, OTHER }, disabledReason = "Disabled on every OS")
 	void disabledOnEveryOs() {
 		fail("should be disabled");
 	}

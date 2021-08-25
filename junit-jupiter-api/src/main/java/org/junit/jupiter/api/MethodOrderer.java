@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,9 @@
 package org.junit.jupiter.api;
 
 import static java.util.Comparator.comparingInt;
+import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -38,7 +40,7 @@ import org.junit.platform.commons.util.ClassUtils;
  * implementations.
  *
  * <ul>
- * <li>{@link Alphanumeric}</li>
+ * <li>{@link MethodName}</li>
  * <li>{@link OrderAnnotation}</li>
  * <li>{@link Random}</li>
  * </ul>
@@ -48,7 +50,7 @@ import org.junit.platform.commons.util.ClassUtils;
  * @see MethodOrdererContext
  * @see #orderMethods(MethodOrdererContext)
  */
-@API(status = EXPERIMENTAL, since = "5.4")
+@API(status = STABLE, since = "5.7")
 public interface MethodOrderer {
 
 	/**
@@ -69,7 +71,7 @@ public interface MethodOrderer {
 	 * </pre>
 	 *
 	 * @param context the {@code MethodOrdererContext} containing the
-	 * {@link MethodDescriptor method descriptors} to order; never {@code null}
+	 * {@linkplain MethodDescriptor method descriptors} to order; never {@code null}
 	 * @see #getDefaultExecutionMode()
 	 */
 	void orderMethods(MethodOrdererContext context);
@@ -111,8 +113,34 @@ public interface MethodOrderer {
 	 * <p>If two methods have the same name, {@code String} representations of
 	 * their formal parameter lists will be used as a fallback for comparing the
 	 * methods.
+	 *
+	 * @since 5.4
+	 * @deprecated as of JUnit Jupiter 5.7 in favor of {@link MethodOrderer.MethodName};
+	 * to be removed in 6.0
 	 */
-	class Alphanumeric implements MethodOrderer {
+	@API(status = DEPRECATED, since = "5.7")
+	@Deprecated
+	class Alphanumeric extends MethodName {
+
+		public Alphanumeric() {
+		}
+	}
+
+	/**
+	 * {@code MethodOrderer} that sorts methods alphanumerically based on their
+	 * names using {@link String#compareTo(String)}.
+	 *
+	 * <p>If two methods have the same name, {@code String} representations of
+	 * their formal parameter lists will be used as a fallback for comparing the
+	 * methods.
+	 *
+	 * @since 5.7
+	 */
+	@API(status = EXPERIMENTAL, since = "5.7")
+	class MethodName implements MethodOrderer {
+
+		public MethodName() {
+		}
 
 		/**
 		 * Sort the methods encapsulated in the supplied
@@ -142,6 +170,9 @@ public interface MethodOrderer {
 	@API(status = EXPERIMENTAL, since = "5.7")
 	class DisplayName implements MethodOrderer {
 
+		public DisplayName() {
+		}
+
 		/**
 		 * Sort the methods encapsulated in the supplied
 		 * {@link MethodOrdererContext} alphanumerically based on their display
@@ -164,14 +195,16 @@ public interface MethodOrderer {
 	 * arbitrarily adjacent to each other.
 	 *
 	 * <p>Any methods not annotated with {@code @Order} will be assigned the
-	 * {@link org.junit.jupiter.api.Order#DEFAULT default order} value which will
-	 * effectively cause them to appear at the end of the sorted list, unless
-	 * certain methods are assigned an explicit order value greater than the default
-	 * order value. Any methods assigned an explicit order value greater than the
-	 * default order value will appear after non-annotated methods in the sorted
-	 * list.
+	 * {@link Order#DEFAULT default order} value which will effectively cause them
+	 * to appear at the end of the sorted list, unless certain methods are assigned
+	 * an explicit order value greater than the default order value. Any methods
+	 * assigned an explicit order value greater than the default order value will
+	 * appear after non-annotated methods in the sorted list.
 	 */
 	class OrderAnnotation implements MethodOrderer {
+
+		public OrderAnnotation() {
+		}
 
 		/**
 		 * Sort the methods encapsulated in the supplied
@@ -220,12 +253,15 @@ public interface MethodOrderer {
 
 		static {
 			DEFAULT_SEED = System.nanoTime();
-			logger.info(() -> "MethodOrderer.Random default seed: " + DEFAULT_SEED);
+			logger.config(() -> "MethodOrderer.Random default seed: " + DEFAULT_SEED);
 		}
 
 		/**
 		 * Property name used to set the random seed used by this
 		 * {@code MethodOrderer}: {@value}
+		 *
+		 * <p>The same property is used by {@link ClassOrderer.Random} for
+		 * consistency between the two random orderers.
 		 *
 		 * <h3>Supported Values</h3>
 		 *
@@ -235,8 +271,13 @@ public interface MethodOrderer {
 		 * <p>If not specified or if the specified value cannot be converted to
 		 * a {@link Long}, the default random seed will be used (see the
 		 * {@linkplain Random class-level Javadoc} for details).
+		 *
+		 * @see ClassOrderer.Random
 		 */
 		public static final String RANDOM_SEED_PROPERTY_NAME = "junit.jupiter.execution.order.random.seed";
+
+		public Random() {
+		}
 
 		/**
 		 * Order the methods encapsulated in the supplied

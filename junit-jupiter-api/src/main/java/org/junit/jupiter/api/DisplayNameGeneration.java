@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.api;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -25,15 +25,20 @@ import org.apiguardian.api.API;
  * {@code @DisplayNameGeneration} is used to declare a custom display name
  * generator for the annotated test class.
  *
+ * <p>This annotation is <em>inherited</em> from superclasses and implemented
+ * interfaces. It is also inherited from {@linkplain Class#getEnclosingClass()
+ * enclosing classes} for {@link Nested @Nested} test classes.
+ *
  * @since 5.4
  * @see DisplayName
  * @see DisplayNameGenerator
+ * @see IndicativeSentencesGeneration
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-@API(status = EXPERIMENTAL, since = "5.4")
+@API(status = STABLE, since = "5.7")
 public @interface DisplayNameGeneration {
 
 	/**

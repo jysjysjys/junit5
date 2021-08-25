@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,7 +15,6 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectUniqu
 import static org.junit.platform.engine.support.discovery.SelectorResolver.Resolution.unresolved;
 import static org.junit.vintage.engine.descriptor.VintageTestDescriptor.SEGMENT_TYPE_RUNNER;
 
-import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -27,6 +26,7 @@ import org.junit.platform.engine.discovery.UniqueIdSelector;
 import org.junit.platform.engine.support.discovery.SelectorResolver;
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
+import org.junit.vintage.engine.descriptor.DescriptionUtils;
 import org.junit.vintage.engine.descriptor.RunnerTestDescriptor;
 
 /**
@@ -74,8 +74,8 @@ class MethodSelectorResolver implements SelectorResolver {
 
 	private Filter toMethodFilter(MethodSelector methodSelector) {
 		Class<?> testClass = methodSelector.getJavaClass();
-		Method testMethod = methodSelector.getJavaMethod();
-		return matchMethodDescription(Description.createTestDescription(testClass, testMethod.getName()));
+		String methodName = methodSelector.getMethodName();
+		return matchMethodDescription(Description.createTestDescription(testClass, methodName));
 	}
 
 	private Filter toUniqueIdFilter(RunnerTestDescriptor runnerTestDescriptor, UniqueId uniqueId) {
@@ -88,6 +88,7 @@ class MethodSelectorResolver implements SelectorResolver {
 	 * {@link org.junit.runners.Parameterized} runner.
 	 */
 	private static Filter matchMethodDescription(final Description desiredDescription) {
+		String desiredMethodName = DescriptionUtils.getMethodName(desiredDescription);
 		return new Filter() {
 
 			@Override
@@ -106,7 +107,8 @@ class MethodSelectorResolver implements SelectorResolver {
 			}
 
 			private boolean isParameterizedMethod(Description description) {
-				return description.getMethodName().startsWith(desiredDescription.getMethodName() + "[");
+				String methodName = DescriptionUtils.getMethodName(description);
+				return methodName.startsWith(desiredMethodName + "[");
 			}
 
 			@Override

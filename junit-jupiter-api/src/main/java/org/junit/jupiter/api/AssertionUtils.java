@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,8 +15,8 @@ import static java.util.stream.Collectors.joining;
 import java.util.Deque;
 import java.util.function.Supplier;
 
-import org.junit.platform.commons.util.BlacklistedExceptions;
 import org.junit.platform.commons.util.StringUtils;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.opentest4j.AssertionFailedError;
 
 /**
@@ -103,7 +103,7 @@ class AssertionUtils {
 			return (canonicalName != null ? canonicalName : clazz.getName());
 		}
 		catch (Throwable t) {
-			BlacklistedExceptions.rethrowIfBlacklisted(t);
+			UnrecoverableExceptions.rethrowIfUnrecoverable(t);
 			return clazz.getName();
 		}
 	}
@@ -123,6 +123,10 @@ class AssertionUtils {
 	}
 
 	private static String formatClassAndValue(Object value, String valueString) {
+		// If the value is null, return <null> instead of null<null>.
+		if (value == null) {
+			return "<null>";
+		}
 		String classAndHash = getClassName(value) + toHash(value);
 		// if it's a class, there's no need to repeat the class name contained in the valueString.
 		return (value instanceof Class ? "<" + classAndHash + ">" : classAndHash + "<" + valueString + ">");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,7 +18,7 @@ import org.apiguardian.api.API;
  * {@code BeforeTestExecutionCallback} defines the API for {@link Extension
  * Extensions} that wish to provide additional behavior to tests
  * <strong>immediately</strong> before an individual test is executed but after
- * any user-defined teardown methods (e.g.,
+ * any user-defined setup methods (e.g.,
  * {@link org.junit.jupiter.api.BeforeEach @BeforeEach} methods) have been
  * executed for that test.
  *
@@ -65,7 +65,7 @@ public interface BeforeTestExecutionCallback extends Extension {
 
 	/**
 	 * Callback that is invoked <em>immediately before</em> an individual test is
-	 * executed but after any user-defined teardown methods have been executed
+	 * executed but after any user-defined setup methods have been executed
 	 * for that test.
 	 *
 	 * @param context the current extension context; never {@code null}

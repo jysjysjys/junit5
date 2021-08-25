@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -35,22 +35,27 @@ public class PicocliCommandLineOptionsParser implements CommandLineOptionsParser
 			ParseResult detectedOptions = parser.parseArgs(arguments);
 			return availableOptions.toCommandLineOptions(detectedOptions);
 		}
-		catch (Exception e) {
-			throw new JUnitException("Error parsing command-line arguments: " + e.getMessage(), e);
+		catch (Exception ex) {
+			throw new JUnitException("Error parsing command-line arguments: " + ex.getMessage(), ex);
 		}
 	}
 
 	@Override
-	public void printHelp(Writer writer) {
+	public void printHelp(Writer writer, boolean ansiColorOutputDisabled) {
 		try {
-			writer.write(getAvailableOptions().getParser().getUsageMessage());
+			CommandLine parser = getAvailableOptions().getParser();
+			if (ansiColorOutputDisabled) {
+				parser.setColorScheme(CommandLine.Help.defaultColorScheme(CommandLine.Help.Ansi.OFF));
+			}
+			writer.append(parser.getUsageMessage());
 		}
-		catch (IOException e) {
-			throw new JUnitException("Error printing help", e);
+		catch (IOException ex) {
+			throw new JUnitException("Error printing help", ex);
 		}
 	}
 
 	private AvailableOptions getAvailableOptions() {
 		return new AvailableOptions();
 	}
+
 }

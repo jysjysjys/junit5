@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -40,8 +40,8 @@ import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
-import org.junit.platform.commons.util.BlacklistedExceptions;
 import org.junit.platform.commons.util.ExceptionUtils;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.TestTag;
@@ -123,7 +123,7 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 			handlerInvoker.invoke(exceptionHandlers.remove(0), throwable);
 		}
 		catch (Throwable handledThrowable) {
-			BlacklistedExceptions.rethrowIfBlacklisted(handledThrowable);
+			UnrecoverableExceptions.rethrowIfUnrecoverable(handledThrowable);
 			invokeExecutionExceptionHandlers(exceptionHandlers, handledThrowable, handlerInvoker);
 		}
 	}

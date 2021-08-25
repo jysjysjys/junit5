@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -49,14 +49,15 @@ class EnabledIfSystemPropertyCondition extends AbstractRepeatableAnnotationCondi
 
 		// Nothing to match against?
 		if (actual == null) {
-			return disabled(format("System property [%s] does not exist", name));
+			return disabled(format("System property [%s] does not exist", name), annotation.disabledReason());
 		}
 		if (actual.matches(regex)) {
 			return enabled(
 				format("System property [%s] with value [%s] matches regular expression [%s]", name, actual, regex));
 		}
 		return disabled(
-			format("System property [%s] with value [%s] does not match regular expression [%s]", name, actual, regex));
+			format("System property [%s] with value [%s] does not match regular expression [%s]", name, actual, regex),
+			annotation.disabledReason());
 	}
 
 }

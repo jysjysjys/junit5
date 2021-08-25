@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -19,6 +19,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.MATCH_ALL;
 
+import java.io.File;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,6 +40,7 @@ import example.util.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestReporter;
@@ -51,6 +53,7 @@ import org.junit.jupiter.params.aggregator.ArgumentsAggregator;
 import org.junit.jupiter.params.converter.ConvertWith;
 import org.junit.jupiter.params.converter.JavaTimeConversionPattern;
 import org.junit.jupiter.params.converter.SimpleArgumentConverter;
+import org.junit.jupiter.params.converter.TypedArgumentConverter;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -209,7 +212,8 @@ class ParameterizedTestDemo {
 	@CsvSource({
 		"apple,         1",
 		"banana,        2",
-		"'lemon, lime', 0xF1"
+		"'lemon, lime', 0xF1",
+		"strawberry,    700_000"
 	})
 	void testWithCsvSource(String fruit, int rank) {
 		assertNotNull(fruit);
@@ -221,7 +225,14 @@ class ParameterizedTestDemo {
 	// tag::CsvFileSource_example[]
 	@ParameterizedTest
 	@CsvFileSource(resources = "/two-column.csv", numLinesToSkip = 1)
-	void testWithCsvFileSource(String country, int reference) {
+	void testWithCsvFileSourceFromClasspath(String country, int reference) {
+		assertNotNull(country);
+		assertNotEquals(0, reference);
+	}
+
+	@ParameterizedTest
+	@CsvFileSource(files = "src/test/resources/two-column.csv", numLinesToSkip = 1)
+	void testWithCsvFileSourceFromFile(String country, int reference) {
 		assertNotNull(country);
 		assertNotEquals(0, reference);
 	}
@@ -326,6 +337,22 @@ class ParameterizedTestDemo {
 	}
 	// end::explicit_conversion_example_ToStringArgumentConverter[]
 
+	static
+	// tag::explicit_conversion_example_TypedArgumentConverter[]
+	public class ToLengthArgumentConverter extends TypedArgumentConverter<String, Integer> {
+
+		protected ToLengthArgumentConverter() {
+			super(String.class, Integer.class);
+		}
+
+		@Override
+		protected Integer convert(String source) {
+			return (source != null ? source.length() : 0);
+		}
+
+	}
+	// end::explicit_conversion_example_TypedArgumentConverter[]
+
 	// tag::explicit_java_time_converter[]
 	@ParameterizedTest
 	@ValueSource(strings = { "01.01.2017", "31.12.2017" })
@@ -416,4 +443,17 @@ class ParameterizedTestDemo {
 	void testWithCustomDisplayNames(String fruit, int rank) {
 	}
 	// end::custom_display_names[]
+
+	// tag::named_arguments[]
+	@DisplayName("A parameterized test with named arguments")
+	@ParameterizedTest(name = "{index}: {0}")
+	@MethodSource("namedArguments")
+	void testWithNamedArguments(File file) {
+	}
+
+	static Stream<Arguments> namedArguments() {
+		return Stream.of(arguments(Named.of("An important file", new File("path1"))),
+			arguments(Named.of("Another file", new File("path2"))));
+	}
+	// end::named_arguments[]
 }

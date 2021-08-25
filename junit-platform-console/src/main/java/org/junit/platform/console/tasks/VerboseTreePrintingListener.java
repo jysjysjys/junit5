@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -143,7 +143,7 @@ class VerboseTreePrintingListener implements TestExecutionListener {
 	}
 
 	private String verticals(int index) {
-		return verticals[Math.min(index, verticals.length)];
+		return verticals[Math.min(index, verticals.length - 1)];
 	}
 
 	private void printVerticals(String tile) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,10 +13,13 @@ package org.junit.jupiter.engine.config;
 import static org.apiguardian.api.API.Status.INTERNAL;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -36,6 +39,9 @@ public interface JupiterConfiguration {
 	String DEFAULT_TEST_INSTANCE_LIFECYCLE_PROPERTY_NAME = "junit.jupiter.testinstance.lifecycle.default";
 	String DEACTIVATE_ALL_CONDITIONS_PATTERN = ClassNamePatternFilterUtils.DEACTIVATE_ALL_PATTERN;
 	String DEFAULT_DISPLAY_NAME_GENERATOR_PROPERTY_NAME = "junit.jupiter.displayname.generator.default";
+	String DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME = "junit.jupiter.testmethod.order.default";
+	String DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME = "junit.jupiter.testclass.order.default";
+	String TEMP_DIR_SCOPE_PROPERTY_NAME = "junit.jupiter.tempdir.scope";
 
 	String DEFAULT_TIMEOUT_PROPERTY_NAME = "junit.jupiter.execution.timeout.default";
 	String DEFAULT_TESTABLE_METHOD_TIMEOUT_PROPERTY_NAME = "junit.jupiter.execution.timeout.testable.method.default";
@@ -51,6 +57,8 @@ public interface JupiterConfiguration {
 
 	Optional<String> getRawConfigurationParameter(String key);
 
+	<T> Optional<T> getRawConfigurationParameter(String key, Function<String, T> transformer);
+
 	boolean isParallelExecutionEnabled();
 
 	boolean isExtensionAutoDetectionEnabled();
@@ -64,5 +72,9 @@ public interface JupiterConfiguration {
 	Predicate<ExecutionCondition> getExecutionConditionFilter();
 
 	DisplayNameGenerator getDefaultDisplayNameGenerator();
+
+	Optional<MethodOrderer> getDefaultTestMethodOrderer();
+
+	Optional<ClassOrderer> getDefaultTestClassOrderer();
 
 }

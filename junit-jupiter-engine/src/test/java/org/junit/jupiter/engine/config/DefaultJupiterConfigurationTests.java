@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.engine.Constants;
@@ -84,6 +85,18 @@ class DefaultJupiterConfigurationTests {
 		DisplayNameGenerator defaultDisplayNameGenerator = configuration.getDefaultDisplayNameGenerator();
 
 		assertThat(defaultDisplayNameGenerator).isInstanceOf(DisplayNameGenerator.Standard.class);
+	}
+
+	@Test
+	void shouldGetNothingAsDefaultTestMethodOrderWithoutConfigParamSet() {
+		ConfigurationParameters parameters = mock(ConfigurationParameters.class);
+		String key = Constants.DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME;
+		when(parameters.get(key)).thenReturn(Optional.empty());
+		JupiterConfiguration configuration = new DefaultJupiterConfiguration(parameters);
+
+		final Optional<MethodOrderer> defaultTestMethodOrder = configuration.getDefaultTestMethodOrderer();
+
+		assertThat(defaultTestMethodOrder).isEmpty();
 	}
 
 	private void assertDefaultConfigParam(String configValue, Lifecycle expected) {

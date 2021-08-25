@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -283,6 +283,19 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
+	void instanceFactorySupportedWhenTestClassDeclaresMultipleConstructors() {
+		executeTestsForClass(MultipleConstructorsTestCase.class).testEvents()//
+				.assertStatistics(stats -> stats.started(1).succeeded(1));
+
+		// @formatter:off
+		assertThat(callSequence).containsExactly(
+			"MultipleConstructorsTestInstanceFactory instantiated: MultipleConstructorsTestCase",
+				"test: 42"
+		);
+		// @formatter:on
+	}
+
+	@Test
 	void inheritedFactoryInTestClassHierarchy() {
 		EngineExecutionResults executionResults = executeTestsForClass(InheritedFactoryTestCase.class);
 
@@ -427,6 +440,34 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 
 	@TestInstance(PER_CLASS)
 	static class PerClassLifecycleExplosiveTestInstanceFactoryTestCase extends ExplosiveTestInstanceFactoryTestCase {
+	}
+
+	private static class MultipleConstructorsTestInstanceFactory implements TestInstanceFactory {
+
+		@Override
+		public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {
+			instantiated(getClass(), factoryContext.getTestClass());
+			return new MultipleConstructorsTestCase(42);
+		}
+	}
+
+	@ExtendWith(MultipleConstructorsTestInstanceFactory.class)
+	static class MultipleConstructorsTestCase {
+
+		private final int number;
+
+		public MultipleConstructorsTestCase(String text) {
+			this.number = -1;
+		}
+
+		public MultipleConstructorsTestCase(int number) {
+			this.number = number;
+		}
+
+		@Test
+		void test() {
+			callSequence.add("test: " + this.number);
+		}
 	}
 
 	@ExtendWith(FooInstanceFactory.class)
@@ -642,7 +683,7 @@ class TestInstanceFactoryTests extends AbstractJupiterTestEngineTests {
 	}
 
 	/**
-	 * This does not actually create a proxy. Rather, it simply simulates what
+	 * This does not actually create a proxy. Rather, it simulates what
 	 * a proxy-based implementation might do, by loading the class from a
 	 * different {@link ClassLoader}.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.extension.InvocationInterceptor.Invocation;
-import org.junit.platform.commons.util.BlacklistedExceptions;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 
 /**
  * @since 5.5
@@ -46,7 +46,7 @@ class TimeoutInvocation<T> implements Invocation<T> {
 			result = delegate.proceed();
 		}
 		catch (Throwable t) {
-			BlacklistedExceptions.rethrowIfBlacklisted(t);
+			UnrecoverableExceptions.rethrowIfUnrecoverable(t);
 			failure = t;
 		}
 		finally {

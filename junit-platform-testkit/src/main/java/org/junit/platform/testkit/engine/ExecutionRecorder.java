@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,12 @@
 
 package org.junit.platform.testkit.engine;
 
+import static org.apiguardian.api.API.Status.MAINTAINED;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.apiguardian.api.API;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
@@ -29,7 +32,8 @@ import org.junit.platform.engine.reporting.ReportEntry;
  * @see Event
  * @see Execution
  */
-class ExecutionRecorder implements EngineExecutionListener {
+@API(status = MAINTAINED, since = "1.7")
+public class ExecutionRecorder implements EngineExecutionListener {
 
 	private final List<Event> events = new CopyOnWriteArrayList<>();
 
@@ -80,7 +84,7 @@ class ExecutionRecorder implements EngineExecutionListener {
 	 *
 	 * @return the {@code EngineExecutionResults} containing all current state information
 	 */
-	EngineExecutionResults getExecutionResults() {
+	public EngineExecutionResults getExecutionResults() {
 		return new EngineExecutionResults(this.events);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.testkit.engine;
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.assertj.core.api.Assertions.allOf;
 import static org.junit.platform.commons.util.FunctionUtils.where;
 import static org.junit.platform.engine.TestExecutionResult.Status.ABORTED;
@@ -29,6 +30,7 @@ import static org.junit.platform.testkit.engine.EventType.STARTED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
@@ -40,6 +42,7 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestExecutionResult.Status;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 
 /**
@@ -48,7 +51,7 @@ import org.junit.platform.engine.support.descriptor.EngineDescriptor;
  * @since 1.4
  * @see TestExecutionResultConditions
  */
-@API(status = EXPERIMENTAL, since = "1.4")
+@API(status = MAINTAINED, since = "1.7")
 public final class EventConditions {
 
 	private EventConditions() {
@@ -85,7 +88,7 @@ public final class EventConditions {
 	 * @see #uniqueIdSubstring(String)
 	 */
 	public static Condition<Event> test(String uniqueIdSubstring) {
-		return allOf(test(), uniqueIdSubstring(uniqueIdSubstring));
+		return test(uniqueIdSubstring(uniqueIdSubstring));
 	}
 
 	/**
@@ -97,11 +100,31 @@ public final class EventConditions {
 	 * display name} equals the supplied {@link String}.
 	 *
 	 * @see #test()
+	 * @see #test(Condition)
 	 * @see #uniqueIdSubstring(String)
 	 * @see #displayName(String)
 	 */
 	public static Condition<Event> test(String uniqueIdSubstring, String displayName) {
 		return allOf(test(), uniqueIdSubstring(uniqueIdSubstring), displayName(displayName));
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if an
+	 * {@link Event} matches the supplied {@code Condition} and its
+	 * {@linkplain Event#getTestDescriptor() test descriptor} is a
+	 * {@linkplain TestDescriptor#isTest() test}.
+	 *
+	 * <p>For example, {@code test(displayName("my display name"))} can be used
+	 * to match against a test with the given display name.
+	 *
+	 * @since 1.8
+	 * @see #test(String)
+	 * @see #test(String, String)
+	 * @see #displayName(String)
+	 */
+	@API(status = MAINTAINED, since = "1.8")
+	public static Condition<Event> test(Condition<Event> condition) {
+		return allOf(test(), condition);
 	}
 
 	/**
@@ -157,6 +180,29 @@ public final class EventConditions {
 
 	/**
 	 * Create a new {@link Condition} that matches if and only if an
+	 * {@link Event} matches the supplied {@code Condition}, its
+	 * {@linkplain Event#getTestDescriptor() test descriptor} is
+	 * a {@linkplain TestDescriptor#isContainer() container}, and its
+	 * {@linkplain TestDescriptor#getUniqueId() unique id} contains the
+	 * simple names of the supplied {@link Class} and all of its
+	 * {@linkplain Class#getEnclosingClass() enclosing classes}.
+	 *
+	 * <p>For example, {@code nestedContainer(MyNestedTests.class, displayName("my display name"))}
+	 * can be used to match against a nested container with the given display name.
+	 *
+	 * <p>Please note that this method does not differentiate between static
+	 * nested classes and non-static member classes (e.g., inner classes).
+	 *
+	 * @since 1.8
+	 * @see #nestedContainer(Class)
+	 */
+	@API(status = MAINTAINED, since = "1.8")
+	public static Condition<Event> nestedContainer(Class<?> clazz, Condition<Event> condition) {
+		return allOf(nestedContainer(clazz), condition);
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if an
 	 * {@link Event}'s {@linkplain Event#getTestDescriptor() test descriptor} is
 	 * a {@linkplain TestDescriptor#isContainer() container} and its
 	 * {@linkplain TestDescriptor#getUniqueId() unique id} contains the
@@ -165,6 +211,8 @@ public final class EventConditions {
 	 *
 	 * <p>Please note that this method does not differentiate between static
 	 * nested classes and non-static member classes (e.g., inner classes).
+	 *
+	 * @see #nestedContainer(Class, Condition)
 	 */
 	public static Condition<Event> nestedContainer(Class<?> clazz) {
 		Preconditions.notNull(clazz, "Class must not be null");
@@ -225,7 +273,6 @@ public final class EventConditions {
 	 *
 	 * @since 1.6
 	 */
-	@API(status = EXPERIMENTAL, since = "1.6")
 	public static Condition<Event> uniqueIdSubstrings(String... uniqueIdSubstrings) {
 		return uniqueIdSubstrings(Arrays.asList(uniqueIdSubstrings));
 	}
@@ -238,7 +285,6 @@ public final class EventConditions {
 	 *
 	 * @since 1.6
 	 */
-	@API(status = EXPERIMENTAL, since = "1.6")
 	public static Condition<Event> uniqueIdSubstrings(List<String> uniqueIdSubstrings) {
 		// The following worked with AssertJ 3.13.2
 		// return allOf(uniqueIdSubstrings.stream().map(EventConditions::uniqueIdSubstring).collect(toList()));
@@ -411,6 +457,17 @@ public final class EventConditions {
 	 */
 	public static Condition<Event> reason(Predicate<String> predicate) {
 		return new Condition<>(byPayload(String.class, predicate), "event with custom reason predicate");
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if an
+	 * {@link Event}'s {@linkplain Event#getPayload() payload} is an instance of
+	 * {@link ReportEntry} that contains the supplied key-value pairs.
+	 */
+	@API(status = EXPERIMENTAL, since = "1.7")
+	public static Condition<Event> reportEntry(Map<String, String> keyValuePairs) {
+		return new Condition<>(byPayload(ReportEntry.class, it -> it.getKeyValuePairs().equals(keyValuePairs)),
+			"event for report entry with key-value pairs %s", keyValuePairs);
 	}
 
 }

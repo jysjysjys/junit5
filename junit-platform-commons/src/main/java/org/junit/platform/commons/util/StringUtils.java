@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -142,8 +142,9 @@ public final class StringUtils {
 	 * {@code Arrays#toString(...)} variant will be used to convert it to a String.</li>
 	 * <li>If the supplied object is an object array, {@code Arrays#deepToString(Object[])}
 	 * will be used to convert it to a String.</li>
-	 * <li>Otherwise, the result of invoking {@code toString()} on the object
-	 * will be returned.</li>
+	 * <li>Otherwise, {@code toString()} will be invoked on the object. If the
+	 * result is non-null, that result will be returned. If the result is
+	 * {@code null}, {@code "null"} will be returned.</li>
 	 * <li>If any of the above results in an exception, this method delegates to
 	 * {@link #defaultToString(Object)}</li>
 	 * </ul>
@@ -190,10 +191,11 @@ public final class StringUtils {
 			}
 
 			// else
-			return obj.toString();
+			String result = obj.toString();
+			return result != null ? result : "null";
 		}
 		catch (Throwable throwable) {
-			BlacklistedExceptions.rethrowIfBlacklisted(throwable);
+			UnrecoverableExceptions.rethrowIfUnrecoverable(throwable);
 
 			return defaultToString(obj);
 		}

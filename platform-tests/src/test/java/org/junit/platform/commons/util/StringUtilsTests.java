@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -139,6 +139,11 @@ class StringUtilsTests {
 	}
 
 	@Test
+	void nullSafeToStringForObjectWhoseToStringImplementationReturnsNull() {
+		assertEquals("null", nullSafeToString(new ToStringReturnsNull()));
+	}
+
+	@Test
 	void nullSafeToStringForObjectWhoseToStringImplementationThrowsAnException() {
 		assertThat(nullSafeToString(new ToStringThrowsException()))//
 				.startsWith(ToStringThrowsException.class.getName() + "@");
@@ -166,6 +171,14 @@ class StringUtilsTests {
 			() -> String.format("'%s' should not contain ISO control character", str));
 		assertFalse(containsIsoControlCharacter(str),
 			() -> String.format("'%s' should not contain ISO control character", str));
+	}
+
+	private static class ToStringReturnsNull {
+
+		@Override
+		public String toString() {
+			return null;
+		}
 	}
 
 	private static class ToStringThrowsException {

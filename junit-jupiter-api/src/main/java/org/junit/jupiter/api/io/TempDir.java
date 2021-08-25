@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -26,15 +26,15 @@ import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * {@code @TempDir} can be used to annotate a non-private field in a test class
- * or a parameter in a lifecycle method or test method of type {@link Path} or
+ * {@code @TempDir} can be used to annotate a field in a test class or a
+ * parameter in a lifecycle method or test method of type {@link Path} or
  * {@link File} that should be resolved into a temporary directory.
  *
  * <p>Please note that {@code @TempDir} is not supported on constructor
- * parameters. Please use field injection instead, by annotating a non-private
- * instance field with {@code @TempDir}.
+ * parameters. Please use field injection instead by annotating an instance
+ * field with {@code @TempDir}.
  *
- * <h3>Temporary Directory Creation</h3>
+ * <h3>Creation</h3>
  *
  * <p>The temporary directory is only created if a field in a test class or a
  * parameter in a lifecycle method or test method is annotated with
@@ -45,19 +45,29 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * addition, a {@code ParameterResolutionException} will be thrown for a
  * constructor parameter annotated with {@code @TempDir}.
  *
- * <h3>Temporary Directory Scope</h3>
+ * <h3>Scope</h3>
  *
- * <p>The scope of the temporary directory depends on where the first
- * {@code @TempDir} annotation is encountered when executing a test class. The
- * temporary directory will be shared by all tests in a class when the
- * annotation is present on a {@code static} field or on a parameter of a
- * {@link org.junit.jupiter.api.BeforeAll @BeforeAll} method. Otherwise &mdash;
- * for example, when {@code @TempDir} is only used on instance fields or on
- * parameters in test, {@link org.junit.jupiter.api.BeforeEach @BeforeEach},
- * or {@link org.junit.jupiter.api.AfterEach @AfterEach} methods &mdash; each test
+ * <p>By default, a separate temporary directory is created for every
+ * declaration of the {@code @TempDir} annotation. If you want to share a
+ * temporary directory across all tests in a test class, you should declare the
+ * annotation on a {@code static} field or on a parameter of a
+ * {@link org.junit.jupiter.api.BeforeAll @BeforeAll} method.
+ *
+ * <h4>Old behavior</h4>
+ * <p>You can revert to the old behavior of using a single temporary directory
+ * by setting the {@code junit.jupiter.tempdir.scope} configuration parameter to
+ * {@code per_context}. In that case, the scope of the temporary directory
+ * depends on where the first {@code @TempDir} annotation is encountered when
+ * executing a test class. The temporary directory will be shared by all tests
+ * in a class when the annotation is present on a {@code static} field or on a
+ * parameter of a {@link org.junit.jupiter.api.BeforeAll @BeforeAll} method.
+ * Otherwise &mdash; for example, when {@code @TempDir} is only used on instance
+ * fields or on parameters in test,
+ * {@link org.junit.jupiter.api.BeforeEach @BeforeEach}, or
+ * {@link org.junit.jupiter.api.AfterEach @AfterEach} methods &mdash; each test
  * will use its own temporary directory.
  *
- * <h3>Temporary Directory Deletion</h3>
+ * <h3>Deletion</h3>
  *
  * <p>When the end of the scope of a temporary directory is reached, i.e. when
  * the test method or class has finished execution, JUnit will attempt to

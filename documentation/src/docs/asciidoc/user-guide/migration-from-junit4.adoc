@@ -30,8 +30,8 @@ find out how this is done with Gradle and Maven.
 ==== Categories Support
 
 For test classes or methods that are annotated with `@Category`, the _JUnit Vintage test
-engine_ exposes the category's fully qualified class name as a tag of the corresponding
-test identifier. For example, if a test method is annotated with
+engine_ exposes the category's fully qualified class name as a <<running-tests-tags, tag>>
+of the corresponding test identifier. For example, if a test method is annotated with
 `@Category(Example.class)`, it will be tagged with `"com.acme.Example"`. Similar to the
 `Categories` runner in JUnit 4, this information can be used to filter the discovered
 tests before executing them (see <<running-tests>> for details).
@@ -98,9 +98,6 @@ all rule migration support extensions: `VerifierSupport`, `ExternalResourceSuppo
 However, if you intend to develop a new extension for JUnit 5 please use the new
 extension model of JUnit Jupiter instead of the rule-based model of JUnit 4.
 
-WARNING: JUnit 4 `Rule` support in JUnit Jupiter is currently an _experimental_ feature.
-Consult the table in <<api-evolution-experimental-apis>> for detail.
-
 
 [[migrating-from-junit4-ignore-annotation-support]]
 === JUnit 4 @Ignore Support
@@ -121,6 +118,3 @@ automatically registers the `IgnoreCondition` along with
 ----
 include::{testDir}/example/IgnoredTestsDemo.java[tags=user_guide]
 ----
-
-WARNING: JUnit 4 `@Ignore` support in JUnit Jupiter is currently an _experimental_
-feature. Consult the table in <<api-evolution-experimental-apis>> for detail.

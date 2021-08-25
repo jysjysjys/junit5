@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,8 +11,10 @@
 package org.junit.jupiter.params;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Named.named;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
@@ -20,7 +22,9 @@ import static org.junit.platform.testkit.engine.EventConditions.abortedWithReaso
 import static org.junit.platform.testkit.engine.EventConditions.container;
 import static org.junit.platform.testkit.engine.EventConditions.displayName;
 import static org.junit.platform.testkit.engine.EventConditions.event;
+import static org.junit.platform.testkit.engine.EventConditions.finishedSuccessfully;
 import static org.junit.platform.testkit.engine.EventConditions.finishedWithFailure;
+import static org.junit.platform.testkit.engine.EventConditions.started;
 import static org.junit.platform.testkit.engine.EventConditions.test;
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
@@ -45,6 +49,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -136,7 +141,7 @@ class ParameterizedTestIntegrationTests {
 		var results = execute("testWithCustomName", String.class, int.class);
 
 		// @formatter:off
-		Stream<String> legacyReportingNames = results.testEvents().dynamicallyRegistered()
+		var legacyReportingNames = results.testEvents().dynamicallyRegistered()
 				.map(Event::getTestDescriptor)
 				.map(TestDescriptor::getLegacyReportingName);
 		// @formatter:on
@@ -161,6 +166,42 @@ class ParameterizedTestIntegrationTests {
 					event(test(), displayName("[1] ab, cd"), finishedWithFailure(message("concatenation: abcd")))) //
 				.haveExactly(1,
 					event(test(), displayName("[2] ef, gh"), finishedWithFailure(message("concatenation: efgh"))));
+	}
+
+	@Test
+	void executesWithIgnoreLeadingAndTrailingSetToFalseForCsvSource() {
+		var results = execute("testWithIgnoreLeadingAndTrailingWhitespaceSetToFalseForCsvSource", String.class,
+			String.class);
+		results.allEvents().assertThatEvents() //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: ' ab ', ' cd'")))) //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ef ', 'gh'"))));
+	}
+
+	@Test
+	void executesWithIgnoreLeadingAndTrailingSetToTrueForCsvSource() {
+		var results = execute("testWithIgnoreLeadingAndTrailingWhitespaceSetToTrueForCsvSource", String.class,
+			String.class);
+		results.allEvents().assertThatEvents() //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ab', 'cd'")))) //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ef', 'gh'"))));
+	}
+
+	@Test
+	void executesWithIgnoreLeadingAndTrailingSetToFalseForCsvFileSource() {
+		var results = execute("testWithIgnoreLeadingAndTrailingWhitespaceSetToFalseForCsvFileSource", String.class,
+			String.class);
+		results.allEvents().assertThatEvents() //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: ' ab ', ' cd'")))) //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ef ', 'gh'"))));
+	}
+
+	@Test
+	void executesWithIgnoreLeadingAndTrailingSetToTrueForCsvFileSource() {
+		var results = execute("testWithIgnoreLeadingAndTrailingWhitespaceSetToTrueForCsvFileSource", String.class,
+			String.class);
+		results.allEvents().assertThatEvents() //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ab', 'cd'")))) //
+				.haveExactly(1, event(test(), finishedWithFailure(message("arguments: 'ef', 'gh'"))));
 	}
 
 	@Test
@@ -219,6 +260,28 @@ class ParameterizedTestIntegrationTests {
 		// @formatter:on
 	}
 
+	@Test
+	void truncatesArgumentsThatExceedMaxLength() {
+		var results = EngineTestKit.engine(new JupiterTestEngine()) //
+				.configurationParameter(ParameterizedTestExtension.ARGUMENT_MAX_LENGTH_KEY, "2") //
+				.selectors(selectMethod(TestCase.class, "testWithCsvSource", String.class.getName())) //
+				.execute();
+		results.testEvents().assertThatEvents() //
+				.haveExactly(1, event(displayName("[1] argument=f…"), started())) //
+				.haveExactly(1, event(displayName("[2] argument=b…"), started()));
+	}
+
+	@Test
+	void displayNamePatternFromConfiguration() {
+		var results = EngineTestKit.engine(new JupiterTestEngine()) //
+				.configurationParameter(ParameterizedTestExtension.DISPLAY_NAME_PATTERN_KEY, "{index}") //
+				.selectors(selectMethod(TestCase.class, "testWithCsvSource", String.class.getName())) //
+				.execute();
+		results.testEvents().assertThatEvents() //
+				.haveExactly(1, event(displayName("1"), started())) //
+				.haveExactly(1, event(displayName("2"), started()));
+	}
+
 	private EngineExecutionResults execute(DiscoverySelector... selectors) {
 		return EngineTestKit.engine(new JupiterTestEngine()).selectors(selectors).execute();
 	}
@@ -260,7 +323,7 @@ class ParameterizedTestIntegrationTests {
 
 		@Test
 		void failsWithNullSourceWithZeroFormalParameters() {
-			String methodName = "testWithNullSourceWithZeroFormalParameters";
+			var methodName = "testWithNullSourceWithZeroFormalParameters";
 			execute(methodName).containerEvents().failed().assertEventsMatchExactly(//
 				event(container(methodName), //
 					finishedWithFailure(//
@@ -346,7 +409,7 @@ class ParameterizedTestIntegrationTests {
 
 		@Test
 		void failsWithEmptySourceWithZeroFormalParameters() {
-			String methodName = "testWithEmptySourceWithZeroFormalParameters";
+			var methodName = "testWithEmptySourceWithZeroFormalParameters";
 			execute(methodName).containerEvents().failed().assertEventsMatchExactly(//
 				event(container(methodName), //
 					finishedWithFailure(//
@@ -369,7 +432,7 @@ class ParameterizedTestIntegrationTests {
 					finishedWithFailure(//
 						instanceOf(PreconditionViolationException.class), //
 						message(msg -> msg.matches("@EmptySource cannot provide an empty argument to method .+: \\["
-								+ parameterType.getName() + "\\] is not a supported type."))//
+								+ parameterType.getName() + "] is not a supported type."))//
 					)));
 		}
 
@@ -577,6 +640,24 @@ class ParameterizedTestIntegrationTests {
 				methodParameterTypes);
 		}
 
+		@Test
+		void namedParameters() {
+			execute("namedParameters", String.class).allEvents().assertThatEvents() //
+					.haveAtLeast(1,
+						event(test(), displayName("cool name"), finishedWithFailure(message("parameter value")))) //
+					.haveAtLeast(1,
+						event(test(), displayName("default name"), finishedWithFailure(message("default name"))));
+		}
+
+		@Test
+		void nameParametersAlias() {
+			execute("namedParametersAlias", String.class).allEvents().assertThatEvents() //
+					.haveAtLeast(1,
+						event(test(), displayName("cool name"), finishedWithFailure(message("parameter value")))) //
+					.haveAtLeast(1,
+						event(test(), displayName("default name"), finishedWithFailure(message("default name"))));
+		}
+
 	}
 
 	@Nested
@@ -623,6 +704,15 @@ class ParameterizedTestIntegrationTests {
 				methodParameterTypes);
 		}
 
+	}
+
+	@Test
+	void closeAutoCloseableArgumentsAfterTest() {
+		var results = execute("testWithAutoCloseableArgument", AutoCloseableArgument.class);
+		results.allEvents().assertThatEvents() //
+				.haveExactly(1, event(test(), finishedSuccessfully()));
+
+		assertTrue(AutoCloseableArgument.isClosed);
 	}
 
 	// -------------------------------------------------------------------------
@@ -681,6 +771,36 @@ class ParameterizedTestIntegrationTests {
 		@CsvSource({ "ab, cd", "ef, gh" })
 		void testWithAggregator(@AggregateWith(StringAggregator.class) String concatenation) {
 			fail("concatenation: " + concatenation);
+		}
+
+		@ParameterizedTest
+		@CsvSource(value = { " ab , cd", "ef ,gh" }, ignoreLeadingAndTrailingWhitespace = false)
+		void testWithIgnoreLeadingAndTrailingWhitespaceSetToFalseForCsvSource(String argument1, String argument2) {
+			fail("arguments: '" + argument1 + "', '" + argument2 + "'");
+		}
+
+		@ParameterizedTest
+		@CsvSource(value = { " ab , cd", "ef ,gh" }, ignoreLeadingAndTrailingWhitespace = true)
+		void testWithIgnoreLeadingAndTrailingWhitespaceSetToTrueForCsvSource(String argument1, String argument2) {
+			fail("arguments: '" + argument1 + "', '" + argument2 + "'");
+		}
+
+		@ParameterizedTest
+		@CsvFileSource(resources = "/leading-trailing-spaces.csv", ignoreLeadingAndTrailingWhitespace = false)
+		void testWithIgnoreLeadingAndTrailingWhitespaceSetToFalseForCsvFileSource(String argument1, String argument2) {
+			fail("arguments: '" + argument1 + "', '" + argument2 + "'");
+		}
+
+		@ParameterizedTest
+		@CsvFileSource(resources = "/leading-trailing-spaces.csv", ignoreLeadingAndTrailingWhitespace = true)
+		void testWithIgnoreLeadingAndTrailingWhitespaceSetToTrueForCsvFileSource(String argument1, String argument2) {
+			fail("arguments: '" + argument1 + "', '" + argument2 + "'");
+		}
+
+		@ParameterizedTest
+		@ArgumentsSource(AutoCloseableArgumentProvider.class)
+		void testWithAutoCloseableArgument(AutoCloseableArgument autoCloseable) {
+			assertFalse(AutoCloseableArgument.isClosed);
 		}
 
 	}
@@ -937,6 +1057,18 @@ class ParameterizedTestIntegrationTests {
 			fail(Arrays.deepToString(array));
 		}
 
+		@MethodSourceTest
+		@Order(13)
+		void namedParameters(String string) {
+			fail(string);
+		}
+
+		@MethodSourceTest
+		@Order(14)
+		void namedParametersAlias(String string) {
+			fail(string);
+		}
+
 		// ---------------------------------------------------------------------
 
 		static Stream<Arguments> emptyMethodSource() {
@@ -992,6 +1124,14 @@ class ParameterizedTestIntegrationTests {
 		static Stream<Object[][]> streamOfTwoDimensionalObjectArrays() {
 			return Stream.of(new Object[][] { { "one", 2 }, { "three", 4 } },
 				new Object[][] { { "five", 6 }, { "seven", 8 } });
+		}
+
+		static Stream<Arguments> namedParameters() {
+			return Stream.of(arguments(Named.of("cool name", "parameter value")), arguments("default name"));
+		}
+
+		static Stream<Arguments> namedParametersAlias() {
+			return Stream.of(arguments(named("cool name", "parameter value")), arguments("default name"));
 		}
 
 		// ---------------------------------------------------------------------
@@ -1081,7 +1221,7 @@ class ParameterizedTestIntegrationTests {
 		}
 
 		private void performTest(String argument, TestInfo testInfo) {
-			String testMethod = testInfo.getTestMethod().get().getName();
+			var testMethod = testInfo.getTestMethod().orElseThrow().getName();
 			testMethods.add(testMethod);
 			lifecycleEvents.add(testMethod + ":" + testInfo.getDisplayName());
 			fail(argument);
@@ -1132,6 +1272,24 @@ class ParameterizedTestIntegrationTests {
 		@Override
 		public Object convert(Object source, ParameterContext context) throws ArgumentConversionException {
 			throw new ArgumentConversionException("something went horribly wrong");
+		}
+	}
+
+	private static class AutoCloseableArgumentProvider implements ArgumentsProvider {
+
+		@Override
+		public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+			return Stream.of(arguments(new AutoCloseableArgument()));
+		}
+	}
+
+	static class AutoCloseableArgument implements AutoCloseable {
+
+		static boolean isClosed = false;
+
+		@Override
+		public void close() {
+			isClosed = true;
 		}
 	}
 

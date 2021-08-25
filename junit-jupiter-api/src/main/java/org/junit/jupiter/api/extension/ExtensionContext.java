@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -196,7 +196,7 @@ public interface ExtensionContext {
 	 *
 	 * @since 5.4
 	 */
-	@API(status = EXPERIMENTAL, since = "5.4")
+	@API(status = STABLE, since = "5.7")
 	Optional<TestInstances> getTestInstances();
 
 	/**
@@ -212,7 +212,7 @@ public interface ExtensionContext {
 	 *
 	 * @since 5.4
 	 */
-	@API(status = EXPERIMENTAL, since = "5.4")
+	@API(status = STABLE, since = "5.7")
 	default TestInstances getRequiredTestInstances() {
 		return Preconditions.notNull(getTestInstances().orElse(null),
 			"Illegal state: required test instances are not present in the current ExtensionContext");
@@ -293,6 +293,31 @@ public interface ExtensionContext {
 	Optional<String> getConfigurationParameter(String key);
 
 	/**
+	 * Get and transform the configuration parameter stored under the specified
+	 * {@code key} using the specified {@code transformer}.
+	 *
+	 * <p>If no such key is present in the {@code ConfigurationParameters} for
+	 * the JUnit Platform, an attempt will be made to look up the value as a
+	 * JVM system property. If no such system property exists, an attempt will
+	 * be made to look up the value in the JUnit Platform properties file.
+	 *
+	 * <p>In case the transformer throws an exception, it will be wrapped in a
+	 * {@link org.junit.platform.commons.JUnitException} with a helpful message.
+	 *
+	 * @param key the key to look up; never {@code null} or blank
+	 * @param transformer the transformer to apply in case a value is found;
+	 * never {@code null}
+	 * @return an {@code Optional} containing the value; never {@code null}
+	 * but potentially empty
+	 *
+	 * @see System#getProperty(String)
+	 * @see org.junit.platform.engine.ConfigurationParameters
+	 * @since 5.7
+	 */
+	@API(status = EXPERIMENTAL, since = "5.7")
+	<T> Optional<T> getConfigurationParameter(String key, Function<String, T> transformer);
+
+	/**
 	 * Publish a map of key-value pairs to be consumed by an
 	 * {@code org.junit.platform.engine.EngineExecutionListener} in order to
 	 * supply additional information to the reporting infrastructure.
@@ -370,6 +395,9 @@ public interface ExtensionContext {
 		 *
 		 * <p>Note that the {@code CloseableResource} API is only honored for
 		 * objects stored within an extension context {@link Store Store}.
+		 *
+		 * <p>The resources stored in a {@link Store Store} are closed in the
+		 * inverse order they were added in.
 		 *
 		 * @since 5.1
 		 */
@@ -619,13 +647,13 @@ public interface ExtensionContext {
 		public static Namespace create(Object... parts) {
 			Preconditions.notEmpty(parts, "parts array must not be null or empty");
 			Preconditions.containsNoNullElements(parts, "individual parts must not be null");
-			return new Namespace(parts);
+			return new Namespace(new ArrayList<>(Arrays.asList(parts)));
 		}
 
-		private final List<?> parts;
+		private final List<Object> parts;
 
-		private Namespace(Object... parts) {
-			this.parts = new ArrayList<>(Arrays.asList(parts));
+		private Namespace(List<Object> parts) {
+			this.parts = parts;
 		}
 
 		@Override
@@ -645,6 +673,22 @@ public interface ExtensionContext {
 			return this.parts.hashCode();
 		}
 
+		/**
+		 * Create a new namespace by appending the supplied {@code parts} to the
+		 * existing sequence of parts in this namespace.
+		 *
+		 * @return new namespace; never {@code null}
+		 * @since 5.8
+		 */
+		@API(status = EXPERIMENTAL, since = "5.8")
+		public Namespace append(Object... parts) {
+			Preconditions.notEmpty(parts, "parts array must not be null or empty");
+			Preconditions.containsNoNullElements(parts, "individual parts must not be null");
+			ArrayList<Object> newParts = new ArrayList<>(this.parts.size() + parts.length);
+			newParts.addAll(this.parts);
+			Collections.addAll(newParts, parts);
+			return new Namespace(newParts);
+		}
 	}
 
 }

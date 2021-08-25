@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.params.support;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Annotation;
 import java.util.function.Consumer;
@@ -29,6 +29,6 @@ import org.apiguardian.api.API;
  * @since 5.0
  */
 @FunctionalInterface
-@API(status = EXPERIMENTAL, since = "5.0")
+@API(status = STABLE, since = "5.7")
 public interface AnnotationConsumer<A extends Annotation> extends Consumer<A> {
 }

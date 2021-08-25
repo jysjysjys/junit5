@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,6 @@
 package org.junit.platform.engine.support.hierarchical;
 
 import static org.apiguardian.api.API.Status.MAINTAINED;
-import static org.junit.platform.commons.util.BlacklistedExceptions.rethrowIfBlacklisted;
 import static org.junit.platform.engine.TestExecutionResult.aborted;
 import static org.junit.platform.engine.TestExecutionResult.failed;
 import static org.junit.platform.engine.TestExecutionResult.successful;
@@ -21,6 +20,7 @@ import java.util.function.Predicate;
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.junit.platform.engine.TestExecutionResult;
 
 /**
@@ -61,7 +61,7 @@ public class ThrowableCollector {
 	 * Execute the supplied {@link Executable} and collect any {@link Throwable}
 	 * thrown during the execution.
 	 *
-	 * <p>If the {@code Executable} throws a <em>blacklisted</em> exception
+	 * <p>If the {@code Executable} throws an <em>unrecoverable</em> exception
 	 * &mdash; for example, an {@link OutOfMemoryError} &mdash; this method will
 	 * rethrow it.
 	 *
@@ -73,7 +73,7 @@ public class ThrowableCollector {
 			executable.execute();
 		}
 		catch (Throwable t) {
-			rethrowIfBlacklisted(t);
+			UnrecoverableExceptions.rethrowIfUnrecoverable(t);
 			add(t);
 		}
 	}

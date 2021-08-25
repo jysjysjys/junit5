@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -286,9 +286,9 @@ class TimeoutExtensionTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
-	@DisplayName("does not swallow blacklisted exceptions")
-	void doesNotSwallowBlacklistedExceptions() {
-		assertThrows(OutOfMemoryError.class, () -> executeTestsForClass(BlacklistedExceptionTestCase.class));
+	@DisplayName("does not swallow unrecoverable exceptions")
+	void doesNotSwallowUnrecoverableExceptions() {
+		assertThrows(OutOfMemoryError.class, () -> executeTestsForClass(UnrecoverableExceptionTestCase.class));
 	}
 
 	@Test
@@ -474,7 +474,7 @@ class TimeoutExtensionTests extends AbstractJupiterTestEngineTests {
 		}
 	}
 
-	static class BlacklistedExceptionTestCase {
+	static class UnrecoverableExceptionTestCase {
 		@Test
 		@Timeout(value = 1, unit = NANOSECONDS)
 		void test() {

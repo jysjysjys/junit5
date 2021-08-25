@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,6 +30,8 @@ import org.junit.platform.commons.PreconditionViolationException;
  * @since 5.1
  */
 class DisabledOnOsConditionTests extends AbstractExecutionConditionTests {
+
+	private static final String OS_NAME = System.getProperty("os.name");
 
 	@Override
 	protected ExecutionCondition getExecutionCondition() {
@@ -66,7 +68,8 @@ class DisabledOnOsConditionTests extends AbstractExecutionConditionTests {
 	@Test
 	void disabledOnEveryOs() {
 		evaluateCondition();
-		assertDisabledOnCurrentOsIf(true);
+		assertDisabled();
+		assertReasonContains("Disabled on operating system: " + OS_NAME + " ==> Disabled on every OS");
 	}
 
 	/**
@@ -126,11 +129,11 @@ class DisabledOnOsConditionTests extends AbstractExecutionConditionTests {
 	private void assertDisabledOnCurrentOsIf(boolean condition) {
 		if (condition) {
 			assertDisabled();
-			assertReasonContains("Disabled on operating system: " + System.getProperty("os.name"));
+			assertReasonContains("Disabled on operating system: " + OS_NAME);
 		}
 		else {
 			assertEnabled();
-			assertReasonContains("Enabled on operating system: " + System.getProperty("os.name"));
+			assertReasonContains("Enabled on operating system: " + OS_NAME);
 		}
 	}
 

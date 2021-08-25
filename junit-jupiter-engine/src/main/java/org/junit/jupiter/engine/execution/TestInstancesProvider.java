@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.TestInstances;
 import org.junit.jupiter.engine.extension.ExtensionRegistrar;
 import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.jupiter.engine.extension.MutableExtensionRegistry;
+import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 
 /**
  * @since 5.0
@@ -25,10 +26,12 @@ import org.junit.jupiter.engine.extension.MutableExtensionRegistry;
 @API(status = INTERNAL, since = "5.0")
 public interface TestInstancesProvider {
 
-	default TestInstances getTestInstances(MutableExtensionRegistry extensionRegistry) {
-		return getTestInstances(extensionRegistry, extensionRegistry);
+	default TestInstances getTestInstances(MutableExtensionRegistry extensionRegistry,
+			ThrowableCollector throwableCollector) {
+		return getTestInstances(extensionRegistry, extensionRegistry, throwableCollector);
 	}
 
-	TestInstances getTestInstances(ExtensionRegistry extensionRegistry, ExtensionRegistrar extensionRegistrar);
+	TestInstances getTestInstances(ExtensionRegistry extensionRegistry, ExtensionRegistrar extensionRegistrar,
+			ThrowableCollector throwableCollector);
 
 }

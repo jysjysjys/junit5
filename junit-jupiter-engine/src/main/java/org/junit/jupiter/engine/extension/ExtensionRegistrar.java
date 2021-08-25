@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,6 +24,18 @@ import org.junit.jupiter.api.extension.Extension;
 public interface ExtensionRegistrar {
 
 	/**
+	 * Instantiate an extension of the given type using its default constructor
+	 * and register it in the registry.
+	 *
+	 * <p>A new {@link Extension} should not be registered if an extension of the
+	 * given type already exists in the registry or a parent registry.
+	 *
+	 * @param extensionType the type of extension to register
+	 * @since 5.8
+	 */
+	void registerExtension(Class<? extends Extension> extensionType);
+
+	/**
 	 * Register the supplied {@link Extension}, without checking if an extension
 	 * of that type has already been registered.
 	 *
@@ -44,5 +56,16 @@ public interface ExtensionRegistrar {
 	 * @param source the source of the extension; never {@code null}
 	 */
 	void registerExtension(Extension extension, Object source);
+
+	/**
+	 * Register the supplied {@link Extension} as a <em>synthetic</em> extension,
+	 * without checking if an extension of that type has already been registered.
+	 *
+	 * @param extension the extension to register; never {@code null}
+	 * @param source the source of the extension; never {@code null}
+	 * @since 5.8
+	 * @see #registerExtension(Extension, Object)
+	 */
+	void registerSyntheticExtension(Extension extension, Object source);
 
 }

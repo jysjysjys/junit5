@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,14 +18,13 @@ import static org.junit.platform.launcher.TagIntegrationTests.TaggedTestCase.dou
 import static org.junit.platform.launcher.TagIntegrationTests.TaggedTestCase.tag1WasExecuted;
 import static org.junit.platform.launcher.TagIntegrationTests.TaggedTestCase.tag2WasExecuted;
 import static org.junit.platform.launcher.TagIntegrationTests.TaggedTestCase.unTaggedWasExecuted;
-import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.platform.launcher.core.LauncherFactory;
+import org.junit.platform.testkit.engine.EngineTestKit;
 
 class TagIntegrationTests {
 
@@ -80,11 +79,10 @@ class TagIntegrationTests {
 	}
 
 	private void executeTaggedTestCase(PostDiscoveryFilter filter) {
-		var request = request() //
+		EngineTestKit.engine("junit-jupiter") //
 				.selectors(selectClass(TaggedTestCase.class)) //
 				.filters(filter) //
-				.build();
-		LauncherFactory.create().execute(request);
+				.execute();
 	}
 
 	static class TaggedTestCase {

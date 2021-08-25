@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,11 +10,13 @@
 
 package org.junit.platform.commons.util;
 
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.STABLE;
 import static org.junit.platform.commons.util.CollectionUtils.toUnmodifiableList;
 import static org.junit.platform.commons.util.ReflectionUtils.HierarchyTraversalMode.BOTTOM_UP;
 import static org.junit.platform.commons.util.ReflectionUtils.HierarchyTraversalMode.TOP_DOWN;
@@ -106,7 +108,7 @@ public final class ReflectionUtils {
 	 * <p>The pattern intentionally captures the last bracket with the
 	 * capital letter so that the combination can be looked up via
 	 * {@link #classNameToTypeMap}. For example, the last matched group
-	 * will contain {@code "[I"} instead of simply {@code "I"}.
+	 * will contain {@code "[I"} instead of {@code "I"}.
 	 *
 	 * @see Class#getName()
 	 */
@@ -363,6 +365,42 @@ public final class ReflectionUtils {
 	}
 
 	/**
+	 * Determine if an object of the supplied source type can be assigned to the
+	 * supplied target type for the purpose of reflective method invocations.
+	 *
+	 * <p>In contrast to {@link Class#isAssignableFrom(Class)}, this method
+	 * returns {@code true} if the target type represents a primitive type whose
+	 * wrapper matches the supplied source type. In addition, this method
+	 * also supports
+	 * <a href="https://docs.oracle.com/javase/specs/jls/se8/html/jls-5.html#jls-5.1.2">
+	 * widening conversions</a> for primitive target types.
+	 *
+	 * @param sourceType the non-primitive target type; never {@code null}
+	 * @param targetType the target type; never {@code null}
+	 * @return {@code true} if an object of the source type is assignment compatible
+	 * with the target type
+	 * @since 1.8
+	 * @see Class#isInstance(Object)
+	 * @see Class#isAssignableFrom(Class)
+	 * @see #isAssignableTo(Object, Class)
+	 */
+	public static boolean isAssignableTo(Class<?> sourceType, Class<?> targetType) {
+		Preconditions.notNull(sourceType, "source type must not be null");
+		Preconditions.condition(!sourceType.isPrimitive(), "source type must not be a primitive type");
+		Preconditions.notNull(targetType, "target type must not be null");
+
+		if (targetType.isAssignableFrom(sourceType)) {
+			return true;
+		}
+
+		if (targetType.isPrimitive()) {
+			return sourceType == primitiveToWrapperMap.get(targetType) || isWideningConversion(sourceType, targetType);
+		}
+
+		return false;
+	}
+
+	/**
 	 * Determine if the supplied object can be assigned to the supplied target
 	 * type for the purpose of reflective method invocations.
 	 *
@@ -382,6 +420,7 @@ public final class ReflectionUtils {
 	 * @return {@code true} if the object is assignment compatible
 	 * @see Class#isInstance(Object)
 	 * @see Class#isAssignableFrom(Class)
+	 * @see #isAssignableTo(Class, Class)
 	 */
 	public static boolean isAssignableTo(Object obj, Class<?> targetType) {
 		Preconditions.notNull(targetType, "target type must not be null");
@@ -889,8 +928,8 @@ public final class ReflectionUtils {
 	 * Get the outermost instance of the required type, searching recursively
 	 * through enclosing instances.
 	 *
-	 * <p>If the supplied inner object is of the required type, it will simply
-	 * be returned.
+	 * <p>If the supplied inner object is of the required type, it will be
+	 * returned.
 	 *
 	 * @param inner the inner object from which to begin the search; never {@code null}
 	 * @param requiredType the required type of the outermost instance; never {@code null}
@@ -1004,22 +1043,26 @@ public final class ReflectionUtils {
 		Preconditions.notNull(predicate, "Predicate must not be null");
 
 		Set<Class<?>> candidates = new LinkedHashSet<>();
-		findNestedClasses(clazz, candidates);
-		return candidates.stream().filter(predicate).collect(toUnmodifiableList());
+		findNestedClasses(clazz, predicate, candidates);
+		return Collections.unmodifiableList(new ArrayList<>(candidates));
 	}
 
-	private static void findNestedClasses(Class<?> clazz, Set<Class<?>> candidates) {
+	private static void findNestedClasses(Class<?> clazz, Predicate<Class<?>> predicate, Set<Class<?>> candidates) {
 		if (!isSearchable(clazz)) {
 			return;
 		}
 
-		detectInnerClassCycle(clazz);
+		if (isInnerClass(clazz) && predicate.test(clazz)) {
+			detectInnerClassCycle(clazz);
+		}
 
 		try {
 			// Candidates in current class
 			for (Class<?> nestedClass : clazz.getDeclaredClasses()) {
-				detectInnerClassCycle(nestedClass);
-				candidates.add(nestedClass);
+				if (predicate.test(nestedClass)) {
+					detectInnerClassCycle(nestedClass);
+					candidates.add(nestedClass);
+				}
 			}
 		}
 		catch (NoClassDefFoundError error) {
@@ -1027,11 +1070,11 @@ public final class ReflectionUtils {
 		}
 
 		// Search class hierarchy
-		findNestedClasses(clazz.getSuperclass(), candidates);
+		findNestedClasses(clazz.getSuperclass(), predicate, candidates);
 
 		// Search interface hierarchy
 		for (Class<?> ifc : clazz.getInterfaces()) {
-			findNestedClasses(ifc, candidates);
+			findNestedClasses(ifc, predicate, candidates);
 		}
 	}
 
@@ -1312,6 +1355,34 @@ public final class ReflectionUtils {
 		}
 
 		return Optional.empty();
+	}
+
+	/**
+	 * Find the first {@link Method} of the supplied class or interface that
+	 * meets the specified criteria, beginning with the specified class or
+	 * interface and traversing up the type hierarchy until such a method is
+	 * found or the type hierarchy is exhausted.
+	 *
+	 * <p>Use this method as an alternative to
+	 * {@link #findMethod(Class, String, Class...)} for use cases in which the
+	 * method is required to be present.
+	 *
+	 * @param clazz the class or interface in which to find the method;
+	 * never {@code null}
+	 * @param methodName the name of the method to find; never {@code null}
+	 * or empty
+	 * @param parameterTypes the types of parameters accepted by the method,
+	 * if any; never {@code null}
+	 * @return the {@code Method} found; never {@code null}
+	 * @throws JUnitException if no method is found
+	 *
+	 * @since 1.7
+	 * @see #findMethod(Class, String, Class...)
+	 */
+	@API(status = STABLE, since = "1.7")
+	public static Method getRequiredMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+		return ReflectionUtils.findMethod(clazz, methodName, parameterTypes).orElseThrow(
+			() -> new JUnitException(format("Could not find method [%s] in class [%s]", methodName, clazz.getName())));
 	}
 
 	/**
@@ -1671,8 +1742,7 @@ public final class ReflectionUtils {
 	 * {@link InvocationTargetException}, this method will be invoked
 	 * recursively with the underlying
 	 * {@linkplain InvocationTargetException#getTargetException() target
-	 * exception}; otherwise, this method simply returns the supplied
-	 * {@code Throwable}.
+	 * exception}; otherwise, this method returns the supplied {@code Throwable}.
 	 */
 	private static Throwable getUnderlyingCause(Throwable t) {
 		if (t instanceof InvocationTargetException) {

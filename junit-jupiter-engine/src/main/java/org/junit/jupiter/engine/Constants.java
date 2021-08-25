@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.jupiter.engine;
 
+import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 import static org.junit.platform.engine.support.hierarchical.DefaultParallelExecutionConfigurationStrategy.CONFIG_CUSTOM_CLASS_PROPERTY_NAME;
@@ -49,17 +50,18 @@ import org.junit.platform.engine.support.hierarchical.ParallelExecutionConfigura
 public final class Constants {
 
 	/**
-	 * Property name used to provide a pattern for deactivating conditions: {@value}
+	 * Property name used to provide patterns for deactivating conditions: {@value}
 	 *
 	 * <h3>Pattern Matching Syntax</h3>
 	 *
-	 * <p>If the pattern consists solely of an asterisk ({@code *}), all conditions
-	 * will be deactivated. Otherwise, the pattern will be used to match against
-	 * comma separated fully qualified class name (<em>FQCN</em>) of each registered condition.
-	 * Any dot ({@code .}) in the pattern will match against a dot ({@code .})
-	 * or a dollar sign ({@code $}) in the FQCN. Any asterisk ({@code *}) will match
-	 * against one or more characters in the FQCN. All other characters in the
-	 * pattern will be matched one-to-one against the FQCN.
+	 * <p>If the property value consists solely of an asterisk ({@code *}), all
+	 * conditions will be deactivated. Otherwise, the property value will be treated
+	 * as a comma-separated list of patterns where each individual pattern will be
+	 * matched against the fully qualified class name (<em>FQCN</em>) of each registered
+	 * condition. Any dot ({@code .}) in a pattern will match against a dot ({@code .})
+	 * or a dollar sign ({@code $}) in a FQCN. Any asterisk ({@code *}) will match
+	 * against one or more characters in a FQCN. All other characters in a pattern
+	 * will be matched one-to-one against a FQCN.
 	 *
 	 * <h3>Examples</h3>
 	 *
@@ -69,10 +71,13 @@ public final class Constants {
 	 * base package and any of its subpackages.
 	 * <li>{@code *.MyCondition}: deactivates every condition whose simple class name is
 	 * exactly {@code MyCondition}.
-	 * <li>{@code *System*}: deactivates every condition whose simple class name contains
+	 * <li>{@code *System*}: deactivates every condition whose FQCN contains
 	 * {@code System}.
-	 * <li>{@code org.example.MyCondition}: deactivates the condition whose FQCN is
-	 * exactly {@code org.example.MyCondition}.
+	 * <li>{@code *System*, *Dev*}: deactivates every condition whose FQCN contains
+	 * {@code System} or {@code Dev}.
+	 * <li>{@code org.example.MyCondition, org.example.TheirCondition}: deactivates
+	 * conditions whose FQCN is exactly {@code org.example.MyCondition} or
+	 * {@code org.example.TheirCondition}.
 	 * </ul>
 	 *
 	 * @see #DEACTIVATE_ALL_CONDITIONS_PATTERN
@@ -438,12 +443,56 @@ public final class Constants {
 	 * <li>{@code disabled_on_debug}: disables timeouts while debugging
 	 * </ul>
 	 *
-	 * <p>If not specified, the default is {@code "enabled"}.
+	 * <p>If not specified, the default is {@code enabled}.
 	 *
 	 * @since 5.6
 	 */
 	@API(status = EXPERIMENTAL, since = "5.6")
 	public static final String TIMEOUT_MODE_PROPERTY_NAME = JupiterConfiguration.TIMEOUT_MODE_PROPERTY_NAME;
+
+	/**
+	 * Property name used to set the default method orderer class name: {@value}
+	 *
+	 * <h3>Supported Values</h3>
+	 *
+	 * <p>Supported values include fully qualified class names for types that
+	 * implement {@link org.junit.jupiter.api.MethodOrderer}.
+	 *
+	 * <p>If not specified, test methods will be ordered using an algorithm that
+	 * is deterministic but intentionally non-obvious.
+	 */
+	@API(status = EXPERIMENTAL, since = "5.7")
+	public static final String DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME = JupiterConfiguration.DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME;
+
+	/**
+	 * Property name used to set the default class orderer class name: {@value}
+	 *
+	 * <h3>Supported Values</h3>
+	 *
+	 * <p>Supported values include fully qualified class names for types that
+	 * implement {@link org.junit.jupiter.api.ClassOrderer}.
+	 */
+	@API(status = EXPERIMENTAL, since = "5.8")
+	public static final String DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME = JupiterConfiguration.DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME;
+
+	/**
+	 * Property name used to set the scope of temporary directories created via
+	 * {@link org.junit.jupiter.api.io.TempDir @TempDir} annotation: {@value}
+	 *
+	 * <h3>Supported Values</h3>
+	 * <ul>
+	 * <li>{@code per_context}: creates a single temporary directory for the
+	 * entire test class or method, depending on where it's first declared
+	 * <li>{@code per_declaration}: creates separate temporary directories for
+	 * each declaration site of the {@code @TempDir} annotation.
+	 * </ul>
+	 *
+	 * <p>If not specified, the default is {@code per_declaration}.
+	 */
+	@SuppressWarnings("DeprecatedIsStillUsed")
+	@Deprecated
+	@API(status = DEPRECATED, since = "5.8")
+	public static final String TEMP_DIR_SCOPE_PROPERTY_NAME = JupiterConfiguration.TEMP_DIR_SCOPE_PROPERTY_NAME;
 
 	private Constants() {
 		/* no-op */

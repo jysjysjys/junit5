@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -61,6 +61,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * @see org.junit.jupiter.api.condition.DisabledForJreRange
  * @see org.junit.jupiter.api.condition.EnabledOnOs
  * @see org.junit.jupiter.api.condition.DisabledOnOs
+ * @see org.junit.jupiter.api.condition.EnabledIf
+ * @see org.junit.jupiter.api.condition.DisabledIf
  * @see org.junit.jupiter.api.Disabled
  */
 @Target({ ElementType.TYPE, ElementType.METHOD })
@@ -88,5 +90,10 @@ public @interface DisabledIfSystemProperty {
 	 * @see java.util.regex.Pattern
 	 */
 	String matches();
+
+	/**
+	 * Reason to provide if the test of container ends up being disabled.
+	 */
+	String disabledReason() default "";
 
 }

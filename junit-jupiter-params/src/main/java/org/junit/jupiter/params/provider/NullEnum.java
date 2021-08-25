@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,8 @@
 
 package org.junit.jupiter.params.provider;
 
+import static org.apiguardian.api.API.Status.INTERNAL;
+
 import org.apiguardian.api.API;
 
 /**
@@ -19,6 +21,6 @@ import org.apiguardian.api.API;
  * @since 5.6
  * @see EnumSource#value()
  */
-@API(status = API.Status.EXPERIMENTAL, since = "5.6")
+@API(status = INTERNAL, since = "5.7")
 public enum NullEnum {
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.platform.reporting.legacy.xml;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -43,7 +43,7 @@ import org.junit.platform.launcher.TestPlan;
  * @see org.junit.platform.launcher.listeners.LoggingListener
  * @see org.junit.platform.launcher.listeners.SummaryGeneratingListener
  */
-@API(status = EXPERIMENTAL, since = "1.4")
+@API(status = STABLE, since = "1.7")
 public class LegacyXmlReportGeneratingListener implements TestExecutionListener {
 
 	private final Path reportsDir;

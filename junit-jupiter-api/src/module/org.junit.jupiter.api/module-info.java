@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,7 @@
  * Defines JUnit Jupiter API for writing tests.
  */
 module org.junit.jupiter.api {
-	requires transitive org.apiguardian.api;
+	requires static transitive org.apiguardian.api;
 	requires transitive org.junit.platform.commons;
 	requires transitive org.opentest4j;
 

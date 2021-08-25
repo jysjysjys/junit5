@@ -1,4 +1,4 @@
-org.junit.platform.engine@${platformVersion} jar:file:.+junit-platform-engine/build/libs/junit-platform-engine-${platformVersion}.jar/!module-info.class
+org.junit.platform.engine@${platformVersion} jar:file:.+/junit-platform-engine-\d.+\.jar..module-info\.class
 exports org.junit.platform.engine
 exports org.junit.platform.engine.discovery
 exports org.junit.platform.engine.reporting
@@ -8,6 +8,6 @@ exports org.junit.platform.engine.support.discovery
 exports org.junit.platform.engine.support.filter
 exports org.junit.platform.engine.support.hierarchical
 requires java.base mandated
-requires org.apiguardian.api transitive
+requires org.apiguardian.api static transitive
 requires org.junit.platform.commons transitive
 requires org.opentest4j transitive

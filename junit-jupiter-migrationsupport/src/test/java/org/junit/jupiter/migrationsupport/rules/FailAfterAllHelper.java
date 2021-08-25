@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,7 +16,7 @@ package org.junit.jupiter.migrationsupport.rules;
 class FailAfterAllHelper {
 
 	static void fail() {
-		// hack: use this blacklisted exception to fail the build, since all others would be swallowed...
+		// hack: use this unrecoverable exception to fail the build, since all others would be swallowed...
 		throw new OutOfMemoryError("a postcondition was violated");
 	}
 

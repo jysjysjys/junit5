@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,10 +14,13 @@ import static org.apiguardian.api.API.Status.INTERNAL;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayNameGenerator;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -40,6 +43,11 @@ public class CachingJupiterConfiguration implements JupiterConfiguration {
 	@Override
 	public Optional<String> getRawConfigurationParameter(String key) {
 		return delegate.getRawConfigurationParameter(key);
+	}
+
+	@Override
+	public <T> Optional<T> getRawConfigurationParameter(String key, Function<String, T> transformer) {
+		return delegate.getRawConfigurationParameter(key, transformer);
 	}
 
 	@Override
@@ -84,4 +92,19 @@ public class CachingJupiterConfiguration implements JupiterConfiguration {
 		return (DisplayNameGenerator) cache.computeIfAbsent(DEFAULT_DISPLAY_NAME_GENERATOR_PROPERTY_NAME,
 			key -> delegate.getDefaultDisplayNameGenerator());
 	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Optional<MethodOrderer> getDefaultTestMethodOrderer() {
+		return (Optional<MethodOrderer>) cache.computeIfAbsent(DEFAULT_TEST_METHOD_ORDER_PROPERTY_NAME,
+			key -> delegate.getDefaultTestMethodOrderer());
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Optional<ClassOrderer> getDefaultTestClassOrderer() {
+		return (Optional<ClassOrderer>) cache.computeIfAbsent(DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME,
+			key -> delegate.getDefaultTestClassOrderer());
+	}
+
 }

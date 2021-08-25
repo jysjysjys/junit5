@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -84,6 +84,15 @@ class IsTestClassWithTestsTests {
 		assertFalse(isTestClassWithTests.test(PrivateStaticTestCase.class));
 	}
 
+	/**
+	 * @see https://github.com/junit-team/junit5/issues/2249
+	 */
+	@Test
+	void recursiveHierarchies() {
+		assertTrue(isTestClassWithTests.test(OuterClass.class));
+		assertFalse(isTestClassWithTests.test(OuterClass.RecursiveInnerClass.class));
+	}
+
 	// -------------------------------------------------------------------------
 
 	private class PrivateClassWithTestMethod {
@@ -140,6 +149,22 @@ class IsTestClassWithTestsTests {
 
 		@Test
 		void test() {
+		}
+	}
+
+	static class OuterClass {
+
+		@Nested
+		class InnerClass {
+
+			@Test
+			void test() {
+			}
+		}
+
+		// Intentionally commented out so that RecursiveInnerClass is NOT a candidate test class
+		// @Nested
+		class RecursiveInnerClass extends OuterClass {
 		}
 	}
 

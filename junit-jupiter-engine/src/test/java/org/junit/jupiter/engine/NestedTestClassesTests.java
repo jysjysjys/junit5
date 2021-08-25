@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.jupiter.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.util.Throwables.getRootCause;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
@@ -182,7 +183,7 @@ class NestedTestClassesTests extends AbstractJupiterTestEngineTests {
 		assertThatExceptionOfType(JUnitException.class)//
 				.isThrownBy(() -> executeTestsForClass(start))//
 				.withCauseExactlyInstanceOf(JUnitException.class)//
-				.satisfies(ex -> assertThat(ex.getCause()).hasMessageMatching(
+				.satisfies(ex -> assertThat(getRootCause(ex)).hasMessageMatching(
 					String.format("Detected cycle in inner class hierarchy between .+%s and .+%s", from.getSimpleName(),
 						to.getSimpleName())));
 	}

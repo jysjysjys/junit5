@@ -1,9 +1,6 @@
-import java.time.Duration
-
 plugins {
 	`maven-publish`
 	signing
-	id("de.marcphilipp.nexus-publish")
 }
 
 val isSnapshot = project.version.toString().contains("SNAPSHOT")
@@ -11,9 +8,19 @@ val isContinuousIntegrationEnvironment = System.getenv("CI")?.toBoolean() ?: fal
 val isJitPackEnvironment = System.getenv("JITPACK")?.toBoolean() ?: false
 
 // ensure project is built successfully before publishing it
-val build = tasks[LifecycleBasePlugin.BUILD_TASK_NAME]
-tasks[PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME].dependsOn(build)
-tasks[MavenPublishPlugin.PUBLISH_LOCAL_LIFECYCLE_TASK_NAME].dependsOn(build)
+tasks.withType<PublishToMavenRepository>().configureEach {
+	dependsOn(provider {
+		val tempRepoName: String by rootProject
+		if (repository.name != tempRepoName) {
+			listOf(tasks.build)
+		} else {
+			emptyList()
+		}
+	})
+}
+tasks.withType<PublishToMavenLocal>().configureEach {
+	dependsOn(tasks.build)
+}
 
 signing {
 	sign(publishing.publications)
@@ -23,15 +30,6 @@ signing {
 tasks.withType<Sign>().configureEach {
 	onlyIf {
 		!isSnapshot // Gradle Module Metadata currently does not support signing snapshots
-	}
-}
-
-nexusPublishing {
-	connectTimeout.set(Duration.ofMinutes(2))
-	clientTimeout.set(Duration.ofMinutes(2))
-	packageGroup.set("org.junit")
-	repositories {
-		sonatype()
 	}
 }
 

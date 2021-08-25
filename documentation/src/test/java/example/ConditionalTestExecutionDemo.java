@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -25,11 +25,13 @@ import java.lang.annotation.Target;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledForJreRange;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.DisabledOnJre;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledForJreRange;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledOnJre;
@@ -152,5 +154,23 @@ class ConditionalTestExecutionDemo {
 		// ...
 	}
 	// end::user_guide_environment_variable[]
+
+	// tag::user_guide_custom[]
+	@Test
+	@EnabledIf("customCondition")
+	void enabled() {
+		// ...
+	}
+
+	@Test
+	@DisabledIf("customCondition")
+	void disabled() {
+		// ...
+	}
+
+	boolean customCondition() {
+		return true;
+	}
+	// end::user_guide_custom[]
 
 }
