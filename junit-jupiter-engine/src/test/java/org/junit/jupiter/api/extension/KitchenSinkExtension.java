@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -44,6 +44,7 @@ public class KitchenSinkExtension implements
 	LifecycleMethodExecutionExceptionHandler,
 
 	// Dependency Injection
+	TestInstancePreConstructCallback,
 	TestInstanceFactory,
 	TestInstancePostProcessor,
 	TestInstancePreDestroyCallback,
@@ -111,6 +112,10 @@ public class KitchenSinkExtension implements
 	}
 
 	// --- Dependency Injection ------------------------------------------------
+
+	@Override
+	public void preConstructTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext context) {
+	}
 
 	@Override
 	public Object createTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext extensionContext) {

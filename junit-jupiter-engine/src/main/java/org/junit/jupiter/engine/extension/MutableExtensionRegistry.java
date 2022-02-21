@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -47,9 +47,8 @@ public class MutableExtensionRegistry implements ExtensionRegistry, ExtensionReg
 
 	private static final Logger logger = LoggerFactory.getLogger(MutableExtensionRegistry.class);
 
-	private static final List<Extension> DEFAULT_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(//
+	private static final List<Extension> DEFAULT_STATELESS_EXTENSIONS = Collections.unmodifiableList(Arrays.asList(//
 		new DisabledCondition(), //
-		new TempDirectory(), //
 		new TimeoutExtension(), //
 		new RepeatedTestExtension(), //
 		new TestInfoParameterResolver(), //
@@ -71,7 +70,9 @@ public class MutableExtensionRegistry implements ExtensionRegistry, ExtensionReg
 	public static MutableExtensionRegistry createRegistryWithDefaultExtensions(JupiterConfiguration configuration) {
 		MutableExtensionRegistry extensionRegistry = new MutableExtensionRegistry(null);
 
-		DEFAULT_EXTENSIONS.forEach(extensionRegistry::registerDefaultExtension);
+		DEFAULT_STATELESS_EXTENSIONS.forEach(extensionRegistry::registerDefaultExtension);
+
+		extensionRegistry.registerDefaultExtension(new TempDirectory(configuration));
 
 		if (configuration.isExtensionAutoDetectionEnabled()) {
 			registerAutoDetectedExtensions(extensionRegistry);

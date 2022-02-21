@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,8 +13,7 @@ package platform.tooling.support.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.time.Duration;
+import static platform.tooling.support.Helper.TOOL_TIMEOUT;
 
 import de.sormuras.bartholdy.tool.GradleWrapper;
 
@@ -36,8 +35,8 @@ class GradleKotlinExtensionsTests {
 				.setTool(new GradleWrapper(Request.PROJECTS.resolve("gradle-kotlin-extensions"))) //
 				.setProject("gradle-kotlin-extensions") //
 				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
-				.addArguments("build", "--no-daemon", "--debug", "--stacktrace") //
-				.setTimeout(Duration.ofMinutes(2)) //
+				.addArguments("build", "--no-daemon", "--stacktrace") //
+				.setTimeout(TOOL_TIMEOUT) //
 				.setJavaHome(Helper.getJavaHome("8").orElseThrow(TestAbortedException::new)) //
 				.build() //
 				.run();

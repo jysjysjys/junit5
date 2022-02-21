@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,9 +12,9 @@ package platform.tooling.support.tests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static platform.tooling.support.Helper.TOOL_TIMEOUT;
 
 import java.nio.file.Paths;
-import java.time.Duration;
 
 import de.sormuras.bartholdy.Result;
 import de.sormuras.bartholdy.tool.GradleWrapper;
@@ -60,10 +60,10 @@ class VintageGradleIntegrationTests {
 				.setJavaHome(Helper.getJavaHome("8").orElseThrow(TestAbortedException::new)) //
 				.setProject("vintage") //
 				.setWorkspace("vintage-gradle-" + version) //
-				.addArguments("clean", "test", "--stacktrace") //
+				.addArguments("build", "--no-daemon", "--stacktrace") //
 				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
 				.addArguments("-Djunit4Version=" + version) //
-				.setTimeout(Duration.ofMinutes(2)) //
+				.setTimeout(TOOL_TIMEOUT) //
 				.build() //
 				.run();
 		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);

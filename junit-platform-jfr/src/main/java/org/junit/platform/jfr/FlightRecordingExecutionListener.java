@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -35,8 +35,8 @@ import org.junit.platform.launcher.TestPlan;
  * A {@link TestExecutionListener} that generates Java Flight Recorder
  * events.
  *
- * @see <a href="https://openjdk.java.net/jeps/328">JEP 328: Flight Recorder</a>
  * @since 1.8
+ * @see <a href="https://openjdk.java.net/jeps/328">JEP 328: Flight Recorder</a>
  */
 @API(status = EXPERIMENTAL, since = "1.8")
 public class FlightRecordingExecutionListener implements TestExecutionListener {

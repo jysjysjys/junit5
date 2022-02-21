@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,9 +13,9 @@ package platform.tooling.support.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertLinesMatch;
+import static platform.tooling.support.Helper.TOOL_TIMEOUT;
 
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.List;
 
 import de.sormuras.bartholdy.Tool;
@@ -47,7 +47,7 @@ class GradleMissingEngineTests {
 				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
 				.addArguments("build", "--no-daemon", "--debug", "--stacktrace") //
 				.setJavaHome(Helper.getJavaHome("8").orElseThrow(TestAbortedException::new)) //
-				.setTimeout(Duration.ofMinutes(2)).build() //
+				.setTimeout(TOOL_TIMEOUT).build() //
 				.run();
 
 		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);

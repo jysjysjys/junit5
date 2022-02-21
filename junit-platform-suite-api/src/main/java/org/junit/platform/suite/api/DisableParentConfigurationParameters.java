@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,13 +24,14 @@ import org.apiguardian.api.API.Status;
  * Disable parent configuration parameters.
  *
  * <p>By default a suite discovers tests using the configuration parameters
- * explicitly configured by {@link ConfigurationParameter @ConfigurationParameter}
- * and the configuration parameters from the discovery request that discovered
- * the suite.
+ * explicitly configured via {@link ConfigurationParameter @ConfigurationParameter}
+ * and the configuration parameters from the discovery request that was used to
+ * discover the suite.
  *
  * <p>Annotating a suite with this annotation disables the latter source so
  * that only explicit configuration parameters are taken into account.
  *
+ * @since 1.8
  * @see ConfigurationParameter
  * @see Suite
  */
@@ -40,5 +41,4 @@ import org.apiguardian.api.API.Status;
 @Documented
 @API(status = Status.EXPERIMENTAL, since = "1.8")
 public @interface DisableParentConfigurationParameters {
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -646,8 +646,8 @@ class DiscoverySelectorResolverTests {
 
 		TestDescriptor testFactoryDescriptor = getOnlyElement(testClassDescriptor.getChildren());
 		DynamicDescendantFilter dynamicDescendantFilter = getDynamicDescendantFilter(testFactoryDescriptor);
-		assertThat(dynamicDescendantFilter.test(dynamicTestUid)).isTrue();
-		assertThat(dynamicDescendantFilter.test(differentDynamicTestUid)).isFalse();
+		assertThat(dynamicDescendantFilter.test(dynamicTestUid, 42)).isTrue();
+		assertThat(dynamicDescendantFilter.test(differentDynamicTestUid, 42)).isFalse();
 
 		assertAllSelectorsResolved();
 	}
@@ -669,9 +669,9 @@ class DiscoverySelectorResolverTests {
 
 		TestDescriptor testFactoryDescriptor = getOnlyElement(testClassDescriptor.getChildren());
 		DynamicDescendantFilter dynamicDescendantFilter = getDynamicDescendantFilter(testFactoryDescriptor);
-		assertThat(dynamicDescendantFilter.test(dynamicTestUid)).isTrue();
-		assertThat(dynamicDescendantFilter.test(differentDynamicContainerUid)).isFalse();
-		assertThat(dynamicDescendantFilter.test(differentDynamicTestUid)).isFalse();
+		assertThat(dynamicDescendantFilter.test(dynamicTestUid, 42)).isTrue();
+		assertThat(dynamicDescendantFilter.test(differentDynamicContainerUid, 42)).isFalse();
+		assertThat(dynamicDescendantFilter.test(differentDynamicTestUid, 42)).isFalse();
 
 		assertAllSelectorsResolved();
 	}
@@ -689,7 +689,7 @@ class DiscoverySelectorResolverTests {
 		TestDescriptor testClassDescriptor = getOnlyElement(engineDescriptor.getChildren());
 		TestDescriptor testFactoryDescriptor = getOnlyElement(testClassDescriptor.getChildren());
 		DynamicDescendantFilter dynamicDescendantFilter = getDynamicDescendantFilter(testFactoryDescriptor);
-		assertThat(dynamicDescendantFilter.test(UniqueId.root("foo", "bar"))).isTrue();
+		assertThat(dynamicDescendantFilter.test(UniqueId.root("foo", "bar"), 42)).isTrue();
 	}
 
 	private DynamicDescendantFilter getDynamicDescendantFilter(TestDescriptor testDescriptor) {

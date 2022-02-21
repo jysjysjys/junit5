@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -133,6 +133,10 @@ public class UniqueIdTrackingListener implements TestExecutionListener {
 	private final List<String> uniqueIds = new ArrayList<>();
 
 	private boolean enabled;
+
+	public UniqueIdTrackingListener() {
+		// to avoid missing-explicit-ctor warning
+	}
 
 	@Override
 	public void testPlanExecutionStarted(TestPlan testPlan) {

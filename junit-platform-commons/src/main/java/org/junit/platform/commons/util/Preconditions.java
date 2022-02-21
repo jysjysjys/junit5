@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.commons.util;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.INTERNAL;
 
 import java.util.Arrays;
@@ -67,6 +68,23 @@ public final class Preconditions {
 	public static <T> T notNull(T object, Supplier<String> messageSupplier) throws PreconditionViolationException {
 		condition(object != null, messageSupplier);
 		return object;
+	}
+
+	/**
+	 * Assert that the supplied array is neither {@code null} nor <em>empty</em>.
+	 *
+	 * @param array the array to check
+	 * @param message precondition violation message
+	 * @return the supplied array as a convenience
+	 * @throws PreconditionViolationException if the supplied array is
+	 * {@code null} or <em>empty</em>
+	 * @since 1.9
+	 * @see #condition(boolean, String)
+	 */
+	@API(status = EXPERIMENTAL, since = "1.9")
+	public static int[] notEmpty(int[] array, String message) throws PreconditionViolationException {
+		condition(array != null && array.length > 0, message);
+		return array;
 	}
 
 	/**

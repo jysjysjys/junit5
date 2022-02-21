@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -34,6 +34,8 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 
 	// -------------------------------------------------------------------------
 
+	private boolean useHeadersInDisplayName = false;
+	private char quoteCharacter = '\0';
 	protected char delimiter = '\0';
 	protected String delimiterString = "";
 	protected String emptyValue = "";
@@ -45,6 +47,16 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 	}
 
 	protected abstract B getSelf();
+
+	B useHeadersInDisplayName(boolean useHeadersInDisplayName) {
+		this.useHeadersInDisplayName = useHeadersInDisplayName;
+		return getSelf();
+	}
+
+	B quoteCharacter(char quoteCharacter) {
+		this.quoteCharacter = quoteCharacter;
+		return getSelf();
+	}
 
 	B delimiter(char delimiter) {
 		this.delimiter = delimiter;
@@ -83,6 +95,11 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 	static class MockCsvSourceBuilder extends MockCsvAnnotationBuilder<CsvSource, MockCsvSourceBuilder> {
 
 		private String[] lines = new String[0];
+		private String textBlock = "";
+
+		private MockCsvSourceBuilder() {
+			super.quoteCharacter = '\'';
+		}
 
 		@Override
 		protected MockCsvSourceBuilder getSelf() {
@@ -94,11 +111,18 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 			return this;
 		}
 
+		MockCsvSourceBuilder textBlock(String textBlock) {
+			this.textBlock = textBlock;
+			return this;
+		}
+
 		@Override
 		CsvSource build() {
 			var annotation = mock(CsvSource.class);
 
 			// Common
+			when(annotation.useHeadersInDisplayName()).thenReturn(super.useHeadersInDisplayName);
+			when(annotation.quoteCharacter()).thenReturn(super.quoteCharacter);
 			when(annotation.delimiter()).thenReturn(super.delimiter);
 			when(annotation.delimiterString()).thenReturn(super.delimiterString);
 			when(annotation.emptyValue()).thenReturn(super.emptyValue);
@@ -108,6 +132,7 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 
 			// @CsvSource
 			when(annotation.value()).thenReturn(this.lines);
+			when(annotation.textBlock()).thenReturn(this.textBlock);
 
 			return annotation;
 		}
@@ -121,6 +146,10 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 		private String encoding = "UTF-8";
 		private String lineSeparator = "\n";
 		private int numLinesToSkip = 0;
+
+		private MockCsvFileSourceBuilder() {
+			super.quoteCharacter = '"';
+		}
 
 		@Override
 		protected MockCsvFileSourceBuilder getSelf() {
@@ -157,6 +186,8 @@ abstract class MockCsvAnnotationBuilder<A extends Annotation, B extends MockCsvA
 			var annotation = mock(CsvFileSource.class);
 
 			// Common
+			when(annotation.useHeadersInDisplayName()).thenReturn(super.useHeadersInDisplayName);
+			when(annotation.quoteCharacter()).thenReturn(super.quoteCharacter);
 			when(annotation.delimiter()).thenReturn(super.delimiter);
 			when(annotation.delimiterString()).thenReturn(super.delimiterString);
 			when(annotation.emptyValue()).thenReturn(super.emptyValue);

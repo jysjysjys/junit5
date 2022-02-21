@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -26,12 +26,33 @@ import org.junit.platform.commons.PreconditionViolationException;
 class CsvArgumentsProviderTests {
 
 	@Test
-	void throwsExceptionOnInvalidCsv() {
+	void throwsExceptionForInvalidCsv() {
 		var annotation = csvSource("foo", "bar", "");
 
 		assertThatExceptionOfType(JUnitException.class)//
 				.isThrownBy(() -> provideArguments(annotation).toArray())//
-				.withMessage("Line at index 2 contains invalid CSV: \"\"");
+				.withMessage("Record at index 3 contains invalid CSV: \"\"");
+	}
+
+	@Test
+	void throwsExceptionIfNeitherValueNorTextBlockIsDeclared() {
+		var annotation = csvSource().build();
+
+		assertThatExceptionOfType(PreconditionViolationException.class)//
+				.isThrownBy(() -> provideArguments(annotation))//
+				.withMessage("@CsvSource must be declared with either `value` or `textBlock` but not both");
+	}
+
+	@Test
+	void throwsExceptionIfValueAndTextBlockAreDeclared() {
+		var annotation = csvSource().lines("foo").textBlock("""
+				bar
+				baz
+				""").build();
+
+		assertThatExceptionOfType(PreconditionViolationException.class)//
+				.isThrownBy(() -> provideArguments(annotation))//
+				.withMessage("@CsvSource must be declared with either `value` or `textBlock` but not both");
 	}
 
 	@Test
@@ -44,8 +65,29 @@ class CsvArgumentsProviderTests {
 	}
 
 	@Test
+	void providesSingleArgumentFromTextBlock() {
+		var annotation = csvSource().textBlock("foo").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo"));
+	}
+
+	@Test
 	void providesMultipleArguments() {
 		var annotation = csvSource("foo", "bar");
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo"), array("bar"));
+	}
+
+	@Test
+	void providesMultipleArgumentsFromTextBlock() {
+		var annotation = csvSource().textBlock("""
+				foo
+				bar
+				""").build();
 
 		var arguments = provideArguments(annotation);
 
@@ -100,12 +142,52 @@ class CsvArgumentsProviderTests {
 	}
 
 	@Test
+	void understandsQuotesInTextBlock() {
+		var annotation = csvSource().textBlock("""
+				'foo, bar'
+				""").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo, bar"));
+	}
+
+	@Test
+	void understandsCustomQuotes() {
+		var annotation = csvSource().quoteCharacter('~').lines("~foo, bar~").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo, bar"));
+	}
+
+	@Test
+	void understandsCustomQuotesInTextBlock() {
+		var annotation = csvSource().quoteCharacter('"').textBlock("""
+					"foo, bar"
+				""").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo, bar"));
+	}
+
+	@Test
 	void understandsEscapeCharacters() {
 		var annotation = csvSource("'foo or ''bar''', baz");
 
 		var arguments = provideArguments(annotation);
 
 		assertThat(arguments).containsExactly(array("foo or 'bar'", "baz"));
+	}
+
+	@Test
+	void understandsEscapeCharactersWithCutomQuoteCharacter() {
+		var annotation = csvSource().quoteCharacter('~').lines("~foo or ~~bar~~~, baz").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("foo or ~bar~", "baz"));
 	}
 
 	@Test
@@ -185,10 +267,8 @@ class CsvArgumentsProviderTests {
 	void throwsExceptionIfSourceExceedsMaxCharsPerColumnConfig() {
 		var annotation = csvSource().lines("413").maxCharsPerColumn(2).build();
 
-		var arguments = provideArguments(annotation);
-
 		assertThatExceptionOfType(CsvParsingException.class)//
-				.isThrownBy(arguments::toArray)//
+				.isThrownBy(() -> provideArguments(annotation))//
 				.withMessageStartingWith("Failed to parse CSV input configured via Mock for CsvSource")//
 				.withRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class);
 	}
@@ -206,10 +286,8 @@ class CsvArgumentsProviderTests {
 	void throwsExceptionWhenSourceExceedsDefaultMaxCharsPerColumnConfig() {
 		var annotation = csvSource().lines("0".repeat(4097)).delimiter(';').build();
 
-		var arguments = provideArguments(annotation);
-
 		assertThatExceptionOfType(CsvParsingException.class)//
-				.isThrownBy(arguments::toArray)//
+				.isThrownBy(() -> provideArguments(annotation))//
 				.withMessageStartingWith("Failed to parse CSV input configured via Mock for CsvSource")//
 				.withRootCauseInstanceOf(ArrayIndexOutOfBoundsException.class);
 	}
@@ -233,12 +311,60 @@ class CsvArgumentsProviderTests {
 	}
 
 	@Test
-	void doesNotMindSoCalledCommentCharacters() {
+	void ignoresCommentCharacterWhenUsingValueAttribute() {
 		var annotation = csvSource("#foo", "#bar,baz", "baz,#quux");
 
 		var arguments = provideArguments(annotation);
 
 		assertThat(arguments).containsExactly(array("#foo"), array("#bar", "baz"), array("baz", "#quux"));
+	}
+
+	@Test
+	void honorsCommentCharacterWhenUsingTextBlockAttribute() {
+		var annotation = csvSource().textBlock("""
+				#foo
+				bar, #baz
+				'#bar', baz
+				""").build();
+
+		var arguments = provideArguments(annotation);
+
+		assertThat(arguments).containsExactly(array("bar", "#baz"), array("#bar", "baz"));
+	}
+
+	@Test
+	void supportsCsvHeadersWhenUsingTextBlockAttribute() {
+		var annotation = csvSource().useHeadersInDisplayName(true).textBlock("""
+				FRUIT, RANK
+				apple, 1
+				banana, 2
+				""").build();
+
+		var arguments = provideArguments(annotation);
+		Stream<String[]> argumentsAsStrings = arguments.map(array -> {
+			String[] strings = new String[array.length];
+			for (int i = 0; i < array.length; i++) {
+				strings[i] = String.valueOf(array[i]);
+			}
+			return strings;
+		});
+
+		assertThat(argumentsAsStrings).containsExactly(array("FRUIT = apple", "RANK = 1"),
+			array("FRUIT = banana", "RANK = 2"));
+	}
+
+	@Test
+	void throwsExceptionIfColumnCountExceedsHeaderCount() {
+		var annotation = csvSource().useHeadersInDisplayName(true).textBlock("""
+				FRUIT, RANK
+				apple, 1
+				banana, 2, BOOM!
+				""").build();
+
+		assertThatExceptionOfType(PreconditionViolationException.class)//
+				.isThrownBy(() -> provideArguments(annotation))//
+				.withMessage(
+					"The number of columns (3) exceeds the number of supplied headers (2) in CSV record: [banana, 2, BOOM!]");
 	}
 
 	private Stream<Object[]> provideArguments(CsvSource annotation) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
 import org.junit.jupiter.engine.descriptor.NestedClassTestDescriptor;
 import org.junit.jupiter.engine.descriptor.TestFactoryTestDescriptor;
 import org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor;
+import org.junit.jupiter.engine.descriptor.TestTemplateInvocationTestDescriptor;
 import org.junit.jupiter.engine.descriptor.TestTemplateTestDescriptor;
 import org.junit.platform.engine.UniqueId;
 
@@ -52,6 +53,10 @@ public class JupiterUniqueIdBuilder {
 
 	public static UniqueId uniqueIdForTestTemplateMethod(Class<?> clazz, String methodPart) {
 		return uniqueIdForClass(clazz).append(TestTemplateTestDescriptor.SEGMENT_TYPE, methodPart);
+	}
+
+	public static UniqueId appendTestTemplateInvocationSegment(UniqueId parentId, int index) {
+		return parentId.append(TestTemplateInvocationTestDescriptor.SEGMENT_TYPE, "#" + index);
 	}
 
 	public static UniqueId engineId() {

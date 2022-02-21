@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -37,13 +37,16 @@ import org.apiguardian.api.API;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.LifecycleMethodExecutionExceptionHandler;
 import org.junit.jupiter.api.extension.TestInstanceFactory;
+import org.junit.jupiter.api.extension.TestInstanceFactoryContext;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
+import org.junit.jupiter.api.extension.TestInstancePreConstructCallback;
 import org.junit.jupiter.api.extension.TestInstancePreDestroyCallback;
 import org.junit.jupiter.api.extension.TestInstances;
 import org.junit.jupiter.api.extension.TestInstantiationException;
@@ -51,10 +54,11 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.execution.AfterEachMethodAdapter;
 import org.junit.jupiter.engine.execution.BeforeEachMethodAdapter;
+import org.junit.jupiter.engine.execution.DefaultExecutableInvoker;
 import org.junit.jupiter.engine.execution.DefaultTestInstances;
-import org.junit.jupiter.engine.execution.ExecutableInvoker;
-import org.junit.jupiter.engine.execution.ExecutableInvoker.ReflectiveInterceptorCall;
-import org.junit.jupiter.engine.execution.ExecutableInvoker.ReflectiveInterceptorCall.VoidMethodInterceptorCall;
+import org.junit.jupiter.engine.execution.InterceptingExecutableInvoker;
+import org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.ReflectiveInterceptorCall;
+import org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.ReflectiveInterceptorCall.VoidMethodInterceptorCall;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.jupiter.engine.execution.TestInstancesProvider;
 import org.junit.jupiter.engine.extension.ExtensionRegistrar;
@@ -80,7 +84,7 @@ import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 @API(status = INTERNAL, since = "5.5")
 public abstract class ClassBasedTestDescriptor extends JupiterTestDescriptor {
 
-	private static final ExecutableInvoker executableInvoker = new ExecutableInvoker();
+	private static final InterceptingExecutableInvoker executableInvoker = new InterceptingExecutableInvoker();
 
 	private final Class<?> testClass;
 	protected final Set<TestTag> tags;
@@ -172,8 +176,10 @@ public abstract class ClassBasedTestDescriptor extends JupiterTestDescriptor {
 		this.afterAllMethods.forEach(method -> registerExtensionsFromExecutableParameters(registry, method));
 
 		ThrowableCollector throwableCollector = createThrowableCollector();
+		ExecutableInvoker executableInvoker = new DefaultExecutableInvoker(context);
 		ClassExtensionContext extensionContext = new ClassExtensionContext(context.getExtensionContext(),
-			context.getExecutionListener(), this, this.lifecycle, context.getConfiguration(), throwableCollector);
+			context.getExecutionListener(), this, this.lifecycle, context.getConfiguration(), throwableCollector,
+			executableInvoker);
 
 		// @formatter:off
 		return context.extend()
@@ -297,6 +303,8 @@ public abstract class ClassBasedTestDescriptor extends JupiterTestDescriptor {
 			ExtensionContext extensionContext) {
 
 		Optional<Object> outerInstance = outerInstances.map(TestInstances::getInnermostInstance);
+		invokeTestInstancePreConstructCallbacks(new DefaultTestInstanceFactoryContext(this.testClass, outerInstance),
+			registry, extensionContext);
 		Object instance = this.testInstanceFactory != null //
 				? invokeTestInstanceFactory(outerInstance, extensionContext) //
 				: invokeTestClassConstructor(outerInstance, registry, extensionContext);
@@ -354,6 +362,12 @@ public abstract class ClassBasedTestDescriptor extends JupiterTestDescriptor {
 		Constructor<?> constructor = ReflectionUtils.getDeclaredConstructor(this.testClass);
 		return executableInvoker.invoke(constructor, outerInstance, extensionContext, registry,
 			InvocationInterceptor::interceptTestClassConstructor);
+	}
+
+	private void invokeTestInstancePreConstructCallbacks(TestInstanceFactoryContext factoryContext,
+			ExtensionRegistry registry, ExtensionContext context) {
+		registry.stream(TestInstancePreConstructCallback.class).forEach(
+			extension -> executeAndMaskThrowable(() -> extension.preConstructTestInstance(factoryContext, context)));
 	}
 
 	private void invokeTestInstancePostProcessors(Object instance, ExtensionRegistry registry,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,11 @@
 
 package org.junit.platform.engine;
 
+import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.apiguardian.api.API;
@@ -30,10 +32,10 @@ import org.junit.platform.commons.util.Preconditions;
  * implementations of the {@link org.junit.platform.launcher.TestExecutionListener}
  * API via the {@link org.junit.platform.launcher.TestPlan}.
  *
+ * @since 1.0
  * @see TestEngine
  * @see EngineDiscoveryRequest
  * @see ExecutionRequest
- * @since 1.0
  */
 @API(status = STABLE, since = "1.0")
 public interface ConfigurationParameters {
@@ -109,10 +111,10 @@ public interface ConfigurationParameters {
 	 * @return an {@code Optional} containing the value; never {@code null}
 	 * but potentially empty
 	 *
+	 * @since 1.3
 	 * @see #getBoolean(String)
 	 * @see System#getProperty(String)
 	 * @see #CONFIG_FILE_NAME
-	 * @since 1.3
 	 */
 	@API(status = STABLE, since = "1.3")
 	default <T> Optional<T> get(String key, Function<String, T> transformer) {
@@ -132,7 +134,19 @@ public interface ConfigurationParameters {
 	/**
 	 * Get the number of configuration parameters stored directly in this
 	 * {@code ConfigurationParameters}.
+	 * @deprecated as of JUnit Platform 1.9 in favor of {@link #keySet()}
 	 */
+	@Deprecated
+	@API(status = DEPRECATED, since = "1.9")
 	int size();
+
+	/**
+	 * Get the keys of all configuration parameters stored in this
+	 * {@code ConfigurationParameters}.
+	 *
+	 * @return the set of keys contained in this {@code ConfigurationParameters}
+	 */
+	@API(status = STABLE, since = "1.9")
+	Set<String> keySet();
 
 }

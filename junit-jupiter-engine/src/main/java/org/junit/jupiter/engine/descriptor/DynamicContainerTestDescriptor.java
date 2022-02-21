@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -58,8 +58,10 @@ class DynamicContainerTestDescriptor extends DynamicNodeTestDescriptor {
 		AtomicInteger index = new AtomicInteger(1);
 		try (Stream<? extends DynamicNode> children = dynamicContainer.getChildren()) {
 			// @formatter:off
-			children.peek(child -> Preconditions.notNull(child, "individual dynamic node must not be null"))
-					.map(child -> toDynamicDescriptor(index.getAndIncrement(), child))
+			children.map(child -> {
+						Preconditions.notNull(child, "individual dynamic node must not be null");
+						return toDynamicDescriptor(index.getAndIncrement(), child);
+					})
 					.filter(Optional::isPresent)
 					.map(Optional::get)
 					.forEachOrdered(dynamicTestExecutor::execute);

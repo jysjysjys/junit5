@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,12 +30,12 @@ import org.apiguardian.api.API;
  * <p>In addition, the supplied {@linkplain ConfigurationParameters
  * configuration parameters} can be used to influence the discovery process.
  *
+ * @since 1.0
  * @see TestEngine
  * @see TestDescriptor
  * @see DiscoverySelector
  * @see DiscoveryFilter
  * @see ConfigurationParameters
- * @since 1.0
  */
 @API(status = STABLE, since = "1.0")
 public interface EngineDiscoveryRequest {

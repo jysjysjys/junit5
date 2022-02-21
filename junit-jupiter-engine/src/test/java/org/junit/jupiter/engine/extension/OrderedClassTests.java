@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,39 +11,50 @@
 package org.junit.jupiter.engine.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.engine.Constants.DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.fixtures.TrackLogRecords;
+import org.junit.platform.commons.logging.LogRecordListener;
+import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.testkit.engine.EngineTestKit;
 import org.junit.platform.testkit.engine.Events;
 
 /**
+ * Integration tests for {@link ClassOrderer} support.
+ *
  * @since 5.8
  */
 class OrderedClassTests {
 
-	private static final Set<String> callSequence = Collections.synchronizedSet(new LinkedHashSet<>());
+	private static final List<String> callSequence = Collections.synchronizedList(new ArrayList<>());
 
 	@BeforeEach
+	@AfterEach
 	void clearCallSequence() {
 		callSequence.clear();
 	}
 
 	@Test
 	void className() {
-		var tests = executeTests(ClassOrderer.ClassName.class);
-
-		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+		executeTests(ClassOrderer.ClassName.class)//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
 		assertThat(callSequence)//
 				.containsExactly("A_TestCase", "B_TestCase", "C_TestCase");
@@ -55,15 +66,9 @@ class OrderedClassTests {
 			example.B_TestCase.callSequence = callSequence;
 
 			// @formatter:off
-			var tests = EngineTestKit
-				.engine("junit-jupiter")
-				.configurationParameter(DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME, ClassOrderer.ClassName.class.getName())
-				.selectors(selectClass(B_TestCase.class), selectClass(example.B_TestCase.class))
-				.execute()
-				.testEvents();
+			executeTests(ClassOrderer.ClassName.class, selectClass(B_TestCase.class), selectClass(example.B_TestCase.class))
+					.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 			// @formatter:on
-
-			tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
 			assertThat(callSequence)//
 					.containsExactly("example.B_TestCase", "B_TestCase");
@@ -75,9 +80,8 @@ class OrderedClassTests {
 
 	@Test
 	void displayName() {
-		var tests = executeTests(ClassOrderer.DisplayName.class);
-
-		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+		executeTests(ClassOrderer.DisplayName.class)//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
 		assertThat(callSequence)//
 				.containsExactly("C_TestCase", "B_TestCase", "A_TestCase");
@@ -85,27 +89,56 @@ class OrderedClassTests {
 
 	@Test
 	void orderAnnotation() {
-		var tests = executeTests(ClassOrderer.OrderAnnotation.class);
-
-		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+		executeTests(ClassOrderer.OrderAnnotation.class)//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
 		assertThat(callSequence)//
 				.containsExactly("A_TestCase", "C_TestCase", "B_TestCase");
 	}
 
 	@Test
-	void random() {
-		var tests = executeTests(ClassOrderer.Random.class);
+	void orderAnnotationOnNestedTestClassesWithGlobalConfig() {
+		executeTests(ClassOrderer.OrderAnnotation.class, selectClass(OuterWithGlobalConfig.class))//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 
-		tests.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+		assertThat(callSequence)//
+				.containsExactly("Inner2", "Inner1", "Inner0", "Inner3");
+	}
+
+	@Test
+	@TrackLogRecords
+	void orderAnnotationOnNestedTestClassesWithLocalConfig(LogRecordListener listener) {
+		executeTests(ClassOrderer.class, selectClass(OuterWithLocalConfig.class))//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
+
+		// Ensure that supplying the ClassOrderer interface instead of an implementation
+		// class results in a WARNING log message. This also lets us know the local
+		// config is used.
+		assertTrue(listener.stream(Level.WARNING)//
+				.map(LogRecord::getMessage)//
+				.anyMatch(m -> m.startsWith(
+					"Failed to load default class orderer class 'org.junit.jupiter.api.ClassOrderer'")));
+
+		assertThat(callSequence)//
+				.containsExactly("Inner2", "Inner1", "Inner1Inner1", "Inner1Inner0", "Inner0", "Inner3");
+	}
+
+	@Test
+	void random() {
+		executeTests(ClassOrderer.Random.class)//
+				.assertStatistics(stats -> stats.succeeded(callSequence.size()));
 	}
 
 	private Events executeTests(Class<? extends ClassOrderer> classOrderer) {
+		return executeTests(classOrderer, selectClass(A_TestCase.class), selectClass(B_TestCase.class),
+			selectClass(C_TestCase.class));
+	}
+
+	private Events executeTests(Class<? extends ClassOrderer> classOrderer, DiscoverySelector... selectors) {
 		// @formatter:off
-		return EngineTestKit
-			.engine("junit-jupiter")
+		return EngineTestKit.engine("junit-jupiter")
 			.configurationParameter(DEFAULT_TEST_CLASS_ORDER_PROPERTY_NAME, classOrderer.getName())
-			.selectors(selectClass(A_TestCase.class), selectClass(B_TestCase.class), selectClass(C_TestCase.class))
+			.selectors(selectors)
 			.execute()
 			.testEvents();
 		// @formatter:on
@@ -136,6 +169,102 @@ class OrderedClassTests {
 	@Order(10)
 	@DisplayName("A")
 	static class C_TestCase extends BaseTestCase {
+	}
+
+	static class OuterWithGlobalConfig {
+
+		@Nested
+		class Inner0 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+
+		@Nested
+		@Order(2)
+		class Inner1 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+
+		@Nested
+		@Order(1)
+		class Inner2 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+
+		@Nested
+		@Order(Integer.MAX_VALUE)
+		class Inner3 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+	}
+
+	@TestClassOrder(ClassOrderer.OrderAnnotation.class)
+	static class OuterWithLocalConfig {
+
+		@Nested
+		class Inner0 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+
+		@Nested
+		@Order(2)
+		class Inner1 {
+
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+
+			@Nested
+			@Order(2)
+			class Inner1Inner0 {
+				@Test
+				void test() {
+					callSequence.add(getClass().getSimpleName());
+				}
+			}
+
+			@Nested
+			@Order(1)
+			class Inner1Inner1 {
+				@Test
+				void test() {
+					callSequence.add(getClass().getSimpleName());
+				}
+			}
+		}
+
+		@Nested
+		@Order(1)
+		class Inner2 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
+
+		@Nested
+		@Order(Integer.MAX_VALUE)
+		class Inner3 {
+			@Test
+			void test() {
+				callSequence.add(getClass().getSimpleName());
+			}
+		}
 	}
 
 }

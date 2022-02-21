@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,14 +11,14 @@
 
 package org.junit.jupiter.api
 
-import java.time.Duration
-import java.util.function.Supplier
-import java.util.stream.Stream
 import org.apiguardian.api.API
 import org.apiguardian.api.API.Status.EXPERIMENTAL
 import org.apiguardian.api.API.Status.STABLE
 import org.junit.jupiter.api.function.Executable
 import org.junit.jupiter.api.function.ThrowingSupplier
+import java.time.Duration
+import java.util.function.Supplier
+import java.util.stream.Stream
 
 /**
  * @see Assertions.fail
@@ -140,11 +140,15 @@ inline fun <reified T : Throwable> assertThrows(noinline message: () -> String, 
         caught
     } as? Throwable
 
-    return Assertions.assertThrows(T::class.java, Executable {
-        if (throwable != null) {
-            throw throwable
-        }
-    }, Supplier(message))
+    return Assertions.assertThrows(
+        T::class.java,
+        Executable {
+            if (throwable != null) {
+                throw throwable
+            }
+        },
+        Supplier(message)
+    )
 }
 
 /**

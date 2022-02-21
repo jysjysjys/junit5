@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -287,11 +287,11 @@ public final class Events {
 	 * </pre>
 	 *
 	 * @param conditions the conditions to match against; never {@code null}
+	 * @since 1.7
 	 * @see #assertEventsMatchExactly(Condition...)
 	 * @see #assertEventsMatchLooselyInOrder(Condition...)
 	 * @see EventConditions
 	 * @see TestExecutionResultConditions
-	 * @since 1.7
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")
@@ -322,11 +322,11 @@ public final class Events {
 	 * </pre>
 	 *
 	 * @param conditions the conditions to match against; never {@code null}
+	 * @since 1.7
 	 * @see #assertEventsMatchExactly(Condition...)
 	 * @see #assertEventsMatchLoosely(Condition...)
 	 * @see EventConditions
 	 * @see TestExecutionResultConditions
-	 * @since 1.7
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")

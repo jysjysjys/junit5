@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,13 +11,18 @@
 package org.junit.jupiter.params;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Named.named;
+import static org.junit.jupiter.engine.discovery.JupiterUniqueIdBuilder.appendTestTemplateInvocationSegment;
+import static org.junit.jupiter.engine.discovery.JupiterUniqueIdBuilder.uniqueIdForTestTemplateMethod;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectIteration;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectUniqueId;
 import static org.junit.platform.testkit.engine.EventConditions.abortedWithReason;
 import static org.junit.platform.testkit.engine.EventConditions.container;
 import static org.junit.platform.testkit.engine.EventConditions.displayName;
@@ -89,6 +94,88 @@ import org.opentest4j.TestAbortedException;
  * @since 5.0
  */
 class ParameterizedTestIntegrationTests {
+
+	@ParameterizedTest
+	@CsvSource(quoteCharacter = '"', textBlock = """
+
+
+			# This is a comment preceded by multiple opening blank lines.
+			apple,         1
+			banana,        2
+			# This is a comment pointing out that the next line contains multiple explicit newlines in quoted text.
+			"lemon  \s
+
+
+			\s  lime",         0xF1
+			# The next line is a blank line in the middle of the CSV rows.
+
+			strawberry,    700_000
+			# This is a comment followed by 2 closing blank line.
+
+			""")
+	void executesLinesFromTextBlock(String fruit, int rank) {
+		switch (fruit) {
+			case "apple" -> assertThat(rank).isEqualTo(1);
+			case "banana" -> assertThat(rank).isEqualTo(2);
+			case "lemon   \n\n\n   lime" -> assertThat(rank).isEqualTo(241);
+			case "strawberry" -> assertThat(rank).isEqualTo(700_000);
+			default -> fail("Unexpected fruit : " + fruit);
+		}
+	}
+
+	@ParameterizedTest(name = "[{index}] {arguments}")
+	@CsvSource(delimiter = '|', useHeadersInDisplayName = true, nullValues = "NIL", textBlock = """
+			#---------------------------------
+			  FRUIT  | RANK
+			#---------------------------------
+			  apple  | 1
+			#---------------------------------
+			  banana | 2
+			#---------------------------------
+			  cherry | 3.14159265358979323846
+			#---------------------------------
+			         | 0
+			#---------------------------------
+			  NIL    | 0
+			#---------------------------------
+			""")
+	void executesLinesFromTextBlockUsingTableFormatAndHeadersAndNullValues(String fruit, double rank,
+			TestInfo testInfo) {
+		assertFruitTable(fruit, rank, testInfo);
+	}
+
+	@ParameterizedTest(name = "[{index}] {arguments}")
+	@CsvFileSource(resources = "two-column-with-headers.csv", delimiter = '|', useHeadersInDisplayName = true, nullValues = "NIL")
+	void executesLinesFromClasspathResourceUsingTableFormatAndHeadersAndNullValues(String fruit, double rank,
+			TestInfo testInfo) {
+		assertFruitTable(fruit, rank, testInfo);
+	}
+
+	private void assertFruitTable(String fruit, double rank, TestInfo testInfo) {
+		String displayName = testInfo.getDisplayName();
+
+		if (fruit == null) {
+			assertThat(rank).isEqualTo(0);
+			assertThat(displayName).matches("\\[(4|5)\\] FRUIT = null, RANK = 0");
+			return;
+		}
+
+		switch (fruit) {
+			case "apple" -> {
+				assertThat(rank).isEqualTo(1);
+				assertThat(displayName).isEqualTo("[1] FRUIT = apple, RANK = 1");
+			}
+			case "banana" -> {
+				assertThat(rank).isEqualTo(2);
+				assertThat(displayName).isEqualTo("[2] FRUIT = banana, RANK = 2");
+			}
+			case "cherry" -> {
+				assertThat(rank).isCloseTo(Math.PI, within(0.0));
+				assertThat(displayName).isEqualTo("[3] FRUIT = cherry, RANK = 3.14159265358979323846");
+			}
+			default -> fail("Unexpected fruit : " + fruit);
+		}
+	}
 
 	@Test
 	void executesWithSingleArgumentsProviderWithMultipleInvocations() {
@@ -715,6 +802,18 @@ class ParameterizedTestIntegrationTests {
 		assertTrue(AutoCloseableArgument.isClosed);
 	}
 
+	@Test
+	void executesTwoIterationsBasedOnIterationAndUniqueIdSelector() {
+		var methodId = uniqueIdForTestTemplateMethod(TestCase.class, "testWithThreeIterations(int)");
+		var results = execute(selectUniqueId(appendTestTemplateInvocationSegment(methodId, 3)),
+			selectIteration(selectMethod(TestCase.class, "testWithThreeIterations", "int"), 1));
+
+		results.allEvents().assertThatEvents() //
+				.haveExactly(2, event(test(), finishedWithFailure())) //
+				.haveExactly(1, event(test(), displayName("[2] argument=3"), finishedWithFailure())) //
+				.haveExactly(1, event(test(), displayName("[3] argument=5"), finishedWithFailure()));
+	}
+
 	// -------------------------------------------------------------------------
 
 	static class TestCase {
@@ -803,6 +902,11 @@ class ParameterizedTestIntegrationTests {
 			assertFalse(AutoCloseableArgument.isClosed);
 		}
 
+		@ParameterizedTest
+		@ValueSource(ints = { 2, 3, 5 })
+		void testWithThreeIterations(int argument) {
+			fail("argument: " + argument);
+		}
 	}
 
 	static class NullSourceTestCase {

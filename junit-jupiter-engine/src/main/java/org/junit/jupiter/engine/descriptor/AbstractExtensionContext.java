@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,15 +20,19 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.execution.ExtensionValuesStore;
 import org.junit.jupiter.engine.execution.NamespaceAwareStore;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestTag;
 import org.junit.platform.engine.reporting.ReportEntry;
+import org.junit.platform.engine.support.hierarchical.Node;
 
 /**
  * @since 5.0
@@ -41,9 +45,11 @@ abstract class AbstractExtensionContext<T extends TestDescriptor> implements Ext
 	private final Set<String> tags;
 	private final JupiterConfiguration configuration;
 	private final ExtensionValuesStore valuesStore;
+	private final ExecutableInvoker executableInvoker;
 
 	AbstractExtensionContext(ExtensionContext parent, EngineExecutionListener engineExecutionListener, T testDescriptor,
-			JupiterConfiguration configuration) {
+			JupiterConfiguration configuration, ExecutableInvoker executableInvoker) {
+		this.executableInvoker = executableInvoker;
 
 		Preconditions.notNull(testDescriptor, "TestDescriptor must not be null");
 		Preconditions.notNull(configuration, "JupiterConfiguration must not be null");
@@ -126,5 +132,27 @@ abstract class AbstractExtensionContext<T extends TestDescriptor> implements Ext
 	@Override
 	public <V> Optional<V> getConfigurationParameter(String key, Function<String, V> transformer) {
 		return this.configuration.getRawConfigurationParameter(key, transformer);
+	}
+
+	@Override
+	public ExecutionMode getExecutionMode() {
+		return toJupiterExecutionMode(getPlatformExecutionMode());
+	}
+
+	@Override
+	public ExecutableInvoker getExecutableInvoker() {
+		return executableInvoker;
+	}
+
+	protected abstract Node.ExecutionMode getPlatformExecutionMode();
+
+	private ExecutionMode toJupiterExecutionMode(Node.ExecutionMode mode) {
+		switch (mode) {
+			case CONCURRENT:
+				return ExecutionMode.CONCURRENT;
+			case SAME_THREAD:
+				return ExecutionMode.SAME_THREAD;
+		}
+		throw new JUnitException("Unknown ExecutionMode: " + mode);
 	}
 }

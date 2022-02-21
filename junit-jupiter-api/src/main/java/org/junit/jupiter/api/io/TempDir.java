@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -67,14 +67,23 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * {@link org.junit.jupiter.api.AfterEach @AfterEach} methods &mdash; each test
  * will use its own temporary directory.
  *
- * <h3>Deletion</h3>
+ * <h3>Clean Up</h3>
  *
- * <p>When the end of the scope of a temporary directory is reached, i.e. when
- * the test method or class has finished execution, JUnit will attempt to
- * recursively delete all files and directories in the temporary directory
- * and, finally, the temporary directory itself. In case deletion of a file or
- * directory fails, an {@link IOException} will be thrown that will cause the
- * test or test class to fail.
+ * <p>By default, when the end of the scope of a temporary directory is reached,
+ * &mdash; when the test method or class has finished execution &mdash; JUnit will
+ * attempt to clean up the temporary directory by recursively deleting all files
+ * and directories in the temporary directory and, finally, the temporary directory
+ * itself. In case deletion of a file or directory fails, an {@link IOException}
+ * will be thrown that will cause the test or test class to fail.
+ *
+ * <p>The {@link #cleanup} attribute allows you to configure the {@link CleanupMode}.
+ * If the cleanup mode is set to {@link CleanupMode#NEVER NEVER}, the temporary
+ * directory will not be cleaned up after the test completes. If the cleanup mode is
+ * set to {@link CleanupMode#ON_SUCCESS ON_SUCCESS}, the temporary directory will
+ * only be cleaned up if the test completes successfully. By default, the
+ * {@link CleanupMode#ALWAYS ALWAYS} clean up mode will be used, but this can be
+ * configured globally by setting the {@value #DEFAULT_CLEANUP_MODE_PROPERTY_NAME}
+ * configuration parameter.
  *
  * @since 5.4
  */
@@ -83,4 +92,25 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 @Documented
 @API(status = EXPERIMENTAL, since = "5.4")
 public @interface TempDir {
+
+	/**
+	 * The name of the configuration parameter that is used to configure the
+	 * default {@link CleanupMode}.
+	 *
+	 * <p>If this configuration parameter is not set, {@link CleanupMode#ALWAYS}
+	 * will be used as the default.
+	 *
+	 * @since 5.9
+	 */
+	@API(status = EXPERIMENTAL, since = "5.9")
+	String DEFAULT_CLEANUP_MODE_PROPERTY_NAME = "junit.jupiter.tempdir.cleanup.mode.default";
+
+	/**
+	 * How the temporary directory gets cleaned up after the test completes.
+	 *
+	 * @since 5.9
+	 */
+	@API(status = EXPERIMENTAL, since = "5.9")
+	CleanupMode cleanup() default CleanupMode.DEFAULT;
+
 }

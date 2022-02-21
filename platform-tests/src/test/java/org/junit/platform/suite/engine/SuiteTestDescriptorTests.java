@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
@@ -111,8 +112,14 @@ class SuiteTestDescriptorTests {
 		}
 
 		@Override
+		@SuppressWarnings("deprecation")
 		public int size() {
 			return 0;
+		}
+
+		@Override
+		public Set<String> keySet() {
+			return Collections.emptySet();
 		}
 
 	}

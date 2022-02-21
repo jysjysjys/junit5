@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,11 +24,10 @@ import org.apiguardian.api.API;
  * implementations may use all of the properties in this class or
  * only a subset.
  *
+ * @since 1.3
  * @see ForkJoinPoolHierarchicalTestExecutorService
  * @see ParallelExecutionConfigurationStrategy
  * @see DefaultParallelExecutionConfigurationStrategy
- *
- * @since 1.3
  */
 @API(status = EXPERIMENTAL, since = "1.3")
 public interface ParallelExecutionConfiguration {

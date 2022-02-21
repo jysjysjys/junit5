@@ -1,5 +1,3 @@
-import aQute.bnd.gradle.BundleTaskConvention;
-
 plugins {
 	`java-library-conventions`
 	`junit4-compatibility`
@@ -17,12 +15,15 @@ dependencies {
 
 	testImplementation(projects.junitJupiterEngine)
 	testImplementation(projects.junitPlatformLauncher)
-	testImplementation(projects.junitPlatformRunner)
+	testImplementation(projects.junitPlatformSuiteEngine)
 	testImplementation(projects.junitPlatformTestkit)
+
+	osgiVerification(projects.junitJupiterEngine)
+	osgiVerification(projects.junitPlatformLauncher)
 }
 
 tasks.jar {
-	withConvention(BundleTaskConvention::class) {
+	bundle {
 		bnd("""
 			# Import JUnit4 packages with a version
 			Import-Package: \

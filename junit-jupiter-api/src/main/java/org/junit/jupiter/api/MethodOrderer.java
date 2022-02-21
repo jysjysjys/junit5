@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -49,6 +49,7 @@ import org.junit.platform.commons.util.ClassUtils;
  * @see TestMethodOrder
  * @see MethodOrdererContext
  * @see #orderMethods(MethodOrdererContext)
+ * @see ClassOrderer
  */
 @API(status = STABLE, since = "5.7")
 public interface MethodOrderer {
@@ -229,7 +230,7 @@ public interface MethodOrderer {
 	 * <p>By default, the random <em>seed</em> used for ordering methods is the
 	 * value returned by {@link System#nanoTime()} during static initialization
 	 * of this class. In order to support repeatable builds, the value of the
-	 * default random seed is logged at {@code INFO} level. In addition, a
+	 * default random seed is logged at {@code CONFIG} level. In addition, a
 	 * custom seed (potentially the default seed from the previous test plan
 	 * execution) may be specified via the {@link Random#RANDOM_SEED_PROPERTY_NAME
 	 * junit.jupiter.execution.order.random.seed} <em>configuration parameter</em>
@@ -263,7 +264,7 @@ public interface MethodOrderer {
 		 * <p>The same property is used by {@link ClassOrderer.Random} for
 		 * consistency between the two random orderers.
 		 *
-		 * <h3>Supported Values</h3>
+		 * <h4>Supported Values</h4>
 		 *
 		 * <p>Supported values include any string that can be converted to a
 		 * {@link Long} via {@link Long#valueOf(String)}.

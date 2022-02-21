@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -92,8 +92,15 @@ public @interface DisabledIfSystemProperty {
 	String matches();
 
 	/**
-	 * Reason to provide if the test of container ends up being disabled.
+	 * Custom reason to provide if the test or container is disabled.
+	 *
+	 * <p>If a custom reason is supplied, it will be combined with the default
+	 * reason for this annotation. If a custom reason is not supplied, the default
+	 * reason will be used.
+	 *
+	 * @since 5.7
 	 */
+	@API(status = STABLE, since = "5.7")
 	String disabledReason() default "";
 
 }

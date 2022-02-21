@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -32,8 +32,8 @@ import org.apiguardian.api.API;
  * explicitly throw a {@code Throwable}. In order to support such specialized
  * use cases, {@link #get} is declared to throw {@code Throwable}.
  *
- * @since 5.0
  * @param <T> the type of argument supplied
+ * @since 5.0
  * @see java.util.function.Supplier
  * @see org.junit.jupiter.api.Assertions#assertTimeout(java.time.Duration, ThrowingSupplier)
  * @see org.junit.jupiter.api.Assertions#assertTimeoutPreemptively(java.time.Duration, ThrowingSupplier)

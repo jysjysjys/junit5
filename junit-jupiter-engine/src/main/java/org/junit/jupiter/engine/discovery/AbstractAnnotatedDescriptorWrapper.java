@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,19 +20,22 @@ import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestDescriptor;
 
 /**
+ * Abstract base class for wrappers for test descriptors based on annotated
+ * elements.
+ *
  * @since 5.8
  */
-abstract class AbstractAnnotatedElementDescriptor<E extends AnnotatedElement> {
+abstract class AbstractAnnotatedDescriptorWrapper<E extends AnnotatedElement> {
 
 	private final TestDescriptor testDescriptor;
 	private final E annotatedElement;
 
-	AbstractAnnotatedElementDescriptor(TestDescriptor testDescriptor, E annotatedElement) {
+	AbstractAnnotatedDescriptorWrapper(TestDescriptor testDescriptor, E annotatedElement) {
 		this.testDescriptor = testDescriptor;
 		this.annotatedElement = annotatedElement;
 	}
 
-	protected E getAnnotatedElement() {
+	E getAnnotatedElement() {
 		return this.annotatedElement;
 	}
 

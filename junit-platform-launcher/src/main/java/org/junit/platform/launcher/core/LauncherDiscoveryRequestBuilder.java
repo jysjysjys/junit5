@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -88,13 +88,15 @@ public final class LauncherDiscoveryRequestBuilder {
 	/**
 	 * Property name used to set the default discovery listener that is added to all : {@value}
 	 *
-	 * <h3>Supported Values</h3>
+	 * <h4>Supported Values</h4>
 	 *
 	 * <p>Supported values are {@code "logging"} and {@code "abortOnFailure"}.
 	 *
-	 * <p>If not specified, the default is {@code "logging"}.
+	 * <p>If not specified, the default is {@value #DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_VALUE}.
 	 */
 	public static final String DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME = "junit.platform.discovery.listener.default";
+
+	private static final String DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_VALUE = "abortOnFailure";
 
 	private final List<DiscoverySelector> selectors = new ArrayList<>();
 	private final List<EngineFilter> engineFilters = new ArrayList<>();
@@ -208,9 +210,9 @@ public final class LauncherDiscoveryRequestBuilder {
 	 * @param configurationParameters the parent instance to be used for looking
 	 * up configuration parameters that have not been explicitly configured;
 	 * never {@code null}
+	 * @since 1.8
 	 * @see #configurationParameter(String, String)
 	 * @see #configurationParameters(Map)
-	 * @since 1.8
 	 */
 	@API(status = EXPERIMENTAL, since = "1.8")
 	public LauncherDiscoveryRequestBuilder parentConfigurationParameters(
@@ -232,10 +234,10 @@ public final class LauncherDiscoveryRequestBuilder {
 	 * @param listeners the {@code LauncherDiscoveryListeners} to add; never
 	 * {@code null}
 	 * @return this builder for method chaining
+	 * @since 1.6
 	 * @see LauncherDiscoveryListener
 	 * @see LauncherDiscoveryListeners
 	 * @see LauncherDiscoveryRequestBuilder#DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME
-	 * @since 1.6
 	 */
 	@API(status = EXPERIMENTAL, since = "1.6")
 	public LauncherDiscoveryRequestBuilder listeners(LauncherDiscoveryListener... listeners) {
@@ -254,9 +256,9 @@ public final class LauncherDiscoveryRequestBuilder {
 	 * Passing {@code false} to this method, disables the latter two sources so
 	 * that only explicit configuration parameters are taken into account.
 	 *
+	 * @since 1.7
 	 * @see #configurationParameter(String, String)
 	 * @see #configurationParameters(Map)
-	 * @since 1.7
 	 */
 	@API(status = EXPERIMENTAL, since = "1.7")
 	public LauncherDiscoveryRequestBuilder enableImplicitConfigurationParameters(boolean enabled) {
@@ -305,11 +307,8 @@ public final class LauncherDiscoveryRequestBuilder {
 	}
 
 	private LauncherDiscoveryListener getLauncherDiscoveryListener(ConfigurationParameters configurationParameters) {
-		LauncherDiscoveryListener defaultDiscoveryListener = configurationParameters.get(
-			DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME) //
-				.map(value -> LauncherDiscoveryListeners.fromConfigurationParameter(
-					DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME, value)) //
-				.orElseGet(LauncherDiscoveryListeners::abortOnFailure);
+		LauncherDiscoveryListener defaultDiscoveryListener = getDefaultLauncherDiscoveryListener(
+			configurationParameters);
 		if (discoveryListeners.isEmpty()) {
 			return defaultDiscoveryListener;
 		}
@@ -320,6 +319,14 @@ public final class LauncherDiscoveryRequestBuilder {
 		allDiscoveryListeners.addAll(discoveryListeners);
 		allDiscoveryListeners.add(defaultDiscoveryListener);
 		return LauncherDiscoveryListeners.composite(allDiscoveryListeners);
+	}
+
+	private LauncherDiscoveryListener getDefaultLauncherDiscoveryListener(
+			ConfigurationParameters configurationParameters) {
+		String value = configurationParameters.get(DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME) //
+				.orElse(DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_VALUE);
+		return LauncherDiscoveryListeners.fromConfigurationParameter(
+			DEFAULT_DISCOVERY_LISTENER_CONFIGURATION_PROPERTY_NAME, value);
 	}
 
 }

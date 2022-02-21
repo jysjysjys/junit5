@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -34,10 +34,10 @@ import org.junit.platform.launcher.core.LauncherFactory;
  * <p>The methods declared in this interface are called by the {@link Launcher}
  * or {@link LauncherSession} created via the {@link LauncherFactory}.
  *
+ * @since 1.8
  * @see LauncherSession
  * @see LauncherConfig.Builder#addLauncherSessionListeners
  * @see LauncherFactory
- * @since 1.8
  */
 @API(status = EXPERIMENTAL, since = "1.8")
 public interface LauncherSessionListener {

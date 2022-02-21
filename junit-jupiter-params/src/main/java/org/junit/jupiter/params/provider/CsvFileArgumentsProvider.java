@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,8 +13,9 @@ package org.junit.jupiter.params.provider;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.junit.jupiter.params.provider.CsvArgumentsProvider.getHeaders;
 import static org.junit.jupiter.params.provider.CsvArgumentsProvider.handleCsvException;
+import static org.junit.jupiter.params.provider.CsvArgumentsProvider.processCsvRecord;
 import static org.junit.jupiter.params.provider.CsvParserFactory.createParserFor;
 import static org.junit.platform.commons.util.CollectionUtils.toSet;
 
@@ -118,49 +119,54 @@ class CsvFileArgumentsProvider implements ArgumentsProvider, AnnotationConsumer<
 
 		private final CsvParser csvParser;
 		private final CsvFileSource annotation;
+		private final boolean useHeadersInDisplayName;
 		private final Set<String> nullValues;
-		private Object[] nextCsvRecord;
+		private Arguments nextArguments;
+		private String[] headers;
 
 		CsvParserIterator(CsvParser csvParser, CsvFileSource annotation) {
 			this.csvParser = csvParser;
 			this.annotation = annotation;
+			this.useHeadersInDisplayName = annotation.useHeadersInDisplayName();
 			this.nullValues = toSet(annotation.nullValues());
 			advance();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.nextCsvRecord != null;
+			return this.nextArguments != null;
 		}
 
 		@Override
 		public Arguments next() {
-			Arguments result = arguments(this.nextCsvRecord);
+			Arguments result = this.nextArguments;
 			advance();
 			return result;
 		}
 
 		private void advance() {
-			String[] parsedLine = null;
 			try {
-				parsedLine = this.csvParser.parseNext();
-				if (parsedLine != null && !this.nullValues.isEmpty()) {
-					for (int i = 0; i < parsedLine.length; i++) {
-						if (this.nullValues.contains(parsedLine[i])) {
-							parsedLine[i] = null;
-						}
+				String[] csvRecord = this.csvParser.parseNext();
+				if (csvRecord != null) {
+					// Lazily retrieve headers if necessary.
+					if (this.useHeadersInDisplayName && this.headers == null) {
+						this.headers = getHeaders(this.csvParser);
 					}
+					this.nextArguments = processCsvRecord(csvRecord, this.nullValues, this.useHeadersInDisplayName,
+						this.headers);
+				}
+				else {
+					this.nextArguments = null;
 				}
 			}
 			catch (Throwable throwable) {
 				handleCsvException(throwable, this.annotation);
 			}
-
-			this.nextCsvRecord = parsedLine;
 		}
 
 	}
 
+	@FunctionalInterface
 	private interface Source {
 
 		InputStream open(ExtensionContext context);

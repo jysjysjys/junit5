@@ -3,22 +3,18 @@ import com.gradle.enterprise.gradleplugin.internal.extension.BuildScanExtensionW
 pluginManagement {
 	repositories {
 		gradlePluginPortal()
-		maven(url = "https://repo.gradle.org/gradle/enterprise-libs-release-candidates-local/")
 	}
 	plugins {
-		id("com.gradle.enterprise") version "3.6.2"
-		id("com.gradle.enterprise.test-distribution") version "2.1.1-rc-2"
-		id("com.gradle.common-custom-user-data-gradle-plugin") version "1.3"
-		id("net.nemerosa.versioning") version "2.14.0"
-		id("com.github.ben-manes.versions") version "0.39.0"
-		id("com.diffplug.spotless") version "5.12.5"
+		id("com.gradle.enterprise") version "3.8.1"
+		id("com.gradle.enterprise.test-distribution") version "2.2.2" // keep in sync with buildSrc/build.gradle.kts
+		id("com.gradle.common-custom-user-data-gradle-plugin") version "1.6.2"
 		id("org.ajoberstar.git-publish") version "3.0.0"
-		kotlin("jvm") version "1.5.0"
+		kotlin("jvm") version "1.5.31"
 		// Check if workaround in documentation.gradle.kts can be removed when upgrading
 		id("org.asciidoctor.jvm.convert") version "3.3.2"
 		id("org.asciidoctor.jvm.pdf") version "3.3.2"
-		id("me.champeau.jmh") version "0.6.5"
-		id("io.spring.nohttp") version "0.0.8"
+		id("me.champeau.jmh") version "0.6.6"
+		id("io.spring.nohttp") version "0.0.10"
 		id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 	}
 }
@@ -29,6 +25,17 @@ plugins {
 	id("com.gradle.common-custom-user-data-gradle-plugin")
 }
 
+dependencyResolutionManagement {
+	repositories {
+		mavenCentral()
+		maven(url = "https://oss.sonatype.org/content/repositories/snapshots") {
+			mavenContent {
+				snapshotsOnly()
+			}
+		}
+	}
+}
+
 val gradleEnterpriseServer = "https://ge.junit.org"
 val isCiServer = System.getenv("CI") != null
 val junitBuildCacheUsername: String? by extra
@@ -36,23 +43,16 @@ val junitBuildCachePassword: String? by extra
 
 gradleEnterprise {
 	buildScan {
-		isCaptureTaskInputFiles = true
+		capture.isTaskInputFiles = true
 		isUploadInBackground = !isCiServer
 
-		fun accessKeysAreMissingOrBlank() = System.getenv("GRADLE_ENTERPRISE_ACCESS_KEY").isNullOrBlank()
+		publishAlways()
 
-		if (gradle.startParameter.isBuildScan || (isCiServer && accessKeysAreMissingOrBlank())) {
-			termsOfServiceUrl = "https://gradle.com/terms-of-service"
-		} else {
+		// Publish to scans.gradle.com when `--scan` is used explicitly
+		if (!gradle.startParameter.isBuildScan) {
 			server = gradleEnterpriseServer
-			publishAlways()
 			this as BuildScanExtensionWithHiddenFeatures
 			publishIfAuthenticated()
-		}
-
-		if (isCiServer) {
-			publishAlways()
-			termsOfServiceAgree = "yes"
 		}
 
 		obfuscation {
@@ -89,8 +89,8 @@ buildCache {
 }
 
 val javaVersion = JavaVersion.current()
-require(javaVersion.isJava11Compatible) {
-	"The JUnit 5 build requires Java 11 or higher. Currently executing with Java ${javaVersion.majorVersion}."
+require(javaVersion == JavaVersion.VERSION_17) {
+	"The JUnit 5 build must be executed with Java 17. Currently executing with Java ${javaVersion.majorVersion}."
 }
 
 rootProject.name = "junit5"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,8 +12,7 @@ package platform.tooling.support.tests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-
-import java.time.Duration;
+import static platform.tooling.support.Helper.TOOL_TIMEOUT;
 
 import de.sormuras.bartholdy.Result;
 
@@ -60,10 +59,10 @@ class VintageMavenIntegrationTests {
 				.setJavaHome(Helper.getJavaHome("8").orElseThrow(TestAbortedException::new)) //
 				.setProject("vintage") //
 				.setWorkspace("vintage-maven-" + version) //
-				.addArguments("clean", "test", "--debug", "--batch-mode") //
+				.addArguments("clean", "test", "--update-snapshots", "--batch-mode") //
 				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
 				.addArguments("-Djunit4Version=" + version) //
-				.setTimeout(Duration.ofMinutes(2)) //
+				.setTimeout(TOOL_TIMEOUT) //
 				.build() //
 				.run();
 		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);

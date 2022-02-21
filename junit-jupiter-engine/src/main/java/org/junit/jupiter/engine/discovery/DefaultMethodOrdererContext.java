@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -29,11 +29,11 @@ class DefaultMethodOrdererContext implements MethodOrdererContext {
 	private final List<? extends MethodDescriptor> methodDescriptors;
 	private final JupiterConfiguration configuration;
 
-	DefaultMethodOrdererContext(List<? extends MethodDescriptor> methodDescriptors, Class<?> testClass,
+	DefaultMethodOrdererContext(Class<?> testClass, List<? extends MethodDescriptor> methodDescriptors,
 			JupiterConfiguration configuration) {
 
-		this.methodDescriptors = methodDescriptors;
 		this.testClass = testClass;
+		this.methodDescriptors = methodDescriptors;
 		this.configuration = configuration;
 	}
 

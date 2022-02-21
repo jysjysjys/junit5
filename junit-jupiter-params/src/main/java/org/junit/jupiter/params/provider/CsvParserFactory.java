@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,24 +24,22 @@ class CsvParserFactory {
 
 	private static final String DEFAULT_DELIMITER = ",";
 	private static final String LINE_SEPARATOR = "\n";
-	private static final char SINGLE_QUOTE = '\'';
-	private static final char DOUBLE_QUOTE = '"';
 	private static final char EMPTY_CHAR = '\0';
-	private static final boolean COMMENT_PROCESSING_FOR_CSV_SOURCE = false;
 	private static final boolean COMMENT_PROCESSING_FOR_CSV_FILE_SOURCE = true;
 
 	static CsvParser createParserFor(CsvSource annotation) {
 		String delimiter = selectDelimiter(annotation, annotation.delimiter(), annotation.delimiterString());
-		return createParser(delimiter, LINE_SEPARATOR, SINGLE_QUOTE, annotation.emptyValue(),
-			annotation.maxCharsPerColumn(), COMMENT_PROCESSING_FOR_CSV_SOURCE,
+		boolean commentProcessingEnabled = !annotation.textBlock().isEmpty();
+		return createParser(delimiter, LINE_SEPARATOR, annotation.quoteCharacter(), annotation.emptyValue(),
+			annotation.maxCharsPerColumn(), commentProcessingEnabled, annotation.useHeadersInDisplayName(),
 			annotation.ignoreLeadingAndTrailingWhitespace());
 	}
 
 	static CsvParser createParserFor(CsvFileSource annotation) {
 		String delimiter = selectDelimiter(annotation, annotation.delimiter(), annotation.delimiterString());
-		return createParser(delimiter, annotation.lineSeparator(), DOUBLE_QUOTE, annotation.emptyValue(),
+		return createParser(delimiter, annotation.lineSeparator(), annotation.quoteCharacter(), annotation.emptyValue(),
 			annotation.maxCharsPerColumn(), COMMENT_PROCESSING_FOR_CSV_FILE_SOURCE,
-			annotation.ignoreLeadingAndTrailingWhitespace());
+			annotation.useHeadersInDisplayName(), annotation.ignoreLeadingAndTrailingWhitespace());
 	}
 
 	private static String selectDelimiter(Annotation annotation, char delimiter, String delimiterString) {
@@ -58,16 +56,18 @@ class CsvParserFactory {
 	}
 
 	private static CsvParser createParser(String delimiter, String lineSeparator, char quote, String emptyValue,
-			int maxCharsPerColumn, boolean commentProcessingEnabled, boolean ignoreLeadingAndTrailingWhitespace) {
+			int maxCharsPerColumn, boolean commentProcessingEnabled, boolean headerExtractionEnabled,
+			boolean ignoreLeadingAndTrailingWhitespace) {
 		return new CsvParser(createParserSettings(delimiter, lineSeparator, quote, emptyValue, maxCharsPerColumn,
-			commentProcessingEnabled, ignoreLeadingAndTrailingWhitespace));
+			commentProcessingEnabled, headerExtractionEnabled, ignoreLeadingAndTrailingWhitespace));
 	}
 
 	private static CsvParserSettings createParserSettings(String delimiter, String lineSeparator, char quote,
-			String emptyValue, int maxCharsPerColumn, boolean commentProcessingEnabled,
+			String emptyValue, int maxCharsPerColumn, boolean commentProcessingEnabled, boolean headerExtractionEnabled,
 			boolean ignoreLeadingAndTrailingWhitespace) {
 
 		CsvParserSettings settings = new CsvParserSettings();
+		settings.setHeaderExtractionEnabled(headerExtractionEnabled);
 		settings.getFormat().setDelimiter(delimiter);
 		settings.getFormat().setLineSeparator(lineSeparator);
 		settings.getFormat().setQuote(quote);

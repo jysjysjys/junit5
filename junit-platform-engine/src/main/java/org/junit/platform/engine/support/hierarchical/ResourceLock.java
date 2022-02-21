@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,9 +17,8 @@ import org.apiguardian.api.API;
 /**
  * A lock for a one or more resources.
  *
- * @see HierarchicalTestExecutorService.TestTask#getResourceLock()
- *
  * @since 1.3
+ * @see HierarchicalTestExecutorService.TestTask#getResourceLock()
  */
 @API(status = EXPERIMENTAL, since = "1.3")
 public interface ResourceLock extends AutoCloseable {

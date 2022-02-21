@@ -29,8 +29,9 @@ include the corresponding versions of the `junit-platform-launcher`,
 [subs=attributes+]
 ----
 testImplementation(platform("org.junit:junit-bom:{bom-version}"))
-// Only needed to run tests in a version of IntelliJ IDEA that bundles older versions
-testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+testRuntimeOnly("org.junit.platform:junit-platform-launcher") {
+  because("Only needed to run tests in a version of IntelliJ IDEA that bundles older versions")
+}
 testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
 testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
 ----
@@ -524,14 +525,17 @@ Jupiter tests and print test execution results to the console.
 An executable `junit-platform-console-standalone-{platform-version}.jar` with all
 dependencies included is published in the {Maven_Central} repository under the
 https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone[junit-platform-console-standalone]
-directory. You can https://docs.oracle.com/javase/tutorial/deployment/jar/run.html[run]
-the standalone `ConsoleLauncher` as shown below.
+directory. It includes the following dependencies:
 
-`java -jar junit-platform-console-standalone-{platform-version}.jar <<<running-tests-console-launcher-options>>>`
+include::{standaloneConsoleLauncherShadowedArtifactsFile}[]
 
-Here's an example of its output:
+You can https://docs.oracle.com/javase/tutorial/deployment/jar/run.html[run] the
+standalone `ConsoleLauncher` as shown below.
 
-....
+[source,console,subs=attributes+]
+----
+$ java -jar junit-platform-console-standalone-{platform-version}.jar <OPTIONS>
+
 ├─ JUnit Vintage
 │  └─ example.JUnit4Tests
 │     └─ standardJUnit4Test ✔
@@ -557,7 +561,15 @@ Test run finished after 64 ms
 [         0 tests aborted         ]
 [         5 tests successful      ]
 [         0 tests failed          ]
-....
+----
+
+You can also run the standalone `ConsoleLauncher` as shown below (for example, to include
+all jars in a directory):
+
+[source,console,subs=attributes+]
+----
+$ java -cp classes:testlib/* org.junit.platform.console.ConsoleLauncher <OPTIONS>
+----
 
 .Exit Code
 NOTE: The `{ConsoleLauncher}` exits with a status code of `1` if any containers or tests
@@ -604,6 +616,25 @@ subject to expansion.
 [[running-tests-junit-platform-runner]]
 === Using JUnit 4 to run the JUnit Platform
 
+[WARNING]
+.The `JUnitPlatform` runner has been deprecated
+====
+The `JUnitPlatform` runner was developed by the JUnit team as an interim solution for
+running test suites and tests on the JUnit Platform in a JUnit 4 environment.
+
+In recent years, all mainstream build tools and IDEs provide built-in support for running
+tests directly on the JUnit Platform.
+
+In addition, the introduction of `@Suite` support provided by the
+`junit-platform-suite-engine` module makes the `JUnitPlatform` runner obsolete. See
+<<junit-platform-suite-engine>> for details.
+
+The `JUnitPlatform` runner and `@UseTechnicalNames` annotation have therefore been
+deprecated in JUnit Platform 1.8 and will be removed in JUnit Platform 2.0.
+
+If you are using the `JUnitPlatform` runner, please migrate to the `@Suite` support.
+====
+
 The `JUnitPlatform` runner is a JUnit 4 based `Runner` which enables you to run any test
 whose programming model is supported on the JUnit Platform in a JUnit 4 environment --
 for example, a JUnit Jupiter test class.
@@ -613,8 +644,7 @@ build systems that support JUnit 4 but do not yet support the JUnit Platform dir
 
 NOTE: Since the JUnit Platform has features that JUnit 4 does not have, the runner is
 only able to support a subset of the JUnit Platform functionality, especially with regard
-to reporting (see <<running-tests-junit-platform-runner-technical-names>>). But for the
-time being the `JUnitPlatform` runner is an easy way to get started.
+to reporting (see <<running-tests-junit-platform-runner-technical-names>>).
 
 [[running-tests-junit-platform-runner-setup]]
 ==== Setup
@@ -622,6 +652,7 @@ time being the `JUnitPlatform` runner is an easy way to get started.
 You need the following artifacts and their dependencies on the classpath. See
 <<dependency-metadata>> for details regarding group IDs, artifact IDs, and versions.
 
+[[running-tests-junit-platform-runner-setup-explicit-dependencies]]
 ===== Explicit Dependencies
 
 * `junit-platform-runner` in _test_ scope: location of the `JUnitPlatform` runner
@@ -631,6 +662,7 @@ You need the following artifacts and their dependencies on the classpath. See
 * `junit-jupiter-engine` in _test runtime_ scope: implementation of the `TestEngine` API
   for JUnit Jupiter
 
+[[running-tests-junit-platform-runner-setup-transitive-dependencies]]
 ===== Transitive Dependencies
 
 * `junit-platform-suite-api` in _test_ scope

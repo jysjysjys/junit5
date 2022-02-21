@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,10 +20,10 @@ import org.junit.platform.launcher.core.LauncherFactory;
  * wishes to repeatedly <em>discover</em> and <em>execute</em> tests using one
  * or more {@linkplain org.junit.platform.engine.TestEngine test engines}.
  *
+ * @since 1.8
  * @see Launcher
  * @see LauncherSessionListener
  * @see LauncherFactory
- * @since 1.8
  */
 @API(status = EXPERIMENTAL, since = "1.8")
 public interface LauncherSession extends AutoCloseable {
@@ -32,7 +32,7 @@ public interface LauncherSession extends AutoCloseable {
 	 * Get the {@link Launcher} associated with this session.
 	 *
 	 * <p>Any call to the launcher returned by this method after the session has
-	 * been closed, will throw an exception.
+	 * been closed will throw an exception.
 	 */
 	Launcher getLauncher();
 
@@ -46,4 +46,5 @@ public interface LauncherSession extends AutoCloseable {
 	 */
 	@Override
 	void close();
+
 }

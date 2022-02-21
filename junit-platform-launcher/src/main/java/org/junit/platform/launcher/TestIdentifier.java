@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -301,6 +301,7 @@ public final class TestIdentifier implements Serializable {
 		private final String displayName;
 		private final String legacyReportingName;
 		private final TestSource source;
+		@SuppressWarnings({ "serial", "RedundantSuppression" }) // always used with serializable implementation (see TestIdentifier#copyOf())
 		private final Set<TestTag> tags;
 		private final Type type;
 

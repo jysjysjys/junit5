@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -63,6 +63,19 @@ class CsvFileArgumentsProviderTests {
 		var arguments = provideArguments(annotation, "foo; bar \r baz; qux");
 
 		assertThat(arguments).containsExactly(array("foo", "bar"), array("baz", "qux"));
+	}
+
+	@Test
+	void providesArgumentsWithCustomQuoteCharacter() {
+		var annotation = csvFileSource()//
+				.resources("test.csv")//
+				.quoteCharacter('\'')//
+				.build();
+
+		var arguments = provideArguments(annotation, "foo, 'bar \"and\" baz', qux \n 'lemon lime', banana, apple");
+
+		assertThat(arguments).containsExactly(array("foo", "bar \"and\" baz", "qux"),
+			array("lemon lime", "banana", "apple"));
 	}
 
 	@Test
@@ -260,6 +273,21 @@ class CsvFileArgumentsProviderTests {
 
 		assertThat(arguments).containsExactly(array("bar"), array("baz"), array("qux"), array(""), array("bar"),
 			array("baz"), array("qux"), array(""));
+	}
+
+	@Test
+	void supportsCsvHeadersInDisplayNames() {
+		var annotation = csvFileSource()//
+				.encoding("ISO-8859-1")//
+				.resources("/single-column.csv")//
+				.useHeadersInDisplayName(true)//
+				.build();
+
+		var arguments = provideArguments(new CsvFileArgumentsProvider(), annotation);
+		Stream<String[]> argumentsAsStrings = arguments.map(array -> new String[] { String.valueOf(array[0]) });
+
+		assertThat(argumentsAsStrings).containsExactly(array("foo = bar"), array("foo = baz"), array("foo = qux"),
+			array("foo = "));
 	}
 
 	@Test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -32,7 +32,8 @@ class ArgumentsAccessorKotlinTests {
         }
 
         assertThat(exception).hasMessage(
-                "Argument at index [0] with value [1] and type [java.lang.Integer] could not be converted or cast to type [java.lang.Character].")
+            "Argument at index [0] with value [1] and type [java.lang.Integer] could not be converted or cast to type [java.lang.Character]."
+        )
     }
 
     @Test

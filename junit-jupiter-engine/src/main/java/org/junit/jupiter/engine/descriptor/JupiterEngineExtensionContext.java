@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,9 +15,11 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.TestInstances;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.platform.engine.EngineExecutionListener;
+import org.junit.platform.engine.support.hierarchical.Node;
 
 /**
  * @since 5.0
@@ -25,9 +27,10 @@ import org.junit.platform.engine.EngineExecutionListener;
 final class JupiterEngineExtensionContext extends AbstractExtensionContext<JupiterEngineDescriptor> {
 
 	JupiterEngineExtensionContext(EngineExecutionListener engineExecutionListener,
-			JupiterEngineDescriptor testDescriptor, JupiterConfiguration configuration) {
+			JupiterEngineDescriptor testDescriptor, JupiterConfiguration configuration,
+			ExecutableInvoker executableInvoker) {
 
-		super(null, engineExecutionListener, testDescriptor, configuration);
+		super(null, engineExecutionListener, testDescriptor, configuration, executableInvoker);
 	}
 
 	@Override
@@ -63,6 +66,11 @@ final class JupiterEngineExtensionContext extends AbstractExtensionContext<Jupit
 	@Override
 	public Optional<Throwable> getExecutionException() {
 		return Optional.empty();
+	}
+
+	@Override
+	protected Node.ExecutionMode getPlatformExecutionMode() {
+		return getTestDescriptor().getExecutionMode();
 	}
 
 }

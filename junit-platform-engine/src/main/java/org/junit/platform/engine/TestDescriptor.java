@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,8 +24,8 @@ import org.junit.platform.commons.util.Preconditions;
  * Mutable descriptor for a test or container that has been discovered by a
  * {@link TestEngine}.
  *
- * @see TestEngine
  * @since 1.0
+ * @see TestEngine
  */
 @API(status = STABLE, since = "1.0")
 public interface TestDescriptor {

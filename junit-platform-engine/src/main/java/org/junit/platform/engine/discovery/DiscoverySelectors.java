@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2022 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -414,7 +414,7 @@ public final class DiscoverySelectors {
 	 * <em>source code syntax</em> (e.g., {@code int[][]}, {@code java.lang.String[]},
 	 * etc.).
 	 *
-	 * <h3>Examples</h3>
+	 * <h4>Examples</h4>
 	 *
 	 * <table class="plain">
 	 * <tr><th>Method</th><th>Fully Qualified Method Name</th></tr>
@@ -694,6 +694,24 @@ public final class DiscoverySelectors {
 	public static UniqueIdSelector selectUniqueId(String uniqueId) {
 		Preconditions.notBlank(uniqueId, "Unique ID must not be null or blank");
 		return new UniqueIdSelector(UniqueId.parse(uniqueId));
+	}
+
+	/**
+	 * Create an {@code IterationSelector} for the supplied parent selector and
+	 * iteration indices.
+	 *
+	 * @param parentSelector the parent selector to select iterations for; never
+	 * {@code null}
+	 * @param iterationIndices the iteration indices to select; never
+	 * {@code null} or empty
+	 * @since 1.9
+	 * @see IterationSelector
+	 */
+	@API(status = EXPERIMENTAL, since = "1.9")
+	public static IterationSelector selectIteration(DiscoverySelector parentSelector, int... iterationIndices) {
+		Preconditions.notNull(parentSelector, "Parent selector must not be null");
+		Preconditions.notEmpty(iterationIndices, "iteration indices must not be empty");
+		return new IterationSelector(parentSelector, iterationIndices);
 	}
 
 }

@@ -17,10 +17,27 @@ dependencies {
 	testImplementation(projects.junitPlatformTestkit)
 	testImplementation(projects.junitJupiterEngine)
 	testImplementation(projects.junitPlatformLauncher)
-	testImplementation(projects.junitPlatformRunner)
+	testImplementation(projects.junitPlatformSuiteEngine)
+	testImplementation(testFixtures(projects.junitJupiterEngine))
 
 	compileOnly(kotlin("stdlib"))
 	testImplementation(kotlin("stdlib"))
+
+	osgiVerification(projects.junitJupiterEngine)
+	osgiVerification(projects.junitPlatformLauncher)
+}
+
+tasks {
+	jar {
+		bundle {
+			bnd("""
+				Require-Capability:\
+					org.junit.platform.engine;\
+						filter:='(&(org.junit.platform.engine=junit-jupiter)(version>=${'$'}{version_cleanup;${rootProject.property("version")!!}})(!(version>=${'$'}{versionmask;+;${'$'}{version_cleanup;${rootProject.property("version")!!}}})))';\
+						effective:=active
+			""")
+		}
+	}
 }
 
 tasks {
