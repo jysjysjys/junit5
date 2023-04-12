@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,7 @@
 
 package org.junit.jupiter.api;
 
-import static org.junit.jupiter.api.AssertionUtils.buildPrefix;
-import static org.junit.jupiter.api.AssertionUtils.nullSafeGet;
+import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 
 import java.util.function.Supplier;
 
@@ -78,9 +77,11 @@ class AssertDoesNotThrow {
 	}
 
 	private static AssertionFailedError createAssertionFailedError(Object messageOrSupplier, Throwable t) {
-		String message = buildPrefix(nullSafeGet(messageOrSupplier)) + "Unexpected exception thrown: "
-				+ t.getClass().getName() + buildSuffix(t.getMessage());
-		return new AssertionFailedError(message, t);
+		return assertionFailure() //
+				.message(messageOrSupplier) //
+				.reason("Unexpected exception thrown: " + t.getClass().getName() + buildSuffix(t.getMessage())) //
+				.cause(t) //
+				.build();
 	}
 
 	private static String buildSuffix(String message) {

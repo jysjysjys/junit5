@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -40,6 +40,7 @@ class AssertNullAssertionsTests {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	void assertNullWithNonNullObject() {
 		try {
 			assertNull("foo");
@@ -61,6 +62,7 @@ class AssertNullAssertionsTests {
 		assertNullWithNonNullObjectWithNullStringReturnedFromToString(() -> "boom");
 	}
 
+	@SuppressWarnings("unused")
 	private void assertNullWithNonNullObjectWithNullStringReturnedFromToString(Supplier<String> messageSupplier) {
 		String actual = "null";
 		try {
@@ -91,6 +93,7 @@ class AssertNullAssertionsTests {
 		assertNullWithNonNullObjectWithNullReferenceReturnedFromToString(() -> "boom");
 	}
 
+	@SuppressWarnings("unused")
 	private void assertNullWithNonNullObjectWithNullReferenceReturnedFromToString(Supplier<String> messageSupplier) {
 		Object actual = new NullToString();
 		try {
@@ -113,6 +116,7 @@ class AssertNullAssertionsTests {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	void assertNullWithNonNullObjectAndMessage() {
 		try {
 			assertNull("foo", "a message");
@@ -125,6 +129,7 @@ class AssertNullAssertionsTests {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	void assertNullWithNonNullObjectAndMessageSupplier() {
 		try {
 			assertNull("foo", () -> "test");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,22 +10,27 @@
 
 package org.junit.jupiter.engine.extension;
 
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_AFTER_ALL_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_AFTER_EACH_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_BEFORE_ALL_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_BEFORE_EACH_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_LIFECYCLE_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_TESTABLE_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_TEST_FACTORY_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_TEST_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_TEST_TEMPLATE_METHOD_TIMEOUT_PROPERTY_NAME;
-import static org.junit.jupiter.engine.config.JupiterConfiguration.DEFAULT_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_AFTER_ALL_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_AFTER_EACH_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_BEFORE_ALL_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_BEFORE_EACH_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_LIFECYCLE_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TESTABLE_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TEST_FACTORY_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TEST_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TEST_TEMPLATE_METHOD_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TIMEOUT_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.DEFAULT_TIMEOUT_THREAD_MODE_PROPERTY_NAME;
+import static org.junit.jupiter.api.Timeout.ThreadMode.SAME_THREAD;
+import static org.junit.jupiter.api.Timeout.ThreadMode.SEPARATE_THREAD;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import org.junit.jupiter.api.Timeout.ThreadMode;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
@@ -39,6 +44,7 @@ class TimeoutConfiguration {
 
 	private final TimeoutDurationParser parser = new TimeoutDurationParser();
 	private final Map<String, Optional<TimeoutDuration>> cache = new ConcurrentHashMap<>();
+	private final AtomicReference<Optional<ThreadMode>> threadMode = new AtomicReference<>();
 	private final ExtensionContext extensionContext;
 
 	TimeoutConfiguration(ExtensionContext extensionContext) {
@@ -106,4 +112,35 @@ class TimeoutConfiguration {
 		}));
 	}
 
+	Optional<ThreadMode> getDefaultTimeoutThreadMode() {
+		if (threadMode.get() != null) {
+			return threadMode.get();
+		}
+		else {
+			Optional<ThreadMode> configuredThreadMode = parseTimeoutThreadModeConfiguration();
+			threadMode.set(configuredThreadMode);
+			return configuredThreadMode;
+		}
+	}
+
+	private Optional<ThreadMode> parseTimeoutThreadModeConfiguration() {
+		return extensionContext.getConfigurationParameter(DEFAULT_TIMEOUT_THREAD_MODE_PROPERTY_NAME).map(value -> {
+			try {
+				ThreadMode threadMode = ThreadMode.valueOf(value.toUpperCase());
+				if (threadMode == ThreadMode.INFERRED) {
+					logger.warn(() -> String.format(
+						"Invalid timeout thread mode '%s', only %s and %s can be used as configuration parameter for %s.",
+						value, SAME_THREAD, SEPARATE_THREAD, DEFAULT_TIMEOUT_THREAD_MODE_PROPERTY_NAME));
+					return null;
+				}
+				return threadMode;
+			}
+			catch (Exception e) {
+				logger.warn(e,
+					() -> String.format("Invalid timeout thread mode '%s' set via the '%s' configuration parameter.",
+						value, DEFAULT_TIMEOUT_THREAD_MODE_PROPERTY_NAME));
+				return null;
+			}
+		});
+	}
 }

@@ -8,7 +8,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-java@v2
+    - uses: actions/setup-java@v3
       id: setup-gradle-jdk
       with:
         distribution: temurin
@@ -19,7 +19,7 @@ runs:
       with:
         arguments: |
           -Porg.gradle.java.installations.auto-download=false
-          -Dplatform.tooling.support.tests.enabled=true
+          -Penterprise.predictiveTestSelection.enabled=${{ github.event_name == 'pull_request' }}
           "-Dscan.value.GitHub job=${{ github.job }}"
           javaToolchains
           ${{ inputs.arguments }}

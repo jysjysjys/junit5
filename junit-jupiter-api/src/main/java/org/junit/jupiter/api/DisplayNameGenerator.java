@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -33,7 +33,13 @@ import org.junit.platform.commons.util.ReflectionUtils;
  *
  * <p>Concrete implementations must have a <em>default constructor</em>.
  *
- * <h4>Built-in Implementations</h4>
+ * <p>A {@link DisplayNameGenerator} can be configured <em>globally</em> for the
+ * entire test suite via the {@value #DEFAULT_GENERATOR_PROPERTY_NAME}
+ * configuration parameter (see the User Guide for details) or <em>locally</em>
+ * for a test class via the {@link DisplayNameGeneration @DisplayNameGeneration}
+ * annotation.
+ *
+ * <h2>Built-in Implementations</h2>
  * <ul>
  * <li>{@link Standard}</li>
  * <li>{@link Simple}</li>
@@ -49,23 +55,46 @@ import org.junit.platform.commons.util.ReflectionUtils;
 public interface DisplayNameGenerator {
 
 	/**
+	 * Property name used to set the default display name generator class name:
+	 * {@value}
+	 *
+	 * <h4>Supported Values</h4>
+	 *
+	 * <p>Supported values include fully qualified class names for types that
+	 * implement {@link DisplayNameGenerator}.
+	 *
+	 * <p>If not specified, the default is
+	 * {@link DisplayNameGenerator.Standard}.
+	 *
+	 * @since 5.5
+	 */
+	@API(status = STABLE, since = "5.9")
+	String DEFAULT_GENERATOR_PROPERTY_NAME = "junit.jupiter.displayname.generator.default";
+
+	/**
 	 * Generate a display name for the given top-level or {@code static} nested test class.
 	 *
+	 * <p>If it returns {@code null}, the default display name generator will be used instead.
+	 *
 	 * @param testClass the class to generate a name for; never {@code null}
-	 * @return the display name for the class; never {@code null} or blank
+	 * @return the display name for the class; never blank
 	 */
 	String generateDisplayNameForClass(Class<?> testClass);
 
 	/**
 	 * Generate a display name for the given {@link Nested @Nested} inner test class.
 	 *
+	 * <p>If it returns {@code null}, the default display name generator will be used instead.
+	 *
 	 * @param nestedClass the class to generate a name for; never {@code null}
-	 * @return the display name for the nested class; never {@code null} or blank
+	 * @return the display name for the nested class; never blank
 	 */
 	String generateDisplayNameForNestedClass(Class<?> nestedClass);
 
 	/**
 	 * Generate a display name for the given method.
+	 *
+	 * <p>If it returns {@code null}, the default display name generator will be used instead.
 	 *
 	 * @implNote The class instance supplied as {@code testClass} may differ from
 	 * the class returned by {@code testMethod.getDeclaringClass()} &mdash; for
@@ -73,7 +102,7 @@ public interface DisplayNameGenerator {
 	 *
 	 * @param testClass the class the test method is invoked on; never {@code null}
 	 * @param testMethod method to generate a display name for; never {@code null}
-	 * @return the display name for the test; never {@code null} or blank
+	 * @return the display name for the test; never blank
 	 */
 	String generateDisplayNameForMethod(Class<?> testClass, Method testMethod);
 

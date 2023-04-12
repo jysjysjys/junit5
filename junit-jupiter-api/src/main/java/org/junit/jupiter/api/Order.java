@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.api;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -46,7 +46,7 @@ import org.apiguardian.api.API;
 @Target({ ElementType.FIELD, ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@API(status = EXPERIMENTAL, since = "5.4")
+@API(status = STABLE, since = "5.9")
 public @interface Order {
 
 	/**
@@ -56,7 +56,6 @@ public @interface Order {
 	 * @since 5.6
 	 * @see Order#value
 	 */
-	@API(status = EXPERIMENTAL, since = "5.6")
 	int DEFAULT = Integer.MAX_VALUE / 2;
 
 	/**

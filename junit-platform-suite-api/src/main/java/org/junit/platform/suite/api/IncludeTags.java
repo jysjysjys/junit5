@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -26,7 +26,7 @@ import org.apiguardian.api.API;
  * {@linkplain #value tags or tag expressions} to be included when running a
  * test suite on the JUnit Platform.
  *
- * <h3>Tag Expressions</h3>
+ * <h2>Tag Expressions</h2>
  *
  * <p>Tag expressions are boolean expressions with the following allowed
  * operators: {@code !} (not), {@code &} (and) and {@code |} (or). Parentheses
@@ -34,7 +34,7 @@ import org.apiguardian.api.API;
  * <a href="https://junit.org/junit5/docs/current/user-guide/#running-tests-tag-expressions">JUnit 5 User Guide</a>
  * for usage examples.
  *
- * <h3>Syntax Rules for Tags</h3>
+ * <h2>Syntax Rules for Tags</h2>
  * <ul>
  * <li>A tag must not be blank.</li>
  * <li>A trimmed tag must not contain whitespace.</li>

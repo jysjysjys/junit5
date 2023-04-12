@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,16 +30,17 @@ import org.junit.platform.launcher.TestPlan;
  */
 class XmlReportDataTests {
 
-	private final ConfigurationParameters configParams = mock(ConfigurationParameters.class);
+	private final ConfigurationParameters configParams = mock();
 
 	@Test
 	void resultsOfTestIdentifierWithoutAnyReportedEventsAreEmpty() {
 		var engineDescriptor = new EngineDescriptor(UniqueId.forEngine("engine"), "Engine");
-		engineDescriptor.addChild(new TestDescriptorStub(UniqueId.root("child", "test"), "test"));
+		var childUniqueId = UniqueId.root("child", "test");
+		engineDescriptor.addChild(new TestDescriptorStub(childUniqueId, "test"));
 		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
-		var results = reportData.getResults(testPlan.getTestIdentifier("[child:test]"));
+		var results = reportData.getResults(testPlan.getTestIdentifier(childUniqueId));
 
 		assertThat(results).isEmpty();
 	}
@@ -47,14 +48,15 @@ class XmlReportDataTests {
 	@Test
 	void resultsOfTestIdentifierWithoutReportedEventsContainsOnlyFailureOfAncestor() {
 		var engineDescriptor = new EngineDescriptor(UniqueId.forEngine("engine"), "Engine");
-		engineDescriptor.addChild(new TestDescriptorStub(UniqueId.root("child", "test"), "test"));
+		var childUniqueId = UniqueId.root("child", "test");
+		engineDescriptor.addChild(new TestDescriptorStub(childUniqueId, "test"));
 		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		var failureOfAncestor = failed(new RuntimeException("failed!"));
-		reportData.markFinished(testPlan.getTestIdentifier("[engine:engine]"), failureOfAncestor);
+		reportData.markFinished(testPlan.getTestIdentifier(engineDescriptor.getUniqueId()), failureOfAncestor);
 
-		var results = reportData.getResults(testPlan.getTestIdentifier("[child:test]"));
+		var results = reportData.getResults(testPlan.getTestIdentifier(childUniqueId));
 
 		assertThat(results).containsExactly(failureOfAncestor);
 	}
@@ -62,13 +64,14 @@ class XmlReportDataTests {
 	@Test
 	void resultsOfTestIdentifierWithoutReportedEventsContainsOnlySuccessOfAncestor() {
 		var engineDescriptor = new EngineDescriptor(UniqueId.forEngine("engine"), "Engine");
-		engineDescriptor.addChild(new TestDescriptorStub(UniqueId.root("child", "test"), "test"));
+		var childUniqueId = UniqueId.root("child", "test");
+		engineDescriptor.addChild(new TestDescriptorStub(childUniqueId, "test"));
 		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
-		reportData.markFinished(testPlan.getTestIdentifier("[engine:engine]"), successful());
+		reportData.markFinished(testPlan.getTestIdentifier(engineDescriptor.getUniqueId()), successful());
 
-		var results = reportData.getResults(testPlan.getTestIdentifier("[child:test]"));
+		var results = reportData.getResults(testPlan.getTestIdentifier(childUniqueId));
 
 		assertThat(results).containsExactly(successful());
 	}

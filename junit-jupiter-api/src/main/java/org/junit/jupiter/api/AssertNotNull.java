@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,7 @@
 
 package org.junit.jupiter.api;
 
-import static org.junit.jupiter.api.AssertionUtils.buildPrefix;
-import static org.junit.jupiter.api.AssertionUtils.nullSafeGet;
+import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 
 import java.util.function.Supplier;
 
@@ -39,11 +38,14 @@ class AssertNotNull {
 
 	static void assertNotNull(Object actual, Supplier<String> messageSupplier) {
 		if (actual == null) {
-			failNull(nullSafeGet(messageSupplier));
+			failNull(messageSupplier);
 		}
 	}
 
-	private static void failNull(String message) {
-		Assertions.fail(buildPrefix(message) + "expected: not <null>");
+	private static void failNull(Object messageOrSupplier) {
+		assertionFailure() //
+				.message(messageOrSupplier) //
+				.reason("expected: not <null>") //
+				.buildAndThrow();
 	}
 }

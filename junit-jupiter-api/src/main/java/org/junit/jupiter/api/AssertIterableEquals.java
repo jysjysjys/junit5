@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,15 +10,14 @@
 
 package org.junit.jupiter.api;
 
-import static org.junit.jupiter.api.AssertionUtils.buildPrefix;
-import static org.junit.jupiter.api.AssertionUtils.fail;
+import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 import static org.junit.jupiter.api.AssertionUtils.formatIndexes;
-import static org.junit.jupiter.api.AssertionUtils.formatValues;
-import static org.junit.jupiter.api.AssertionUtils.nullSafeGet;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -49,6 +48,11 @@ class AssertIterableEquals {
 
 	private static void assertIterableEquals(Iterable<?> expected, Iterable<?> actual, Deque<Integer> indexes,
 			Object messageOrSupplier) {
+		assertIterableEquals(expected, actual, indexes, messageOrSupplier, new LinkedHashMap<>());
+	}
+
+	private static void assertIterableEquals(Iterable<?> expected, Iterable<?> actual, Deque<Integer> indexes,
+			Object messageOrSupplier, Map<Pair, Status> investigatedElements) {
 
 		if (expected == actual) {
 			return;
@@ -60,28 +64,61 @@ class AssertIterableEquals {
 
 		int processed = 0;
 		while (expectedIterator.hasNext() && actualIterator.hasNext()) {
-			processed++;
 			Object expectedElement = expectedIterator.next();
 			Object actualElement = actualIterator.next();
 
-			if (Objects.equals(expectedElement, actualElement)) {
-				continue;
-			}
+			indexes.addLast(processed);
 
-			indexes.addLast(processed - 1);
-			assertIterableElementsEqual(expectedElement, actualElement, indexes, messageOrSupplier);
+			assertIterableElementsEqual(expectedElement, actualElement, indexes, messageOrSupplier,
+				investigatedElements);
+
 			indexes.removeLast();
+			processed++;
 		}
 
 		assertIteratorsAreEmpty(expectedIterator, actualIterator, processed, indexes, messageOrSupplier);
 	}
 
 	private static void assertIterableElementsEqual(Object expected, Object actual, Deque<Integer> indexes,
-			Object messageOrSupplier) {
-		if (expected instanceof Iterable && actual instanceof Iterable) {
-			assertIterableEquals((Iterable<?>) expected, (Iterable<?>) actual, indexes, messageOrSupplier);
+			Object messageOrSupplier, Map<Pair, Status> investigatedElements) {
+
+		// If both are equal, we don't need to check recursively.
+		if (Objects.equals(expected, actual)) {
+			return;
 		}
-		else if (!Objects.equals(expected, actual)) {
+
+		// If both are iterables, we need to check whether they contain the same elements.
+		if (expected instanceof Iterable && actual instanceof Iterable) {
+
+			Pair pair = new Pair(expected, actual);
+
+			// Before comparing their elements, we check whether we have already checked this pair.
+			Status status = investigatedElements.get(pair);
+
+			// If we've already determined that both contain the same elements, we don't need to check them again.
+			if (status == Status.CONTAIN_SAME_ELEMENTS) {
+				return;
+			}
+
+			// If the pair is already under investigation, we fail in order to avoid infinite recursion.
+			if (status == Status.UNDER_INVESTIGATION) {
+				indexes.removeLast();
+				failIterablesNotEqual(expected, actual, indexes, messageOrSupplier);
+			}
+
+			// Otherwise, we put the pair under investigation and recurse.
+			investigatedElements.put(pair, Status.UNDER_INVESTIGATION);
+
+			assertIterableEquals((Iterable<?>) expected, (Iterable<?>) actual, indexes, messageOrSupplier,
+				investigatedElements);
+
+			// If we reach this point, we've checked that the two iterables contain the same elements so we store this information
+			// in case we come across the same pair again.
+			investigatedElements.put(pair, Status.CONTAIN_SAME_ELEMENTS);
+		}
+
+		// Otherwise, they are neither equal nor iterables, so we fail.
+		else {
 			assertIterablesNotNull(expected, actual, indexes, messageOrSupplier);
 			failIterablesNotEqual(expected, actual, indexes, messageOrSupplier);
 		}
@@ -99,11 +136,17 @@ class AssertIterableEquals {
 	}
 
 	private static void failExpectedIterableIsNull(Deque<Integer> indexes, Object messageOrSupplier) {
-		fail(buildPrefix(nullSafeGet(messageOrSupplier)) + "expected iterable was <null>" + formatIndexes(indexes));
+		assertionFailure() //
+				.message(messageOrSupplier) //
+				.reason("expected iterable was <null>" + formatIndexes(indexes)) //
+				.buildAndThrow();
 	}
 
 	private static void failActualIterableIsNull(Deque<Integer> indexes, Object messageOrSupplier) {
-		fail(buildPrefix(nullSafeGet(messageOrSupplier)) + "actual iterable was <null>" + formatIndexes(indexes));
+		assertionFailure() //
+				.message(messageOrSupplier) //
+				.reason("actual iterable was <null>" + formatIndexes(indexes)) //
+				.buildAndThrow();
 	}
 
 	private static void assertIteratorsAreEmpty(Iterator<?> expected, Iterator<?> actual, int processed,
@@ -116,19 +159,54 @@ class AssertIterableEquals {
 			AtomicInteger actualCount = new AtomicInteger(processed);
 			actual.forEachRemaining(e -> actualCount.incrementAndGet());
 
-			String prefix = buildPrefix(nullSafeGet(messageOrSupplier));
-			String message = "iterable lengths differ" + formatIndexes(indexes) + ", expected: <" + expectedCount.get()
-					+ "> but was: <" + actualCount.get() + ">";
-			fail(prefix + message);
+			assertionFailure() //
+					.message(messageOrSupplier) //
+					.reason("iterable lengths differ" + formatIndexes(indexes)) //
+					.expected(expectedCount.get()) //
+					.actual(actualCount.get()) //
+					.buildAndThrow();
 		}
 	}
 
 	private static void failIterablesNotEqual(Object expected, Object actual, Deque<Integer> indexes,
 			Object messageOrSupplier) {
 
-		String prefix = buildPrefix(nullSafeGet(messageOrSupplier));
-		String message = "iterable contents differ" + formatIndexes(indexes) + ", " + formatValues(expected, actual);
-		fail(prefix + message);
+		assertionFailure() //
+				.message(messageOrSupplier) //
+				.reason("iterable contents differ" + formatIndexes(indexes)) //
+				.expected(expected) //
+				.actual(actual) //
+				.buildAndThrow();
+	}
+
+	private final static class Pair {
+		private final Object left;
+		private final Object right;
+
+		public Pair(Object left, Object right) {
+			this.left = left;
+			this.right = right;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o)
+				return true;
+			if (o == null || getClass() != o.getClass())
+				return false;
+			Pair that = (Pair) o;
+			return Objects.equals(this.left, that.left) //
+					&& Objects.equals(this.right, that.right);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(left, right);
+		}
+	}
+
+	private enum Status {
+		UNDER_INVESTIGATION, CONTAIN_SAME_ELEMENTS
 	}
 
 }

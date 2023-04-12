@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -34,7 +34,7 @@ import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 /**
  * {@link TestDescriptor} for tests based on Java classes.
  *
- * <h3>Default Display Names</h3>
+ * <h2>Default Display Names</h2>
  *
  * <p>The default display name for a top-level or nested static test class is
  * the fully qualified name of the class with the package name and leading dot

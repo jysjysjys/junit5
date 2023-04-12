@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import java.util.function.Supplier;
 
 import org.junit.platform.console.options.Theme;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
@@ -27,23 +28,22 @@ import org.junit.platform.launcher.TestPlan;
  */
 class TreePrintingListener implements TestExecutionListener {
 
-	private final Map<String, TreeNode> nodesByUniqueId = new ConcurrentHashMap<>();
+	private final Map<UniqueId, TreeNode> nodesByUniqueId = new ConcurrentHashMap<>();
 	private TreeNode root;
 	private final TreePrinter treePrinter;
 
-	TreePrintingListener(PrintWriter out, boolean disableAnsiColors, Theme theme) {
-		this.treePrinter = new TreePrinter(out, theme, disableAnsiColors);
+	TreePrintingListener(PrintWriter out, ColorPalette colorPalette, Theme theme) {
+		this.treePrinter = new TreePrinter(out, theme, colorPalette);
 	}
 
-	private TreeNode addNode(TestIdentifier testIdentifier, Supplier<TreeNode> nodeSupplier) {
+	private void addNode(TestIdentifier testIdentifier, Supplier<TreeNode> nodeSupplier) {
 		TreeNode node = nodeSupplier.get();
-		nodesByUniqueId.put(testIdentifier.getUniqueId(), node);
-		testIdentifier.getParentId().map(nodesByUniqueId::get).orElse(root).addChild(node);
-		return node;
+		nodesByUniqueId.put(testIdentifier.getUniqueIdObject(), node);
+		testIdentifier.getParentIdObject().map(nodesByUniqueId::get).orElse(root).addChild(node);
 	}
 
 	private TreeNode getNode(TestIdentifier testIdentifier) {
-		return nodesByUniqueId.get(testIdentifier.getUniqueId());
+		return nodesByUniqueId.get(testIdentifier.getUniqueIdObject());
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.engine.support.hierarchical;
 
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.junit.platform.engine.EngineDiscoveryRequest;
@@ -49,6 +50,13 @@ public final class DemoHierarchicalTestEngine extends HierarchicalTestEngine<Dem
 	}
 
 	public DemoHierarchicalTestDescriptor addTest(String uniqueName, String displayName, Runnable executeBlock) {
+		return addChild(uniqueName,
+			uniqueId -> new DemoHierarchicalTestDescriptor(uniqueId, displayName, (c, t) -> executeBlock.run()),
+			"test");
+	}
+
+	public DemoHierarchicalTestDescriptor addTest(String uniqueName, String displayName,
+			BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
 		return addChild(uniqueName, uniqueId -> new DemoHierarchicalTestDescriptor(uniqueId, displayName, executeBlock),
 			"test");
 	}
@@ -84,7 +92,7 @@ public final class DemoHierarchicalTestEngine extends HierarchicalTestEngine<Dem
 
 	@Override
 	protected DemoEngineExecutionContext createExecutionContext(ExecutionRequest request) {
-		return new DemoEngineExecutionContext();
+		return new DemoEngineExecutionContext(request);
 	}
 
 }

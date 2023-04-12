@@ -1,5 +1,5 @@
 plugins {
-	`java-library-conventions`
+	id("junitbuild.java-library-conventions")
 }
 
 description = "JUnit Platform Flight Recorder Support"
@@ -15,12 +15,13 @@ dependencies {
 }
 
 javaLibrary {
+	// --release 8 does not support jdk.jfr even though it was backported
 	configureRelease = false
 }
 
 tasks {
 	compileJava {
-		javaCompiler.set(project.the<JavaToolchainService>().compilerFor {
+		javaCompiler.set(project.javaToolchains.compilerFor {
 			languageVersion.set(JavaLanguageVersion.of(8))
 		})
 	}

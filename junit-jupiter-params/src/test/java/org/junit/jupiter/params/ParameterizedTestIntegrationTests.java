@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,9 +12,12 @@ package org.junit.jupiter.params;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.junit.jupiter.api.Named.named;
 import static org.junit.jupiter.engine.discovery.JupiterUniqueIdBuilder.appendTestTemplateInvocationSegment;
 import static org.junit.jupiter.engine.discovery.JupiterUniqueIdBuilder.uniqueIdForTestTemplateMethod;
@@ -40,12 +43,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
@@ -53,13 +65,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
@@ -452,9 +468,31 @@ class ParameterizedTestIntegrationTests {
 			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=")));
 		}
 
+		/**
+		 * @since 5.10
+		 */
+		@Test
+		void executesWithEmptySourceForCollection() {
+			var results = execute("testWithEmptySourceForCollection", Collection.class);
+			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=[]")));
+		}
+
 		@Test
 		void executesWithEmptySourceForList() {
 			var results = execute("testWithEmptySourceForList", List.class);
+			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=[]")));
+		}
+
+		/**
+		 * @since 5.10
+		 */
+		@ParameterizedTest(name = "{1}")
+		@CsvSource(textBlock = """
+				testWithEmptySourceForArrayList,  java.util.ArrayList
+				testWithEmptySourceForLinkedList, java.util.LinkedList
+				""")
+		void executesWithEmptySourceForListSubtype(String methodName, Class<?> parameterType) {
+			var results = execute(methodName, parameterType);
 			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=[]")));
 		}
 
@@ -464,9 +502,41 @@ class ParameterizedTestIntegrationTests {
 			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=[]")));
 		}
 
+		/**
+		 * @since 5.10
+		 */
+		@ParameterizedTest(name = "{1}")
+		@CsvSource(textBlock = """
+				testWithEmptySourceForSortedSet,     java.util.SortedSet
+				testWithEmptySourceForNavigableSet,  java.util.NavigableSet
+				testWithEmptySourceForHashSet,       java.util.HashSet
+				testWithEmptySourceForTreeSet,       java.util.TreeSet
+				testWithEmptySourceForLinkedHashSet, java.util.LinkedHashSet
+				""")
+		void executesWithEmptySourceForSetSubtype(String methodName, Class<?> parameterType) {
+			var results = execute(methodName, parameterType);
+			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument=[]")));
+		}
+
 		@Test
 		void executesWithEmptySourceForMap() {
 			var results = execute("testWithEmptySourceForMap", Map.class);
+			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument={}")));
+		}
+
+		/**
+		 * @since 5.10
+		 */
+		@ParameterizedTest(name = "{1}")
+		@CsvSource(textBlock = """
+				testWithEmptySourceForSortedMap,     java.util.SortedMap
+				testWithEmptySourceForNavigableMap,  java.util.NavigableMap
+				testWithEmptySourceForHashMap,       java.util.HashMap
+				testWithEmptySourceForTreeMap,       java.util.TreeMap
+				testWithEmptySourceForLinkedHashMap, java.util.LinkedHashMap
+				""")
+		void executesWithEmptySourceForMapSubtype(String methodName, Class<?> parameterType) {
+			var results = execute(methodName, parameterType);
 			results.testEvents().succeeded().assertEventsMatchExactly(event(test(), displayName("[1] argument={}")));
 		}
 
@@ -506,13 +576,10 @@ class ParameterizedTestIntegrationTests {
 		}
 
 		@ParameterizedTest(name = "{1}")
-		@CsvSource({ //
-				"testWithEmptySourceForPrimitive, int", //
-				"testWithEmptySourceForUnsupportedReferenceType, java.lang.Integer", //
-				"testWithEmptySourceForUnsupportedListSubtype, java.util.ArrayList", //
-				"testWithEmptySourceForUnsupportedSetSubtype, java.util.HashSet", //
-				"testWithEmptySourceForUnsupportedMapSubtype, java.util.HashMap"//
-		})
+		@CsvSource(textBlock = """
+				testWithEmptySourceForPrimitive,                int
+				testWithEmptySourceForUnsupportedReferenceType, java.lang.Integer
+				""")
 		void failsWithEmptySourceForUnsupportedType(String methodName, Class<?> parameterType) {
 			execute(methodName, parameterType).containerEvents().failed().assertEventsMatchExactly(//
 				event(container(methodName), //
@@ -551,6 +618,12 @@ class ParameterizedTestIntegrationTests {
 		@Test
 		void executesWithNullAndEmptySourceForList() {
 			var results = execute("testWithNullAndEmptySourceForList", List.class);
+			assertNullAndEmpty(results);
+		}
+
+		@Test
+		void executesWithNullAndEmptySourceForArrayList() {
+			var results = execute("testWithNullAndEmptySourceForArrayList", ArrayList.class);
 			assertNullAndEmpty(results);
 		}
 
@@ -722,11 +795,6 @@ class ParameterizedTestIntegrationTests {
 							message("Assumption failed: nothing to test"))));
 		}
 
-		private EngineExecutionResults execute(String methodName, Class<?>... methodParameterTypes) {
-			return ParameterizedTestIntegrationTests.this.execute(MethodSourceTestCase.class, methodName,
-				methodParameterTypes);
-		}
-
 		@Test
 		void namedParameters() {
 			execute("namedParameters", String.class).allEvents().assertThatEvents() //
@@ -743,6 +811,27 @@ class ParameterizedTestIntegrationTests {
 						event(test(), displayName("cool name"), finishedWithFailure(message("parameter value")))) //
 					.haveAtLeast(1,
 						event(test(), displayName("default name"), finishedWithFailure(message("default name"))));
+		}
+
+		/**
+		 * @since 5.9.1
+		 * @see https://github.com/junit-team/junit5/issues/3001
+		 */
+		@Test
+		void duplicateMethodNames() {
+			// It is sufficient to assert that 8 tests started and finished, because
+			// without the fix for #3001 the 4 parameterized tests would fail. In
+			// other words, we're not really testing the support for @RepeatedTest
+			// and @TestFactory, but their presence also contributes to the bug
+			// reported in #3001.
+			ParameterizedTestIntegrationTests.this.execute(selectClass(DuplicateMethodNamesMethodSourceTestCase.class))//
+					.testEvents()//
+					.assertStatistics(stats -> stats.started(8).failed(0).finished(8));
+		}
+
+		private EngineExecutionResults execute(String methodName, Class<?>... methodParameterTypes) {
+			return ParameterizedTestIntegrationTests.this.execute(MethodSourceTestCase.class, methodName,
+				methodParameterTypes);
 		}
 
 	}
@@ -961,7 +1050,25 @@ class ParameterizedTestIntegrationTests {
 
 		@ParameterizedTest
 		@EmptySource
+		void testWithEmptySourceForCollection(Collection<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
 		void testWithEmptySourceForList(List<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForArrayList(ArrayList<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForLinkedList(LinkedList<?> argument) {
 			assertThat(argument).isEmpty();
 		}
 
@@ -973,7 +1080,67 @@ class ParameterizedTestIntegrationTests {
 
 		@ParameterizedTest
 		@EmptySource
+		void testWithEmptySourceForSortedSet(SortedSet<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForNavigableSet(NavigableSet<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForHashSet(HashSet<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForTreeSet(TreeSet<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForLinkedHashSet(LinkedHashSet<?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
 		void testWithEmptySourceForMap(Map<?, ?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForSortedMap(SortedMap<?, ?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForNavigableMap(NavigableMap<?, ?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForHashMap(HashMap<?, ?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForTreeMap(TreeMap<?, ?> argument) {
+			assertThat(argument).isEmpty();
+		}
+
+		@ParameterizedTest
+		@EmptySource
+		void testWithEmptySourceForLinkedHashMap(LinkedHashMap<?, ?> argument) {
 			assertThat(argument).isEmpty();
 		}
 
@@ -1019,24 +1186,6 @@ class ParameterizedTestIntegrationTests {
 			fail("should not have been executed");
 		}
 
-		@ParameterizedTest
-		@EmptySource
-		void testWithEmptySourceForUnsupportedListSubtype(ArrayList<?> argument) {
-			fail("should not have been executed");
-		}
-
-		@ParameterizedTest
-		@EmptySource
-		void testWithEmptySourceForUnsupportedSetSubtype(HashSet<?> argument) {
-			fail("should not have been executed");
-		}
-
-		@ParameterizedTest
-		@EmptySource
-		void testWithEmptySourceForUnsupportedMapSubtype(HashMap<?, ?> argument) {
-			fail("should not have been executed");
-		}
-
 	}
 
 	static class NullAndEmptySourceTestCase {
@@ -1057,6 +1206,12 @@ class ParameterizedTestIntegrationTests {
 		@ParameterizedTest
 		@NullAndEmptySource
 		void testWithNullAndEmptySourceForList(List<?> argument) {
+			assertTrue(argument == null || argument.isEmpty());
+		}
+
+		@ParameterizedTest
+		@NullAndEmptySource
+		void testWithNullAndEmptySourceForArrayList(ArrayList<?> argument) {
 			assertTrue(argument == null || argument.isEmpty());
 		}
 
@@ -1247,6 +1402,53 @@ class ParameterizedTestIntegrationTests {
 		static List<String> assumptionFailureInMethodSourceFactoryMethod() {
 			Assumptions.assumeFalse(true, "nothing to test");
 			return null;
+		}
+
+	}
+
+	/**
+	 * @since 5.9.1
+	 * @see https://github.com/junit-team/junit5/issues/3001
+	 */
+	static class DuplicateMethodNamesMethodSourceTestCase {
+
+		@ParameterizedTest
+		@MethodSource
+		void test(String value) {
+			test(1, value);
+		}
+
+		@ParameterizedTest
+		@MethodSource("test")
+		void anotherTest(String value) {
+			assertTrue(test(value, 1));
+		}
+
+		@RepeatedTest(2)
+		void test(TestReporter testReporter) {
+			assertNotNull(testReporter);
+		}
+
+		@TestFactory
+		Stream<DynamicTest> test(TestInfo testInfo) {
+			return test().map(value -> dynamicTest(value, () -> test(1, value)));
+		}
+
+		// neither a test method nor a factory method.
+		// intentionally void.
+		private void test(int expectedLength, String value) {
+			assertEquals(expectedLength, value.length());
+		}
+
+		// neither a test method nor a factory method.
+		// intentionally non-void and also not convertible to a Stream.
+		private boolean test(String value, int expectedLength) {
+			return (value.length() == expectedLength);
+		}
+
+		// legitimate factory method.
+		private static Stream<String> test() {
+			return Stream.of("a", "b");
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,6 +20,7 @@ import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleName;
 import static com.tngtech.archunit.core.domain.JavaModifier.PUBLIC;
 import static com.tngtech.archunit.core.domain.properties.HasModifiers.Predicates.modifier;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameContaining;
 import static com.tngtech.archunit.lang.conditions.ArchPredicates.are;
 import static com.tngtech.archunit.lang.conditions.ArchPredicates.have;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
@@ -73,7 +74,8 @@ class ArchUnitTests {
 	@ArchTest
 	void avoidThrowingGenericExceptions(JavaClasses classes) {
 		// LoggerFactory.java:155 -> new Throwable()
-		var subset = classes.that(are(not(name("org.junit.platform.commons.logging.LoggerFactory$DelegatingLogger"))));
+		var subset = classes.that(are(not(
+			name("org.junit.platform.commons.logging.LoggerFactory$DelegatingLogger").or(nameContaining(".shadow.")))));
 		GeneralCodingRules.NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS.check(subset);
 	}
 

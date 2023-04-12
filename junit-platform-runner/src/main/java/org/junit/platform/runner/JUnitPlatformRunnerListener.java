@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.junit.platform.engine.TestExecutionResult.Status.FAILED;
 
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestExecutionResult.Status;
+import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
@@ -37,7 +38,7 @@ class JUnitPlatformRunnerListener implements TestExecutionListener {
 
 	@Override
 	public void dynamicTestRegistered(TestIdentifier testIdentifier) {
-		String parentId = testIdentifier.getParentId().get();
+		UniqueId parentId = testIdentifier.getParentIdObject().get();
 		testTree.addDynamicDescription(testIdentifier, parentId);
 	}
 

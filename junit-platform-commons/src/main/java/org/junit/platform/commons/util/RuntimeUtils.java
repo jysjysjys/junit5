@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,7 +21,7 @@ import org.apiguardian.api.API;
  * Collection of utilities for working with {@link Runtime},
  * {@link java.lang.management.RuntimeMXBean}, etc.
  *
- * <h3>DISCLAIMER</h3>
+ * <h2>DISCLAIMER</h2>
  *
  * <p>These utilities are intended solely for usage within the JUnit framework
  * itself. <strong>Any usage by external parties is not supported.</strong>
@@ -40,16 +40,10 @@ public final class RuntimeUtils {
 	 * Try to determine whether the VM was started in debug mode or not.
 	 */
 	public static boolean isDebugMode() {
-		Optional<List<String>> optionalArguments = getInputArguments();
-		if (!optionalArguments.isPresent()) {
-			return false;
-		}
-		for (String argument : optionalArguments.get()) {
-			if (argument.startsWith("-agentlib:jdwp")) {
-				return true;
-			}
-		}
-		return false;
+		return getInputArguments() //
+				.map(args -> args.stream().anyMatch(
+					arg -> arg.startsWith("-agentlib:jdwp") || arg.startsWith("-Xrunjdwp"))) //
+				.orElse(false);
 	}
 
 	/**

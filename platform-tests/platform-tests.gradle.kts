@@ -1,10 +1,11 @@
 import org.gradle.api.tasks.PathSensitivity.NONE
 import org.gradle.api.tasks.PathSensitivity.RELATIVE
+import org.gradle.internal.os.OperatingSystem
 
 plugins {
-	`java-library-conventions`
-	`junit4-compatibility`
-	`testing-conventions`
+	id("junitbuild.java-library-conventions")
+	id("junitbuild.junit4-compatibility")
+	id("junitbuild.testing-conventions")
 	id("me.champeau.jmh")
 }
 
@@ -26,8 +27,13 @@ dependencies {
 	testImplementation(testFixtures(projects.junitPlatformLauncher))
 	testImplementation(projects.junitJupiterEngine)
 	testImplementation(libs.apiguardian)
-	testImplementation(libs.jfrunit)
+	testImplementation(libs.jfrunit) {
+		exclude(group = "org.junit.vintage")
+	}
 	testImplementation(libs.joox)
+	testImplementation(libs.openTestReporting.tooling)
+	testImplementation(libs.bundles.xmlunit)
+	testImplementation(testFixtures(projects.junitJupiterApi))
 
 	// --- Test run-time dependencies ---------------------------------------------
 	testRuntimeOnly(projects.junitVintageEngine)
@@ -57,6 +63,11 @@ tasks {
 			excludeTags("exclude")
 		}
 		jvmArgs("-Xmx1g")
+		distribution {
+			// Retry in a new JVM on Windows to improve chances of successful retries when
+			// cached resources are used (e.g. in ClasspathScannerTests)
+			retryInSameJvm.set(!OperatingSystem.current().isWindows)
+		}
 	}
 	test {
 		// Additional inputs for remote execution with Test Distribution
@@ -69,7 +80,7 @@ tasks {
 		}
 	}
 	checkstyleJmh { // use same style rules as defined for tests
-		configFile = rootProject.file("src/checkstyle/checkstyleTest.xml")
+		config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleTest.xml"))
 	}
 }
 

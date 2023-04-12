@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -24,20 +25,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.engine.descriptor.ClassTestDescriptor;
 import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
 import org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor;
-import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.engine.testcases.SingleTestTestCase;
-import org.junit.platform.suite.engine.testsuites.CyclicSuite;
 import org.junit.platform.suite.engine.testsuites.SelectClassesSuite;
 
 /**
  * @since 1.8
  */
 class SuiteTestDescriptorTests {
+	@Suite
+	static class TestSuite {
 
+	}
 	UniqueId engineId = UniqueId.forEngine(SuiteEngineDescriptor.ENGINE_ID);
 	UniqueId suiteId = engineId.append(SuiteTestDescriptor.SEGMENT_TYPE, "test");
 	UniqueId jupiterEngineId = suiteId.append("engine", JupiterEngineDescriptor.ENGINE_ID);
@@ -45,7 +48,7 @@ class SuiteTestDescriptorTests {
 	UniqueId methodId = testClassId.append(TestMethodTestDescriptor.SEGMENT_TYPE, "test()");
 
 	ConfigurationParameters configurationParameters = new EmptyConfigurationParameters();
-	SuiteTestDescriptor suite = new SuiteTestDescriptor(suiteId, Object.class, configurationParameters);
+	SuiteTestDescriptor suite = new SuiteTestDescriptor(suiteId, TestSuite.class, configurationParameters);
 
 	@Test
 	void suiteIsEmptyBeforeDiscovery() {
@@ -54,7 +57,7 @@ class SuiteTestDescriptorTests {
 	}
 
 	@Test
-	void suitDiscoversTestsFromClass() {
+	void suiteDiscoversTestsFromClass() {
 		suite.addDiscoveryRequestFrom(SelectClassesSuite.class);
 		suite.discover();
 		assertEquals(Set.of(jupiterEngineId, testClassId, methodId),
@@ -86,18 +89,8 @@ class SuiteTestDescriptorTests {
 	}
 
 	@Test
-	void suitesMayNotContainACycle() {
-		// @formatter:off
-		UniqueId expectedCycle = suiteId
-				.append("engine", SuiteEngineDescriptor.ENGINE_ID)
-				.append(SuiteTestDescriptor.SEGMENT_TYPE, CyclicSuite.class.getName())
-				.append("engine", SuiteEngineDescriptor.ENGINE_ID)
-				.append(SuiteTestDescriptor.SEGMENT_TYPE, CyclicSuite.class.getName());
-		// @formatter:on
-		suite.addDiscoveryRequestFrom(CyclicSuite.class);
-		JUnitException exception = assertThrows(JUnitException.class, suite::discover);
-		assertEquals("Configuration error: The suite configuration may not contain a cycle [" + expectedCycle + "]",
-			exception.getCause().getCause().getCause().getMessage());
+	void suiteMayRegisterTests() {
+		assertTrue(suite.mayRegisterTests());
 	}
 
 	private static class EmptyConfigurationParameters implements ConfigurationParameters {

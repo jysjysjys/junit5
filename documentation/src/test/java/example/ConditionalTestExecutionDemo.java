@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -28,12 +28,14 @@ import org.junit.jupiter.api.condition.DisabledForJreRange;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
+import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.junit.jupiter.api.condition.DisabledOnJre;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledForJreRange;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.condition.EnabledInNativeImage;
 import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 
@@ -70,6 +72,32 @@ class ConditionalTestExecutionDemo {
 	@interface TestOnMac {
 	}
 	// end::user_guide_os[]
+
+	// tag::user_guide_architecture[]
+	@Test
+	@EnabledOnOs(architectures = "aarch64")
+	void onAarch64() {
+		// ...
+	}
+
+	@Test
+	@DisabledOnOs(architectures = "x86_64")
+	void notOnX86_64() {
+		// ...
+	}
+
+	@Test
+	@EnabledOnOs(value = MAC, architectures = "aarch64")
+	void onNewMacs() {
+		// ...
+	}
+
+	@Test
+	@DisabledOnOs(value = MAC, architectures = "aarch64")
+	void notOnNewMacs() {
+		// ...
+	}
+	// end::user_guide_architecture[]
 
 	// tag::user_guide_jre[]
 	@Test
@@ -126,6 +154,20 @@ class ConditionalTestExecutionDemo {
 		// ...
 	}
 	// end::user_guide_jre[]
+
+	// tag::user_guide_native[]
+	@Test
+	@EnabledInNativeImage
+	void onlyWithinNativeImage() {
+		// ...
+	}
+
+	@Test
+	@DisabledInNativeImage
+	void neverWithinNativeImage() {
+		// ...
+	}
+	// end::user_guide_native[]
 
 	// tag::user_guide_system_property[]
 	@Test

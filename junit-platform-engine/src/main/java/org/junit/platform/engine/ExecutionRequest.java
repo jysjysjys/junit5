@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -42,6 +42,23 @@ public class ExecutionRequest {
 		this.rootTestDescriptor = rootTestDescriptor;
 		this.engineExecutionListener = engineExecutionListener;
 		this.configurationParameters = configurationParameters;
+	}
+
+	/**
+	 * Factory for creating an execution request.
+	 *
+	 * @param rootTestDescriptor the engine's root {@link TestDescriptor}
+	 * @param engineExecutionListener the {@link EngineExecutionListener} to be
+	 * notified of test execution events
+	 * @param configurationParameters {@link ConfigurationParameters} that the
+	 * engine may use to influence test execution
+	 * @return a new {@code ExecutionRequest}; never {@code null}
+	 * @since 1.9
+	 */
+	@API(status = STABLE, since = "1.9")
+	public static ExecutionRequest create(TestDescriptor rootTestDescriptor,
+			EngineExecutionListener engineExecutionListener, ConfigurationParameters configurationParameters) {
+		return new ExecutionRequest(rootTestDescriptor, engineExecutionListener, configurationParameters);
 	}
 
 	/**

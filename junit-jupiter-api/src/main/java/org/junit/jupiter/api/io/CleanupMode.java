@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,7 +15,7 @@ import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import org.apiguardian.api.API;
 
 /**
- * Enumeration of cleanup modes for a {@code TempDir}.
+ * Enumeration of cleanup modes for {@link TempDir @TempDir}.
  *
  * <p>When a test with a temporary directory completes, it might be useful in
  * some cases to be able to view the contents of the temporary directory used by

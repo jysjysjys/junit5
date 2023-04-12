@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.engine.UniqueId;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
@@ -50,6 +51,10 @@ class InternalTestPlan extends TestPlan {
 		return discoveryResult;
 	}
 
+	public TestPlan getDelegate() {
+		return delegate;
+	}
+
 	@Override
 	@SuppressWarnings("deprecation")
 	public void add(TestIdentifier testIdentifier) {
@@ -76,13 +81,25 @@ class InternalTestPlan extends TestPlan {
 		return delegate.getChildren(parent);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public Set<TestIdentifier> getChildren(String parentId) {
 		return delegate.getChildren(parentId);
 	}
 
 	@Override
+	public Set<TestIdentifier> getChildren(UniqueId parentId) {
+		return delegate.getChildren(parentId);
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
 	public TestIdentifier getTestIdentifier(String uniqueId) throws PreconditionViolationException {
+		return delegate.getTestIdentifier(uniqueId);
+	}
+
+	@Override
+	public TestIdentifier getTestIdentifier(UniqueId uniqueId) {
 		return delegate.getTestIdentifier(uniqueId);
 	}
 

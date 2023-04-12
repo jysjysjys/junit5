@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.jupiter.engine.extension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +25,7 @@ import static org.junit.platform.testkit.engine.EventConditions.finishedWithFail
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.cause;
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.suppressed;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,11 +54,15 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.engine.AbstractJupiterTestEngineTests;
 import org.junit.jupiter.engine.Constants;
+import org.junit.jupiter.engine.extension.TempDirectory.FileOperations;
 import org.junit.platform.testkit.engine.EngineExecutionResults;
 
 /**
@@ -136,21 +142,21 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
-	@DisplayName("is capable of removal of a read-only file")
+	@DisplayName("is capable of removing a read-only file")
 	void nonWritableFileDoesNotCauseFailure() {
 		executeTestsForClass(NonWritableFileDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
 	}
 
 	@Test
-	@DisplayName("is capable of removal of non-executable, non-writable, or non-readable directories and folders")
+	@DisplayName("is capable of removing non-executable, non-writable, or non-readable directories and folders")
 	void nonMintPermissionsContentDoesNotCauseFailure() {
 		executeTestsForClass(NonMintPermissionContentInTempDirectoryDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(13).succeeded(13));
 	}
 
 	@Test
-	@DisplayName("is capable of removal when its permissions were been changed")
+	@DisplayName("is capable of removing a directory when its permissions have been changed")
 	void nonMintPermissionsDoNotCauseFailure() {
 		executeTestsForClass(NonMintTempDirectoryPermissionsDoNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(42).succeeded(42));
@@ -158,7 +164,7 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	@DisabledOnOs(OS.WINDOWS)
-	@DisplayName("is capable of removal of a read-only file in a read-only dir")
+	@DisplayName("is capable of removing a read-only file in a read-only dir")
 	void readOnlyFileInReadOnlyDirDoesNotCauseFailure() {
 		executeTestsForClass(ReadOnlyFileInReadOnlyDirDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
@@ -166,7 +172,7 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	@DisabledOnOs(OS.WINDOWS)
-	@DisplayName("is capable of removal of a read-only file in a dir in a read-only dir")
+	@DisplayName("is capable of removing a read-only file in a dir in a read-only dir")
 	void readOnlyFileInNestedReadOnlyDirDoesNotCauseFailure() {
 		executeTestsForClass(ReadOnlyFileInDirInReadOnlyDirDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
@@ -184,6 +190,18 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 	void canBeUsedViaStaticFieldInsideNestedTestClasses() {
 		executeTestsForClass(StaticTempDirUsageInsideNestedClassTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(2).succeeded(2));
+	}
+
+	@Test
+	@DisplayName("only attempts to delete undeletable directories once")
+	void onlyAttemptsToDeleteUndeletableDirectoriesOnce() {
+		var results = executeTestsForClass(UndeletableDirectoryTestCase.class);
+
+		assertSingleFailedTest(results, //
+			instanceOf(IOException.class), //
+			message(it -> it.startsWith("Failed to delete temp directory")), //
+			suppressed(0, instanceOf(IOException.class), message("Simulated failure")), //
+			suppressed(1, instanceOf(IOException.class), message("Simulated failure")));
 	}
 
 	@Nested
@@ -394,12 +412,16 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 		Path pathTempDir;
 
 		@Test
-		@DisplayName("and injected File and Path reference the same temp directory")
+		@DisplayName("and injected File and Path do not reference the same temp directory")
 		void checkFile(@TempDir File tempDir, @TempDir Path ref) {
-			assertNotNull(tempDir);
-			assertNotNull(ref);
-			assertNotNull(this.fileTempDir);
-			assertNotNull(this.pathTempDir);
+			assertFileAndPathAreNotEqual(tempDir, ref);
+			assertFileAndPathAreNotEqual(this.fileTempDir, this.pathTempDir);
+		}
+
+		private static void assertFileAndPathAreNotEqual(File tempDir, Path ref) {
+			Path path = tempDir.toPath();
+			assertNotEquals(ref.toAbsolutePath(), path.toAbsolutePath());
+			assertTrue(Files.exists(path));
 		}
 
 	}
@@ -987,6 +1009,21 @@ class TempDirectoryPerDeclarationTests extends AbstractJupiterTestEngineTests {
 
 		private static Map<String, Path> getTempDirs(TestInfo testInfo) {
 			return tempDirs.computeIfAbsent(testInfo.getDisplayName(), __ -> new LinkedHashMap<>());
+		}
+	}
+
+	static class UndeletableDirectoryTestCase {
+
+		@RegisterExtension
+		Extension injector = (BeforeEachCallback) context -> context //
+				.getStore(TempDirectory.NAMESPACE) //
+				.put(TempDirectory.FILE_OPERATIONS_KEY, (FileOperations) path -> {
+					throw new IOException("Simulated failure");
+				});
+
+		@Test
+		void test(@TempDir Path tempDir) throws Exception {
+			Files.createDirectory(tempDir.resolve("test-sub-dir"));
 		}
 	}
 }

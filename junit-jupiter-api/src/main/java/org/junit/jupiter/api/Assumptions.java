@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -54,7 +54,7 @@ public class Assumptions {
 		/* no-op */
 	}
 
-	// --- assumeTrue ----------------------------------------------------
+	// --- assumeTrue ----------------------------------------------------------
 
 	/**
 	 * Validate the given assumption.
@@ -98,7 +98,7 @@ public class Assumptions {
 	 */
 	public static void assumeTrue(boolean assumption, Supplier<String> messageSupplier) throws TestAbortedException {
 		if (!assumption) {
-			throwTestAbortedException(messageSupplier.get());
+			throwAssumptionFailed(messageSupplier.get());
 		}
 	}
 
@@ -112,7 +112,7 @@ public class Assumptions {
 	 */
 	public static void assumeTrue(boolean assumption, String message) throws TestAbortedException {
 		if (!assumption) {
-			throwTestAbortedException(message);
+			throwAssumptionFailed(message);
 		}
 	}
 
@@ -130,7 +130,7 @@ public class Assumptions {
 		assumeTrue(assumptionSupplier.getAsBoolean(), messageSupplier);
 	}
 
-	// --- assumeFalse ----------------------------------------------------
+	// --- assumeFalse ---------------------------------------------------------
 
 	/**
 	 * Validate the given assumption.
@@ -174,7 +174,7 @@ public class Assumptions {
 	 */
 	public static void assumeFalse(boolean assumption, Supplier<String> messageSupplier) throws TestAbortedException {
 		if (assumption) {
-			throwTestAbortedException(messageSupplier.get());
+			throwAssumptionFailed(messageSupplier.get());
 		}
 	}
 
@@ -188,7 +188,7 @@ public class Assumptions {
 	 */
 	public static void assumeFalse(boolean assumption, String message) throws TestAbortedException {
 		if (assumption) {
-			throwTestAbortedException(message);
+			throwAssumptionFailed(message);
 		}
 	}
 
@@ -206,7 +206,7 @@ public class Assumptions {
 		assumeFalse(assumptionSupplier.getAsBoolean(), messageSupplier);
 	}
 
-	// --- assumingThat --------------------------------------------------
+	// --- assumingThat --------------------------------------------------------
 
 	/**
 	 * Execute the supplied {@link Executable}, but only if the supplied
@@ -253,9 +253,67 @@ public class Assumptions {
 		}
 	}
 
-	private static void throwTestAbortedException(String message) {
+	// --- abort ---------------------------------------------------------------
+
+	/**
+	 * <em>Abort</em> the test <em>without</em> a message.
+	 *
+	 * <p>Although aborting with an explicit message is recommended, this may be
+	 * useful when maintaining legacy code.
+	 *
+	 * <p>See Javadoc for {@link #abort(String)} for an explanation of this
+	 * method's generic return type {@code V}.
+	 *
+	 * @throws TestAbortedException always
+	 * @since 5.9
+	 */
+	@API(status = STABLE, since = "5.9")
+	public static <V> V abort() {
+		throw new TestAbortedException();
+	}
+
+	/**
+	 * <em>Abort</em> the test with the given {@code message}.
+	 *
+	 * <p>The generic return type {@code V} allows this method to be used
+	 * directly as a single-statement lambda expression, thereby avoiding the
+	 * need to implement a code block with an explicit return value. Since this
+	 * method throws a {@link TestAbortedException} before its return statement,
+	 * this method never actually returns a value to its caller. The following
+	 * example demonstrates how this may be used in practice.
+	 *
+	 * <pre>{@code
+	 * Stream.of().map(entry -> abort("assumption not met"));
+	 * }</pre>
+	 *
+	 * @param message the message to be included in the {@code TestAbortedException}
+	 * @throws TestAbortedException always
+	 * @since 5.9
+	 */
+	@API(status = STABLE, since = "5.9")
+	public static <V> V abort(String message) {
+		throw new TestAbortedException(message);
+	}
+
+	/**
+	 * <em>Abort</em> the test with the supplied message.
+	 *
+	 * <p>See Javadoc for {@link #abort(String)} for an explanation of this
+	 * method's generic return type {@code V}.
+	 *
+	 * @param messageSupplier the supplier of the message to be included in the
+	 * {@code TestAbortedException}
+	 * @throws TestAbortedException always
+	 * @since 5.9
+	 */
+	@API(status = STABLE, since = "5.9")
+	public static <V> V abort(Supplier<String> messageSupplier) {
+		throw new TestAbortedException(messageSupplier.get());
+	}
+
+	private static void throwAssumptionFailed(String message) {
 		throw new TestAbortedException(
-			StringUtils.isNotBlank(message) ? ("Assumption failed: " + message) : "Assumption failed");
+			StringUtils.isNotBlank(message) ? "Assumption failed: " + message : "Assumption failed");
 	}
 
 }

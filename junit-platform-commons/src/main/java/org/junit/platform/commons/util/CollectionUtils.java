@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -24,7 +24,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collector;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -37,7 +39,7 @@ import org.junit.platform.commons.PreconditionViolationException;
 /**
  * Collection of utilities for working with {@link Collection Collections}.
  *
- * <h3>DISCLAIMER</h3>
+ * <h2>DISCLAIMER</h2>
  *
  * <p>These utilities are intended solely for usage within the JUnit framework
  * itself. <strong>Any usage by external parties is not supported.</strong>
@@ -113,6 +115,34 @@ public final class CollectionUtils {
 	}
 
 	/**
+	 * Determine if an instance of the supplied type can be converted into a
+	 * {@code Stream}.
+	 *
+	 * <p>If this method returns {@code true}, {@link #toStream(Object)} can
+	 * successfully convert an object of the specified type into a stream. See
+	 * {@link #toStream(Object)} for supported types.
+	 *
+	 * @param type the type to check; may be {@code null}
+	 * @return {@code true} if an instance of the type can be converted into a stream
+	 * @since 1.9.1
+	 * @see #toStream(Object)
+	 */
+	@API(status = INTERNAL, since = "1.9.1")
+	public static boolean isConvertibleToStream(Class<?> type) {
+		if (type == null || type == void.class) {
+			return false;
+		}
+		return (Stream.class.isAssignableFrom(type)//
+				|| DoubleStream.class.isAssignableFrom(type)//
+				|| IntStream.class.isAssignableFrom(type)//
+				|| LongStream.class.isAssignableFrom(type)//
+				|| Iterable.class.isAssignableFrom(type)//
+				|| Iterator.class.isAssignableFrom(type)//
+				|| Object[].class.isAssignableFrom(type)//
+				|| (type.isArray() && type.getComponentType().isPrimitive()));
+	}
+
+	/**
 	 * Convert an object of one of the following supported types into a {@code Stream}.
 	 *
 	 * <ul>
@@ -131,6 +161,7 @@ public final class CollectionUtils {
 	 * @return the resulting stream
 	 * @throws PreconditionViolationException if the supplied object is {@code null}
 	 * or not one of the supported types
+	 * @see #isConvertibleToStream(Class)
 	 */
 	public static Stream<?> toStream(Object object) {
 		Preconditions.notNull(object, "Object must not be null");
@@ -172,6 +203,23 @@ public final class CollectionUtils {
 		}
 		throw new PreconditionViolationException(
 			"Cannot convert instance of " + object.getClass().getName() + " into a Stream: " + object);
+	}
+
+	/**
+	 * Call the supplied action on each element of the supplied {@link List} from last to first element.
+	 */
+	@API(status = INTERNAL, since = "1.9.2")
+	public static <T> void forEachInReverseOrder(List<T> list, Consumer<? super T> action) {
+		if (list.isEmpty()) {
+			return;
+		}
+		if (list.size() == 1) {
+			action.accept(list.get(0));
+			return;
+		}
+		for (ListIterator<T> iterator = list.listIterator(list.size()); iterator.hasPrevious();) {
+			action.accept(iterator.previous());
+		}
 	}
 
 }

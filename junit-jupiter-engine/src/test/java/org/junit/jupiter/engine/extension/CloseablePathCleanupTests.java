@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.io.CleanupMode.ALWAYS;
 import static org.junit.jupiter.api.io.CleanupMode.NEVER;
 import static org.junit.jupiter.api.io.CleanupMode.ON_SUCCESS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,11 +23,15 @@ import java.io.IOException;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.io.CleanupMode;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.engine.AbstractJupiterTestEngineTests;
+import org.junit.jupiter.engine.execution.ExtensionValuesStore;
+import org.junit.jupiter.engine.execution.NamespaceAwareStore;
 
 /**
  * Integration tests for cleanup of the {@link TempDirectory} when the {@link CleanupMode} is
@@ -39,9 +44,15 @@ import org.junit.jupiter.engine.AbstractJupiterTestEngineTests;
  */
 class CloseablePathCleanupTests extends AbstractJupiterTestEngineTests {
 
-	private final ExtensionContext extensionContext = mock(ExtensionContext.class);
+	private final ExtensionContext extensionContext = mock();
 
 	private TempDirectory.CloseablePath closeablePath;
+
+	@BeforeEach
+	void setUpExtensionContext() {
+		var store = new NamespaceAwareStore(new ExtensionValuesStore(null), Namespace.GLOBAL);
+		when(extensionContext.getStore(any())).thenReturn(store);
+	}
 
 	@AfterEach
 	void cleanupTempDirectory() throws IOException {

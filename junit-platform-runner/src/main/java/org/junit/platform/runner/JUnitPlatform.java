@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -191,7 +191,7 @@ public class JUnitPlatform extends Runner implements Filterable {
 	private LauncherDiscoveryRequest createDiscoveryRequestForUniqueIds(Set<TestIdentifier> testIdentifiers) {
 		// @formatter:off
 		List<DiscoverySelector> selectors = testIdentifiers.stream()
-				.map(TestIdentifier::getUniqueId)
+				.map(TestIdentifier::getUniqueIdObject)
 				.map(DiscoverySelectors::selectUniqueId)
 				.collect(toList());
 		// @formatter:on

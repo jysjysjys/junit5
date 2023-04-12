@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,12 +27,12 @@ import org.apiguardian.api.API;
  * {@link AfterTestExecutionCallback} instead of {@link BeforeEachCallback} and
  * {@link AfterEachCallback}.
  *
- * <h3>Constructor Requirements</h3>
+ * <h2>Constructor Requirements</h2>
  *
  * <p>Consult the documentation in {@link Extension} for details on
  * constructor requirements.
  *
- * <h3>Wrapping Behavior</h3>
+ * <h2>Wrapping Behavior</h2>
  *
  * <p>JUnit Jupiter guarantees <em>wrapping behavior</em> for multiple
  * registered extensions that implement lifecycle callbacks such as

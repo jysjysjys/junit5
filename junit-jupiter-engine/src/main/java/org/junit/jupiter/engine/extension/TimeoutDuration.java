@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,13 @@
 
 package org.junit.jupiter.engine.extension;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Timeout;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
@@ -68,4 +71,28 @@ class TimeoutDuration {
 		return value + " " + label;
 	}
 
+	public Duration toDuration() {
+		return Duration.of(value, toChronoUnit());
+	}
+
+	private ChronoUnit toChronoUnit() {
+		switch (unit) {
+			case NANOSECONDS:
+				return ChronoUnit.NANOS;
+			case MICROSECONDS:
+				return ChronoUnit.MICROS;
+			case MILLISECONDS:
+				return ChronoUnit.MILLIS;
+			case SECONDS:
+				return ChronoUnit.SECONDS;
+			case MINUTES:
+				return ChronoUnit.MINUTES;
+			case HOURS:
+				return ChronoUnit.HOURS;
+			case DAYS:
+				return ChronoUnit.DAYS;
+			default:
+				throw new JUnitException("Could not map TimeUnit " + unit + " to ChronoUnit");
+		}
+	}
 }

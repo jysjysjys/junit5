@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -43,7 +43,7 @@ import org.apiguardian.api.API;
  * create a custom <em>composed annotation</em> that inherits the semantics
  * of {@code @RepeatedTest}.
  *
- * <h3>Test Execution Order</h3>
+ * <h2>Test Execution Order</h2>
  *
  * <p>By default, test methods will be ordered using an algorithm that is
  * deterministic but intentionally nonobvious. This ensures that subsequent runs

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -22,6 +22,7 @@ import static org.junit.platform.commons.util.CollectionUtils.toUnmodifiableList
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,6 +34,15 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.converter.ArgumentConversionException;
+import org.junit.jupiter.params.converter.ArgumentConverter;
+import org.junit.jupiter.params.converter.ConvertWith;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.platform.commons.PreconditionViolationException;
 
 /**
@@ -73,6 +83,62 @@ class CollectionUtilsTests {
 	void toUnmodifiableListThrowsOnMutation() {
 		var numbers = Stream.of(1).collect(toUnmodifiableList());
 		assertThrows(UnsupportedOperationException.class, numbers::clear);
+	}
+
+	@ParameterizedTest
+	@ValueSource(classes = { //
+			Stream.class, //
+			DoubleStream.class, //
+			IntStream.class, //
+			LongStream.class, //
+			Collection.class, //
+			Iterable.class, //
+			Iterator.class, //
+			Object[].class, //
+			String[].class, //
+			int[].class, //
+			double[].class, //
+			char[].class //
+	})
+	void isConvertibleToStreamForSupportedTypes(Class<?> type) {
+		assertThat(CollectionUtils.isConvertibleToStream(type)).isTrue();
+	}
+
+	@ParameterizedTest
+	@MethodSource("objectsConvertibleToStreams")
+	void isConvertibleToStreamForSupportedTypesFromObjects(Object object) {
+		assertThat(CollectionUtils.isConvertibleToStream(object.getClass())).isTrue();
+	}
+
+	static Stream<Object> objectsConvertibleToStreams() {
+		return Stream.of(//
+			Stream.of("cat", "dog"), //
+			DoubleStream.of(42.3), //
+			IntStream.of(99), //
+			LongStream.of(100000000), //
+			Set.of(1, 2, 3), //
+			Arguments.of((Object) new Object[] { 9, 8, 7 }), //
+			new int[] { 5, 10, 15 }//
+		);
+	}
+
+	@ParameterizedTest
+	@ValueSource(classes = { //
+			void.class, //
+			Void.class, //
+			Object.class, //
+			Integer.class, //
+			String.class, //
+			int.class, //
+			boolean.class //
+	})
+	void isConvertibleToStreamForUnsupportedTypes(Class<?> type) {
+		assertThat(CollectionUtils.isConvertibleToStream(type)).isFalse();
+	}
+
+	@Test
+	void isConvertibleToStreamForNull() {
+		assertThat(CollectionUtils.isConvertibleToStream(null)).isFalse();
 	}
 
 	@Test
@@ -216,4 +282,26 @@ class CollectionUtilsTests {
 		}
 	}
 
+	@ParameterizedTest
+	@CsvSource(delimiter = '|', nullValues = "N/A", textBlock = """
+			        foo,bar,baz | baz,bar,foo
+			        foo,bar     | bar,foo
+			        foo         | foo
+			        N/A         | N/A
+			""")
+	void iteratesListElementsInReverseOrder(@ConvertWith(CommaSeparator.class) List<String> input,
+			@ConvertWith(CommaSeparator.class) List<String> expected) {
+		var result = new ArrayList<>();
+
+		CollectionUtils.forEachInReverseOrder(input, result::add);
+
+		assertEquals(expected, result);
+	}
+
+	private static class CommaSeparator implements ArgumentConverter {
+		@Override
+		public Object convert(Object source, ParameterContext context) throws ArgumentConversionException {
+			return source == null ? List.of() : List.of(((String) source).split(","));
+		}
+	}
 }

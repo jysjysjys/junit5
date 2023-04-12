@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -38,6 +38,7 @@ class AssertNotNullAssertionsTests {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	void assertNotNullWithNull() {
 		try {
 			assertNotNull(null);
@@ -49,6 +50,7 @@ class AssertNotNullAssertionsTests {
 	}
 
 	@Test
+	@SuppressWarnings("unused")
 	void assertNotNullWithNullAndMessageSupplier() {
 		try {
 			assertNotNull(null, () -> "test");

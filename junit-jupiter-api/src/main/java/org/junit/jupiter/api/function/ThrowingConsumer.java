@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -23,7 +23,7 @@ import org.apiguardian.api.API;
  * {@link java.util.function.Consumer}, except that a {@code ThrowingConsumer}
  * can throw any kind of exception, including checked exceptions.
  *
- * <h4>Rationale for throwing {@code Throwable} instead of {@code Exception}</h4>
+ * <h2>Rationale for throwing {@code Throwable} instead of {@code Exception}</h2>
  *
  * <p>Although Java applications typically throw exceptions that are instances
  * of {@link java.lang.Exception}, {@link java.lang.RuntimeException},

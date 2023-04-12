@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -35,7 +35,7 @@ import org.apiguardian.api.API;
  *
  * <p>Extensions implementing this API can be registered at any level.
  *
- * <h3>Exception Handling</h3>
+ * <h2>Exception Handling</h2>
  *
  * <p>In contrast to other {@link Extension} APIs, a {@code TestWatcher} is not
  * permitted to adversely influence the execution of tests. Consequently, any

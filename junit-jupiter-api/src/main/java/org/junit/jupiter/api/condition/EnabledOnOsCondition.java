@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.jupiter.api.condition;
 
 import java.util.Arrays;
 
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.platform.commons.util.Preconditions;
 
@@ -21,21 +22,40 @@ import org.junit.platform.commons.util.Preconditions;
  * @since 5.1
  * @see EnabledOnOs
  */
-class EnabledOnOsCondition extends BooleanExecutionCondition<EnabledOnOs> {
-
-	static final String ENABLED_ON_CURRENT_OS = "Enabled on operating system: " + System.getProperty("os.name");
-
-	static final String DISABLED_ON_CURRENT_OS = "Disabled on operating system: " + System.getProperty("os.name");
+class EnabledOnOsCondition extends AbstractOsBasedExecutionCondition<EnabledOnOs> {
 
 	EnabledOnOsCondition() {
-		super(EnabledOnOs.class, ENABLED_ON_CURRENT_OS, DISABLED_ON_CURRENT_OS, EnabledOnOs::disabledReason);
+		super(EnabledOnOs.class);
 	}
 
 	@Override
-	boolean isEnabled(EnabledOnOs annotation) {
+	ConditionEvaluationResult evaluateExecutionCondition(EnabledOnOs annotation) {
+		boolean osSpecified = annotation.value().length > 0;
+		boolean archSpecified = annotation.architectures().length > 0;
+		Preconditions.condition(osSpecified || archSpecified,
+			"You must declare at least one OS or architecture in @EnabledOnOs");
+
+		boolean enabled = isEnabledBasedOnOs(annotation) && isEnabledBasedOnArchitecture(annotation);
+		String reason = createReason(enabled, osSpecified, archSpecified);
+
+		return enabled ? ConditionEvaluationResult.enabled(reason)
+				: ConditionEvaluationResult.disabled(reason, annotation.disabledReason());
+	}
+
+	private boolean isEnabledBasedOnOs(EnabledOnOs annotation) {
 		OS[] operatingSystems = annotation.value();
-		Preconditions.condition(operatingSystems.length > 0, "You must declare at least one OS in @EnabledOnOs");
+		if (operatingSystems.length == 0) {
+			return true;
+		}
 		return Arrays.stream(operatingSystems).anyMatch(OS::isCurrentOs);
+	}
+
+	private boolean isEnabledBasedOnArchitecture(EnabledOnOs annotation) {
+		String[] architectures = annotation.architectures();
+		if (architectures.length == 0) {
+			return true;
+		}
+		return Arrays.stream(architectures).anyMatch(CURRENT_ARCHITECTURE::equalsIgnoreCase);
 	}
 
 }

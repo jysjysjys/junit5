@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -35,7 +35,7 @@ import org.junit.platform.commons.util.Preconditions;
  * {@link String} to a given target type by invoking a static factory method
  * or factory constructor defined in the target type.
  *
- * <h3>Search Algorithm</h3>
+ * <h2>Search Algorithm</h2>
  *
  * <ol>
  * <li>Search for a single, non-private static factory method in the target

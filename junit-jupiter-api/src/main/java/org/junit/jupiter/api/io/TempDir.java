@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.jupiter.api.io;
 
+import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 
 import java.io.File;
@@ -34,18 +35,18 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * parameters. Please use field injection instead by annotating an instance
  * field with {@code @TempDir}.
  *
- * <h3>Creation</h3>
+ * <h2>Creation</h2>
  *
  * <p>The temporary directory is only created if a field in a test class or a
  * parameter in a lifecycle method or test method is annotated with
  * {@code @TempDir}. If the field type or parameter type is neither {@link Path}
- * nor {@link File} or if the temporary directory cannot be created, an
- * {@link ExtensionConfigurationException} or a
+ * nor {@link File}, if a field is declared as {@code final}, or if the temporary
+ * directory cannot be created, an {@link ExtensionConfigurationException} or a
  * {@link ParameterResolutionException} will be thrown as appropriate. In
  * addition, a {@code ParameterResolutionException} will be thrown for a
  * constructor parameter annotated with {@code @TempDir}.
  *
- * <h3>Scope</h3>
+ * <h2>Scope</h2>
  *
  * <p>By default, a separate temporary directory is created for every
  * declaration of the {@code @TempDir} annotation. If you want to share a
@@ -53,9 +54,10 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * annotation on a {@code static} field or on a parameter of a
  * {@link org.junit.jupiter.api.BeforeAll @BeforeAll} method.
  *
- * <h4>Old behavior</h4>
+ * <h3>Old behavior</h3>
+ *
  * <p>You can revert to the old behavior of using a single temporary directory
- * by setting the {@code junit.jupiter.tempdir.scope} configuration parameter to
+ * by setting the {@value #SCOPE_PROPERTY_NAME} configuration parameter to
  * {@code per_context}. In that case, the scope of the temporary directory
  * depends on where the first {@code @TempDir} annotation is encountered when
  * executing a test class. The temporary directory will be shared by all tests
@@ -67,7 +69,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * {@link org.junit.jupiter.api.AfterEach @AfterEach} methods &mdash; each test
  * will use its own temporary directory.
  *
- * <h3>Clean Up</h3>
+ * <h2>Clean Up</h2>
  *
  * <p>By default, when the end of the scope of a temporary directory is reached,
  * &mdash; when the test method or class has finished execution &mdash; JUnit will
@@ -92,6 +94,27 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 @Documented
 @API(status = EXPERIMENTAL, since = "5.4")
 public @interface TempDir {
+
+	/**
+	 * Property name used to set the scope of temporary directories created via
+	 * {@link org.junit.jupiter.api.io.TempDir @TempDir} annotation: {@value}
+	 *
+	 * <h4>Supported Values</h4>
+	 * <ul>
+	 * <li>{@code per_context}: creates a single temporary directory for the
+	 * entire test class or method, depending on where it's first declared
+	 * <li>{@code per_declaration}: creates separate temporary directories for
+	 * each declaration site of the {@code @TempDir} annotation.
+	 * </ul>
+	 *
+	 * <p>If not specified, the default is {@code per_declaration}.
+	 *
+	 * @since 5.8
+	 */
+	@SuppressWarnings("DeprecatedIsStillUsed")
+	@Deprecated
+	@API(status = DEPRECATED, since = "5.9")
+	String SCOPE_PROPERTY_NAME = "junit.jupiter.tempdir.scope";
 
 	/**
 	 * The name of the configuration parameter that is used to configure the

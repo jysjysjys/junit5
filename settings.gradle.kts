@@ -1,28 +1,31 @@
+import buildparameters.BuildParametersExtension
 import com.gradle.enterprise.gradleplugin.internal.extension.BuildScanExtensionWithHiddenFeatures
 
 pluginManagement {
 	repositories {
+		includeBuild("gradle/plugins")
 		gradlePluginPortal()
 	}
 	plugins {
-		id("com.gradle.enterprise") version "3.8.1"
-		id("com.gradle.enterprise.test-distribution") version "2.2.2" // keep in sync with buildSrc/build.gradle.kts
-		id("com.gradle.common-custom-user-data-gradle-plugin") version "1.6.2"
-		id("org.ajoberstar.git-publish") version "3.0.0"
-		kotlin("jvm") version "1.5.31"
+		id("com.gradle.enterprise") version "3.12.6" // keep in sync with gradle/plugins/build.gradle.kts
+		id("com.gradle.common-custom-user-data-gradle-plugin") version "1.10"
+		id("org.gradle.toolchains.foojay-resolver-convention") version "0.4.0"
+		id("org.ajoberstar.git-publish") version "4.1.1"
+		kotlin("jvm") version "1.8.20"
 		// Check if workaround in documentation.gradle.kts can be removed when upgrading
-		id("org.asciidoctor.jvm.convert") version "3.3.2"
-		id("org.asciidoctor.jvm.pdf") version "3.3.2"
-		id("me.champeau.jmh") version "0.6.6"
-		id("io.spring.nohttp") version "0.0.10"
-		id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+		id("org.asciidoctor.jvm.convert") version "4.0.0-alpha.1"
+		id("org.asciidoctor.jvm.pdf") version "4.0.0-alpha.1"
+		id("me.champeau.jmh") version "0.7.0"
+		id("io.spring.nohttp") version "0.0.11"
+		id("io.github.gradle-nexus.publish-plugin") version "1.2.0"
 	}
 }
 
 plugins {
 	id("com.gradle.enterprise")
-	id("com.gradle.enterprise.test-distribution")
 	id("com.gradle.common-custom-user-data-gradle-plugin")
+	id("org.gradle.toolchains.foojay-resolver-convention")
+	id("junitbuild.build-parameters")
 }
 
 dependencyResolutionManagement {
@@ -37,14 +40,11 @@ dependencyResolutionManagement {
 }
 
 val gradleEnterpriseServer = "https://ge.junit.org"
-val isCiServer = System.getenv("CI") != null
-val junitBuildCacheUsername: String? by extra
-val junitBuildCachePassword: String? by extra
 
 gradleEnterprise {
 	buildScan {
 		capture.isTaskInputFiles = true
-		isUploadInBackground = !isCiServer
+		isUploadInBackground = !buildParameters.ci
 
 		publishAlways()
 
@@ -56,7 +56,7 @@ gradleEnterprise {
 		}
 
 		obfuscation {
-			if (isCiServer) {
+			if (buildParameters.ci) {
 				username { "github" }
 			} else {
 				hostname { null }
@@ -64,11 +64,7 @@ gradleEnterprise {
 			}
 		}
 
-		val enableTestDistribution = providers.gradleProperty("enableTestDistribution")
-			.forUseAtConfigurationTime()
-			.map(String::toBoolean)
-			.getOrElse(false)
-		if (enableTestDistribution) {
+		if (buildParameters.enterprise.testDistribution.enabled) {
 			tag("test-distribution")
 		}
 	}
@@ -76,14 +72,16 @@ gradleEnterprise {
 
 buildCache {
 	local {
-		isEnabled = !isCiServer
+		isEnabled = !buildParameters.ci
 	}
 	remote<HttpBuildCache> {
-		url = uri("$gradleEnterpriseServer/cache/")
-		isPush = isCiServer && !junitBuildCacheUsername.isNullOrEmpty() && !junitBuildCachePassword.isNullOrEmpty()
+		url = uri(buildParameters.buildCache.url.getOrElse("$gradleEnterpriseServer/cache/"))
+		val buildCacheUsername = buildParameters.buildCache.username.map { it.ifBlank { null } }
+		val buildCachePassword = buildParameters.buildCache.password.map { it.ifBlank { null } }
+		isPush = buildParameters.ci && buildCacheUsername.isPresent && buildCachePassword.isPresent
 		credentials {
-			username = junitBuildCacheUsername?.ifEmpty { null }
-			password = junitBuildCachePassword?.ifEmpty { null }
+			username = buildCacheUsername.orNull
+			password = buildCachePassword.orNull
 		}
 	}
 }
@@ -131,5 +129,7 @@ rootProject.children.forEach { project ->
 	}
 }
 
-enableFeaturePreview("VERSION_CATALOGS")
+val buildParameters: BuildParametersExtension
+	get() = the()
+
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

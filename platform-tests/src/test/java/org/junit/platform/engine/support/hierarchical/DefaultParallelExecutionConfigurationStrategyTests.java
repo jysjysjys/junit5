@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,7 +30,7 @@ import org.junit.platform.engine.ConfigurationParameters;
  */
 class DefaultParallelExecutionConfigurationStrategyTests {
 
-	private ConfigurationParameters configParams = mock(ConfigurationParameters.class);
+	private ConfigurationParameters configParams = mock();
 
 	@BeforeEach
 	void setUp() {
@@ -49,6 +49,20 @@ class DefaultParallelExecutionConfigurationStrategyTests {
 		assertThat(configuration.getMinimumRunnable()).isEqualTo(42);
 		assertThat(configuration.getMaxPoolSize()).isEqualTo(256 + 42);
 		assertThat(configuration.getKeepAliveSeconds()).isEqualTo(30);
+		assertThat(configuration.getSaturatePredicate().test(null)).isTrue();
+	}
+
+	@Test
+	void fixedSaturateStrategyCreatesValidConfiguration() {
+		when(configParams.get("fixed.parallelism")).thenReturn(Optional.of("42"));
+		when(configParams.get("fixed.max-pool-size")).thenReturn(Optional.of("42"));
+		when(configParams.get("fixed.saturate")).thenReturn(Optional.of("false"));
+
+		ParallelExecutionConfigurationStrategy strategy = DefaultParallelExecutionConfigurationStrategy.FIXED;
+		var configuration = strategy.createConfiguration(configParams);
+		assertThat(configuration.getParallelism()).isEqualTo(42);
+		assertThat(configuration.getMaxPoolSize()).isEqualTo(42);
+		assertThat(configuration.getSaturatePredicate().test(null)).isFalse();
 	}
 
 	@Test
@@ -64,6 +78,7 @@ class DefaultParallelExecutionConfigurationStrategyTests {
 		assertThat(configuration.getMinimumRunnable()).isEqualTo(availableProcessors * 2);
 		assertThat(configuration.getMaxPoolSize()).isEqualTo(256 + (availableProcessors * 2));
 		assertThat(configuration.getKeepAliveSeconds()).isEqualTo(30);
+		assertThat(configuration.getSaturatePredicate()).isNull();
 	}
 
 	@Test
@@ -79,6 +94,8 @@ class DefaultParallelExecutionConfigurationStrategyTests {
 		assertThat(configuration.getMinimumRunnable()).isEqualTo(2);
 		assertThat(configuration.getMaxPoolSize()).isEqualTo(3);
 		assertThat(configuration.getKeepAliveSeconds()).isEqualTo(5);
+		assertThat(configuration.getSaturatePredicate()).isNotNull();
+		assertThat(configuration.getSaturatePredicate().test(null)).isTrue();
 	}
 
 	@ParameterizedTest
@@ -177,7 +194,7 @@ class DefaultParallelExecutionConfigurationStrategyTests {
 	static class CustomParallelExecutionConfigurationStrategy implements ParallelExecutionConfigurationStrategy {
 		@Override
 		public ParallelExecutionConfiguration createConfiguration(ConfigurationParameters configurationParameters) {
-			return new DefaultParallelExecutionConfiguration(1, 2, 3, 4, 5);
+			return new DefaultParallelExecutionConfiguration(1, 2, 3, 4, 5, __ -> true);
 		}
 	}
 

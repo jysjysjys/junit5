@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,14 +10,10 @@
 
 package org.junit.platform.suite.engine;
 
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.counting;
-import static java.util.stream.Collectors.groupingBy;
+import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
 import static org.junit.platform.suite.commons.SuiteLauncherDiscoveryRequestBuilder.request;
 
-import java.util.function.Supplier;
-
-import org.junit.platform.commons.util.AnnotationUtils;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.ConfigurationParameters;
@@ -25,19 +21,20 @@ import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
-import org.junit.platform.engine.UniqueId.Segment;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.LauncherDiscoveryResult;
+import org.junit.platform.launcher.listeners.TestExecutionSummary;
+import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.api.SuiteDisplayName;
 import org.junit.platform.suite.commons.SuiteLauncherDiscoveryRequestBuilder;
 
 /**
  * {@link TestDescriptor} for tests based on the JUnit Platform Suite API.
  *
- * <h3>Default Display Names</h3>
+ * <h2>Default Display Names</h2>
  *
  * <p>The default display name is the simple name of the class.
  *
@@ -50,29 +47,25 @@ final class SuiteTestDescriptor extends AbstractTestDescriptor {
 
 	private final SuiteLauncherDiscoveryRequestBuilder discoveryRequestBuilder = request();
 	private final ConfigurationParameters configurationParameters;
+	private final Boolean failIfNoTests;
+	private final Class<?> suiteClass;
 
 	private LauncherDiscoveryResult launcherDiscoveryResult;
 	private SuiteLauncher launcher;
 
 	SuiteTestDescriptor(UniqueId id, Class<?> suiteClass, ConfigurationParameters configurationParameters) {
-		super(requireNoCycles(id), getSuiteDisplayName(suiteClass), ClassSource.from(suiteClass));
+		super(id, getSuiteDisplayName(suiteClass), ClassSource.from(suiteClass));
 		this.configurationParameters = configurationParameters;
+		this.failIfNoTests = getFailIfNoTests(suiteClass);
+		this.suiteClass = suiteClass;
 	}
 
-	private static UniqueId requireNoCycles(UniqueId id) {
+	private static Boolean getFailIfNoTests(Class<?> suiteClass) {
 		// @formatter:off
-		boolean containsCycle = id.getSegments().stream()
-				.filter(segment -> SuiteTestDescriptor.SEGMENT_TYPE.equals(segment.getType()))
-				.map(Segment::getValue)
-				.collect(groupingBy(identity(), counting()))
-				.values()
-				.stream()
-				.anyMatch(count -> count > 1);
+		return findAnnotation(suiteClass, Suite.class)
+				.map(Suite::failIfNoTests)
+				.orElseThrow(() -> new JUnitException(String.format("Suite [%s] was not annotated with @Suite", suiteClass.getName())));
 		// @formatter:on
-		Supplier<String> message = () -> String.format(
-			"Configuration error: The suite configuration may not contain a cycle [%s]", id);
-		Preconditions.condition(!containsCycle, message);
-		return id;
 	}
 
 	SuiteTestDescriptor addDiscoveryRequestFrom(Class<?> suiteClass) {
@@ -118,17 +111,37 @@ final class SuiteTestDescriptor extends AbstractTestDescriptor {
 
 	private static String getSuiteDisplayName(Class<?> testClass) {
 		// @formatter:off
-		return AnnotationUtils.findAnnotation(testClass, SuiteDisplayName.class)
+		return findAnnotation(testClass, SuiteDisplayName.class)
 				.map(SuiteDisplayName::value)
 				.filter(StringUtils::isNotBlank)
 				.orElse(testClass.getSimpleName());
 		// @formatter:on
 	}
 
-	void execute(EngineExecutionListener listener) {
-		listener.executionStarted(this);
-		launcher.execute(launcherDiscoveryResult, listener);
-		listener.executionFinished(this, TestExecutionResult.successful());
+	void execute(EngineExecutionListener parentEngineExecutionListener) {
+		parentEngineExecutionListener.executionStarted(this);
+		// #2838: The discovery result from a suite may have been filtered by
+		// post discovery filters from the launcher. The discovery result should
+		// be pruned accordingly
+		LauncherDiscoveryResult discoveryResult = this.launcherDiscoveryResult.withRetainedEngines(
+			getChildren()::contains);
+		TestExecutionSummary summary = launcher.execute(discoveryResult, parentEngineExecutionListener);
+		parentEngineExecutionListener.executionFinished(this, computeTestExecutionResult(summary));
+	}
+
+	private TestExecutionResult computeTestExecutionResult(TestExecutionSummary summary) {
+		if (failIfNoTests && summary.getTestsFoundCount() == 0) {
+			return TestExecutionResult.failed(new NoTestsDiscoveredException(suiteClass));
+		}
+		return TestExecutionResult.successful();
+	}
+
+	@Override
+	public boolean mayRegisterTests() {
+		// While a suite will not register new tests after discovery, we pretend
+		// it does. This allows the suite to fail if not tests were discovered.
+		// If not, the empty suite would be pruned.
+		return true;
 	}
 
 }

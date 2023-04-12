@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -50,20 +50,15 @@ public class EnabledIfIntegrationTests {
 		fail("Should be disabled");
 	}
 
-	@Nested
-	class ExternalConditionMethod {
+	@Test
+	@EnabledIf("org.junit.jupiter.api.condition.StaticConditionMethods#returnsTrue")
+	void enabledBecauseStaticExternalConditionMethodReturnsTrue() {
+	}
 
-		@Test
-		@EnabledIf("org.junit.jupiter.api.condition.StaticConditionMethods#returnsTrue")
-		void enabledBecauseConditionMethodReturnsTrue() {
-		}
-
-		@Test
-		@EnabledIf("org.junit.jupiter.api.condition.StaticConditionMethods#returnsFalse")
-		void disabledBecauseConditionMethodReturnsFalse() {
-			fail("Should be disabled");
-		}
-
+	@Test
+	@EnabledIf("org.junit.jupiter.api.condition.StaticConditionMethods#returnsFalse")
+	void disabledBecauseStaticExternalConditionMethodReturnsFalse() {
+		fail("Should be disabled");
 	}
 
 	@Nested
@@ -71,7 +66,7 @@ public class EnabledIfIntegrationTests {
 	class ConditionallyDisabledClass {
 
 		@Test
-		void disabledBecauseConditionMethodReturnsTrue() {
+		void disabledBecauseConditionMethodReturnsFalse() {
 			fail("Should be disabled");
 		}
 

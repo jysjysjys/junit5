@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.engine.support.hierarchical;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.JUnitException;
@@ -41,8 +42,14 @@ public enum DefaultParallelExecutionConfigurationStrategy implements ParallelExe
 					() -> new JUnitException(String.format("Configuration parameter '%s' must be set",
 						CONFIG_FIXED_PARALLELISM_PROPERTY_NAME)));
 
-			return new DefaultParallelExecutionConfiguration(parallelism, parallelism, 256 + parallelism, parallelism,
-				KEEP_ALIVE_SECONDS);
+			int maxPoolSize = configurationParameters.get(CONFIG_FIXED_MAX_POOL_SIZE_PROPERTY_NAME,
+				Integer::valueOf).orElse(parallelism + 256);
+
+			boolean saturate = configurationParameters.get(CONFIG_FIXED_SATURATE_PROPERTY_NAME,
+				Boolean::valueOf).orElse(true);
+
+			return new DefaultParallelExecutionConfiguration(parallelism, parallelism, maxPoolSize, parallelism,
+				KEEP_ALIVE_SECONDS, __ -> saturate);
 		}
 	},
 
@@ -65,7 +72,7 @@ public enum DefaultParallelExecutionConfigurationStrategy implements ParallelExe
 				factor.multiply(BigDecimal.valueOf(Runtime.getRuntime().availableProcessors())).intValue());
 
 			return new DefaultParallelExecutionConfiguration(parallelism, parallelism, 256 + parallelism, parallelism,
-				KEEP_ALIVE_SECONDS);
+				KEEP_ALIVE_SECONDS, null);
 		}
 	},
 
@@ -114,6 +121,36 @@ public enum DefaultParallelExecutionConfigurationStrategy implements ParallelExe
 	public static final String CONFIG_FIXED_PARALLELISM_PROPERTY_NAME = "fixed.parallelism";
 
 	/**
+	 * Property name used to configure the maximum pool size of the underlying
+	 * fork-join pool for the {@link #FIXED} configuration strategy.
+	 *
+	 * <p>Value must be an integer and greater than or equal to
+	 * {@value #CONFIG_FIXED_PARALLELISM_PROPERTY_NAME}; defaults to
+	 * {@code 256 + fixed.parallelism}.
+	 *
+	 * @since 1.10
+	 * @see #FIXED
+	 */
+	@API(status = EXPERIMENTAL, since = "1.10")
+	public static final String CONFIG_FIXED_MAX_POOL_SIZE_PROPERTY_NAME = "fixed.max-pool-size";
+
+	/**
+	 * Property name used to disable saturation of the underlying fork-join pool
+	 * for the {@link #FIXED} configuration strategy.
+	 *
+	 * <p>When set to {@code false} the underlying fork-join pool will reject
+	 * additional tasks if all available workers are busy and the maximum
+	 * pool-size would be exceeded.
+	 * <p>Value must either {@code true} or {@code false}; defaults to {@code true}.
+	 *
+	 * @since 1.10
+	 * @see #FIXED
+	 * @see #CONFIG_FIXED_MAX_POOL_SIZE_PROPERTY_NAME
+	 */
+	@API(status = EXPERIMENTAL, since = "1.10")
+	public static final String CONFIG_FIXED_SATURATE_PROPERTY_NAME = "fixed.saturate";
+
+	/**
 	 * Property name of the factor used to determine the desired parallelism for the
 	 * {@link #DYNAMIC} configuration strategy.
 	 *
@@ -133,7 +170,8 @@ public enum DefaultParallelExecutionConfigurationStrategy implements ParallelExe
 	public static final String CONFIG_CUSTOM_CLASS_PROPERTY_NAME = "custom.class";
 
 	static ParallelExecutionConfigurationStrategy getStrategy(ConfigurationParameters configurationParameters) {
-		return valueOf(configurationParameters.get(CONFIG_STRATEGY_PROPERTY_NAME).orElse("dynamic").toUpperCase());
+		return valueOf(
+			configurationParameters.get(CONFIG_STRATEGY_PROPERTY_NAME).orElse("dynamic").toUpperCase(Locale.ROOT));
 	}
 
 }

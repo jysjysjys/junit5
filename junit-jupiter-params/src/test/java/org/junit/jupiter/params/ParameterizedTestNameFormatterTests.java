@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -229,13 +229,11 @@ class ParameterizedTestNameFormatterTests {
 	}
 
 	private static ParameterizedTestNameFormatter formatter(String pattern, String displayName) {
-		return new ParameterizedTestNameFormatter(pattern, displayName, mock(ParameterizedTestMethodContext.class),
-			512);
+		return new ParameterizedTestNameFormatter(pattern, displayName, mock(), 512);
 	}
 
 	private static ParameterizedTestNameFormatter formatter(String pattern, int argumentMaxLength) {
-		return new ParameterizedTestNameFormatter(pattern, "display name", mock(ParameterizedTestMethodContext.class),
-			argumentMaxLength);
+		return new ParameterizedTestNameFormatter(pattern, "display name", mock(), argumentMaxLength);
 	}
 
 	private static ParameterizedTestNameFormatter formatter(String pattern, String displayName, Method method) {

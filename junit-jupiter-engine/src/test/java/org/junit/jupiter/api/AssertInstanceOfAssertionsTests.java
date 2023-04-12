@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -93,7 +93,7 @@ class AssertInstanceOfAssertionsTests {
 
 	private void assertInstanceOfFails(Class<?> expectedType, Object actualValue, String unexpectedSort) {
 		String valueType = actualValue == null ? "null" : actualValue.getClass().getCanonicalName();
-		String expectedMessage = String.format("Unexpected %s ==> expected: <%s> but was: <%s>", unexpectedSort,
+		String expectedMessage = String.format("Unexpected %s, expected: <%s> but was: <%s>", unexpectedSort,
 			expectedType.getCanonicalName(), valueType);
 
 		assertThrowsWithMessage(expectedMessage, () -> assertInstanceOf(expectedType, actualValue));

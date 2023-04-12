@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -23,7 +23,7 @@ import org.apiguardian.api.API;
  * the {@link java.util.ServiceLoader} mechanism. For details on the latter,
  * consult the User Guide.
  *
- * <h3>Constructor Requirements</h3>
+ * <h2>Constructor Requirements</h2>
  *
  * <p>Extension implementations must have a <em>default constructor</em> if
  * registered via {@code @ExtendWith} or the {@code ServiceLoader}. When

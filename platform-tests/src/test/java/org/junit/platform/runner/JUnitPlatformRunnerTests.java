@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -465,7 +465,7 @@ class JUnitPlatformRunnerTests {
 			TestDescriptor container2 = new TestDescriptorStub(UniqueId.root("root", "container2"), "container2");
 			container2.addChild(new TestDescriptorStub(UniqueId.root("root", "test2a"), "test2a"));
 			container2.addChild(new TestDescriptorStub(UniqueId.root("root", "test2b"), "test2b"));
-			var testPlan = TestPlan.from(List.of(container1, container2), mock(ConfigurationParameters.class));
+			var testPlan = TestPlan.from(List.of(container1, container2), mock());
 
 			var launcher = mock(Launcher.class);
 			when(launcher.discover(any())).thenReturn(testPlan);
@@ -502,7 +502,7 @@ class JUnitPlatformRunnerTests {
 	@Nested
 	class Filtering {
 
-		private final ConfigurationParameters configParams = mock(ConfigurationParameters.class);
+		private final ConfigurationParameters configParams = mock();
 
 		@Test
 		void appliesFilter() throws Exception {
@@ -687,7 +687,7 @@ class JUnitPlatformRunnerTests {
 				ClassSource.from(getClass()));
 			containerDescriptor.addChild(
 				new DemoHierarchicalTestDescriptor(containerDescriptor.getUniqueId().append("test", "failingTest"),
-					"testDisplayName", MethodSource.from(failingTest), () -> {
+					"testDisplayName", MethodSource.from(failingTest), (c, t) -> {
 					}));
 
 			var platformRunner = new JUnitPlatform(TestClass.class, createLauncher(engine));
@@ -723,7 +723,7 @@ class JUnitPlatformRunnerTests {
 				ClassSource.from(getClass()));
 			containerDescriptor.addChild(
 				new DemoHierarchicalTestDescriptor(containerDescriptor.getUniqueId().append("test", "failingTest"),
-					"testDisplayName", MethodSource.from(failingTest), () -> {
+					"testDisplayName", MethodSource.from(failingTest), (c, t) -> {
 					}));
 
 			var platformRunner = new JUnitPlatform(TestClassWithTechnicalNames.class, createLauncher(engine));
@@ -760,11 +760,11 @@ class JUnitPlatformRunnerTests {
 	// -------------------------------------------------------------------------
 
 	private static Description suiteDescription(String uniqueId) {
-		return createSuiteDescription(uniqueId, uniqueId);
+		return createSuiteDescription(uniqueId, UniqueId.parse(uniqueId));
 	}
 
 	private static Description testDescription(String uniqueId) {
-		return createTestDescription(uniqueId, uniqueId, uniqueId);
+		return createTestDescription(uniqueId, uniqueId, UniqueId.parse(uniqueId));
 	}
 
 	private TestDescriptor testDescriptorWithTags(String... tag) {
@@ -777,8 +777,7 @@ class JUnitPlatformRunnerTests {
 	private LauncherDiscoveryRequest instantiateRunnerAndCaptureGeneratedRequest(Class<?> testClass) {
 		var launcher = mock(Launcher.class);
 		var captor = ArgumentCaptor.forClass(LauncherDiscoveryRequest.class);
-		when(launcher.discover(captor.capture())).thenReturn(
-			TestPlan.from(Set.of(), mock(ConfigurationParameters.class)));
+		when(launcher.discover(captor.capture())).thenReturn(TestPlan.from(Set.of(), mock()));
 
 		new JUnitPlatform(testClass, launcher);
 

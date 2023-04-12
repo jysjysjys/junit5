@@ -1,8 +1,8 @@
 import org.gradle.api.tasks.PathSensitivity.RELATIVE
 
 plugins {
-	`kotlin-library-conventions`
-	`testing-conventions`
+	id("junitbuild.kotlin-library-conventions")
+	id("junitbuild.testing-conventions")
 	groovy
 	`java-test-fixtures`
 }
@@ -24,6 +24,7 @@ dependencies {
 	testImplementation(libs.junit4)
 	testImplementation(libs.kotlinx.coroutines)
 	testImplementation(libs.groovy4)
+	testImplementation(testFixtures(projects.junitJupiterApi))
 
 	osgiVerification(projects.junitPlatformLauncher)
 }
@@ -33,9 +34,6 @@ tasks {
 		inputs.dir("src/test/resources").withPathSensitivity(RELATIVE)
 		systemProperty("developmentVersion", version)
 	}
-}
-
-tasks {
 	jar {
 		bundle {
 			bnd("""

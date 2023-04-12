@@ -1,11 +1,11 @@
 plugins {
 	id("io.spring.nohttp")
 	id("io.github.gradle-nexus.publish-plugin")
-	`base-conventions`
-	`build-metadata`
-	`dependency-update-check`
-	`jacoco-conventions`
-	`temp-maven-repo`
+	id("junitbuild.base-conventions")
+	id("junitbuild.build-metadata")
+	id("junitbuild.dependency-update-check")
+	id("junitbuild.jacoco-aggregation-conventions")
+	id("junitbuild.temp-maven-repo")
 }
 
 description = "JUnit 5"
@@ -13,7 +13,7 @@ description = "JUnit 5"
 val license by extra(License(
 	name = "Eclipse Public License v2.0",
 	url = uri("https://www.eclipse.org/legal/epl-v20.html"),
-	headerFile = file("src/spotless/eclipse-public-license-2.0.java")
+	headerFile = layout.projectDirectory.file("gradle/config/spotless/eclipse-public-license-2.0.java")
 ))
 
 val platformProjects by extra(listOf(
@@ -47,6 +47,12 @@ val vintageProjects by extra(listOf(
 val mavenizedProjects by extra(platformProjects + jupiterProjects + vintageProjects)
 val modularProjects by extra(mavenizedProjects - listOf(projects.junitPlatformConsoleStandalone.dependencyProject))
 
+dependencies {
+	(modularProjects + listOf(projects.platformTests.dependencyProject)).forEach {
+		jacocoAggregation(project(it.path))
+	}
+}
+
 nexusPublishing {
 	packageGroup.set("org.junit")
 	repositories {
@@ -55,38 +61,5 @@ nexusPublishing {
 }
 
 nohttp {
-	source.exclude("buildSrc/build/generated-sources/**")
-}
-
-val jacocoTestProjects = listOf(
-	projects.junitJupiterEngine,
-	projects.junitJupiterMigrationsupport,
-	projects.junitJupiterParams,
-	projects.junitVintageEngine,
-	projects.platformTests
-).map { it.dependencyProject }
-val jacocoClassesDir by extra(file("$buildDir/jacoco/classes"))
-
-val jacocoRootReport by tasks.registering(JacocoReport::class) {
-	modularProjects.forEach {
-		dependsOn(it.tasks.named("extractJar"))
-		it.pluginManager.withPlugin("java") {
-			sourceDirectories.from(it.the<SourceSetContainer>()["main"].allSource.srcDirs)
-		}
-	}
-	classDirectories.from(files(jacocoClassesDir))
-	reports {
-		html.required.set(true)
-		xml.required.set(true)
-		csv.required.set(false)
-	}
-}
-
-afterEvaluate {
-	jacocoRootReport {
-		jacocoTestProjects.forEach {
-			executionData(it.tasks.withType<Test>().map { task -> task.the<JacocoTaskExtension>().destinationFile })
-			dependsOn(it.tasks.withType<Test>())
-		}
-	}
+	source.exclude("**/.gradle/**", "gradle/plugins/**/build/**")
 }

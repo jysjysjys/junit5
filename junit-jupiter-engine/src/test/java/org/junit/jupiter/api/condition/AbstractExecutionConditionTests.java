@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -40,12 +40,17 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  * Abstract base class for unit testing a concrete {@link ExecutionCondition}
  * implementation.
  *
+ * <p><strong>WARNING</strong>: this abstract base class currently does not
+ * support tests in {@code @Nested} test classes within the
+ * {@linkplain #getTestClass() test class}, since {@link #beforeEach(TestInfo)}
+ * instantiates the test class using the no-args default constructor.
+ *
  * @since 5.1
  */
 @TestInstance(Lifecycle.PER_CLASS)
 abstract class AbstractExecutionConditionTests {
 
-	private final ExtensionContext context = mock(ExtensionContext.class);
+	private final ExtensionContext context = mock();
 
 	private ConditionEvaluationResult result;
 

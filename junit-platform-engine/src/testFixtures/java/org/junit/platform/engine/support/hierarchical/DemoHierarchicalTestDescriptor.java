@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,9 @@ package org.junit.platform.engine.support.hierarchical;
 import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.doNotSkip;
 import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.skip;
 
+import java.util.function.BiConsumer;
+
+import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
@@ -22,16 +25,17 @@ import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
  */
 public class DemoHierarchicalTestDescriptor extends AbstractTestDescriptor implements Node<DemoEngineExecutionContext> {
 
-	private final Runnable executeBlock;
+	private final BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock;
 	private String skippedReason;
 	private boolean skipped;
 
-	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName, Runnable executeBlock) {
+	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName,
+			BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
 		this(uniqueId, displayName, null, executeBlock);
 	}
 
 	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName, TestSource source,
-			Runnable executeBlock) {
+			BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
 		super(uniqueId, displayName, source);
 		this.executeBlock = executeBlock;
 	}
@@ -55,7 +59,7 @@ public class DemoHierarchicalTestDescriptor extends AbstractTestDescriptor imple
 	public DemoEngineExecutionContext execute(DemoEngineExecutionContext context,
 			DynamicTestExecutor dynamicTestExecutor) {
 		if (this.executeBlock != null) {
-			this.executeBlock.run();
+			this.executeBlock.accept(context, this);
 		}
 		return context;
 	}

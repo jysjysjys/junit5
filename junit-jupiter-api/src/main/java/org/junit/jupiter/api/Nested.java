@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
  * <p>{@code @Nested} test classes may be ordered via
  * {@link TestClassOrder @TestClassOrder} or a global {@link ClassOrderer}.
  *
- * <h3>Test Instance Lifecycle</h3>
+ * <h2>Test Instance Lifecycle</h2>
  *
  * <ul>
  * <li>A {@code @Nested} test class <em>can</em> be configured with its own

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,9 @@
 
 package org.junit.platform.commons.util;
 
+import static java.time.Duration.ofMillis;
 import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.platform.commons.function.Try.success;
 import static org.junit.platform.commons.util.ReflectionUtils.HierarchyTraversalMode.BOTTOM_UP;
@@ -45,6 +48,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Nested;
@@ -535,6 +539,20 @@ class ReflectionUtilsTests {
 	void tryToLoadClassWhenClassNotFoundException() {
 		assertThrows(ClassNotFoundException.class,
 			() -> ReflectionUtils.tryToLoadClass("foo.bar.EnigmaClassThatDoesNotExist").get());
+	}
+
+	@Test
+	void tryToLoadClassFailsWithinReasonableTimeForInsanelyLargeAndInvalidMultidimensionalPrimitiveArrayName() {
+		// Create a class name of the form int[][][]...[][][]X
+		String className = IntStream.rangeClosed(1, 20_000)//
+				.mapToObj(i -> "[]")//
+				.collect(joining("", "int", "X"));
+
+		// The following should ideally fail in less than 50ms. So we just make
+		// sure it fails in less than 500ms in order to (hopefully) allow the
+		// test to pass on CI servers with limited resources.
+		assertTimeoutPreemptively(ofMillis(500),
+			() -> assertThrows(ClassNotFoundException.class, () -> ReflectionUtils.tryToLoadClass(className).get()));
 	}
 
 	@Test
@@ -1056,6 +1074,16 @@ class ReflectionUtilsTests {
 		assertThat(findMethods(clazz, isFooMethod)).hasSize(1);
 	}
 
+	/**
+	 * @since 1.9.1
+	 * @see https://github.com/junit-team/junit5/issues/2993
+	 */
+	@Test
+	void findMethodsFindsDistinctMethodsDeclaredInMultipleInterfaces() {
+		Predicate<Method> isStringsMethod = method -> method.getName().equals("strings");
+		assertThat(findMethods(DoubleInheritedInterfaceMethodTestCase.class, isStringsMethod)).hasSize(1);
+	}
+
 	@Test
 	void findMethodsInObject() {
 		var methods = findMethods(Object.class, method -> true);
@@ -1407,6 +1435,21 @@ class ReflectionUtilsTests {
 	}
 
 	void methodWithParameterizedMap(Map<String, String> map) {
+	}
+
+	interface StringsInterface1 {
+		static Stream<String> strings() {
+			return Stream.of("abc", "def");
+		}
+	}
+
+	interface StringsInterface2 extends StringsInterface1 {
+	}
+
+	/**
+	 * Inherits strings() from interfaces StringsInterface1 and StringsInterface2.
+	 */
+	static class DoubleInheritedInterfaceMethodTestCase implements StringsInterface1, StringsInterface2 {
 	}
 
 	interface Generic<X, Y, Z extends X> {

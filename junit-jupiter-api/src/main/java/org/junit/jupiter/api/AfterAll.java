@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,22 +27,26 @@ import org.apiguardian.api.API;
  * <p>In contrast to {@link AfterEach @AfterEach} methods, {@code @AfterAll}
  * methods are only executed once for a given test class.
  *
- * <h3>Method Signatures</h3>
+ * <h2>Method Signatures</h2>
  *
- * <p>{@code @AfterAll} methods must have a {@code void} return type,
- * must not be {@code private}, and must be {@code static} by default.
- * Consequently, {@code @AfterAll} methods are not
- * supported in {@link Nested @Nested} test classes or as <em>interface default
- * methods</em> unless the test class is annotated with
- * {@link TestInstance @TestInstance(Lifecycle.PER_CLASS)}. {@code @AfterAll}
+ * <p>{@code @AfterAll} methods must have a {@code void} return type, must not
+ * be {@code private}, and must be {@code static} by default. Consequently,
+ * {@code @AfterAll} methods are not supported in {@link Nested @Nested} test
+ * classes or as <em>interface default methods</em> unless the test class is
+ * annotated with {@link TestInstance @TestInstance(Lifecycle.PER_CLASS)}.
+ * However, beginning with Java 16 {@code @AfterAll} methods may be declared as
+ * {@code static} in {@link Nested @Nested} test classes, and the
+ * {@code Lifecycle.PER_CLASS} restriction no longer applies. {@code @AfterAll}
  * methods may optionally declare parameters to be resolved by
  * {@link org.junit.jupiter.api.extension.ParameterResolver ParameterResolvers}.
  *
- * <h3>Inheritance and Execution Order</h3>
+ * <h2>Inheritance and Execution Order</h2>
  *
  * <p>{@code @AfterAll} methods are inherited from superclasses as long as
- * they are not <em>hidden</em> or <em>overridden</em>. Furthermore,
- * {@code @AfterAll} methods from superclasses will be executed after
+ * they are not <em>hidden</em> (default mode with {@code static} modifier),
+ * <em>overridden</em>, or <em>superseded</em> (i.e., replaced based on
+ * signature only, irrespective of Java's visibility rules). Furthermore,
+ * {@code @AfterAll} methods from superclasses will be executed before
  * {@code @AfterAll} methods in subclasses.
  *
  * <p>Similarly, {@code @AfterAll} methods declared in an interface are
@@ -71,7 +75,7 @@ import org.apiguardian.api.API;
  * dependencies between the {@code @BeforeAll} methods or between the
  * {@code @AfterAll} methods.
  *
- * <h3>Composition</h3>
+ * <h2>Composition</h2>
  *
  * <p>{@code @AfterAll} may be used as a meta-annotation in order to create
  * a custom <em>composed annotation</em> that inherits the semantics of

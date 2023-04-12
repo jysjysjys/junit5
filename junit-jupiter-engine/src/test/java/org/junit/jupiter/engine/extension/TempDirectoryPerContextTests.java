@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2022 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -53,7 +53,6 @@ import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.engine.AbstractJupiterTestEngineTests;
-import org.junit.jupiter.engine.Constants;
 import org.junit.platform.testkit.engine.EngineExecutionResults;
 
 /**
@@ -71,8 +70,7 @@ class TempDirectoryPerContextTests extends AbstractJupiterTestEngineTests {
 	protected EngineExecutionResults executeTestsForClass(Class<?> testClass) {
 		return executeTests(request() //
 				.selectors(selectClass(testClass)) //
-				.configurationParameter(Constants.TEMP_DIR_SCOPE_PROPERTY_NAME,
-					TempDirectory.Scope.PER_CONTEXT.toString()) //
+				.configurationParameter(TempDir.SCOPE_PROPERTY_NAME, TempDirectory.Scope.PER_CONTEXT.toString()) //
 				.build());
 	}
 
@@ -100,21 +98,21 @@ class TempDirectoryPerContextTests extends AbstractJupiterTestEngineTests {
 	}
 
 	@Test
-	@DisplayName("is capable of removal of a read-only file")
+	@DisplayName("is capable of removing a read-only file")
 	void nonWritableFileDoesNotCauseFailure() {
 		executeTestsForClass(NonWritableFileDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
 	}
 
 	@Test
-	@DisplayName("is capable of removal of non-executable, non-writable, or non-readable directories and folders")
+	@DisplayName("is capable of removing non-executable, non-writable, or non-readable directories and folders")
 	void nonMintPermissionsContentDoesNotCauseFailure() {
 		executeTestsForClass(NonMintPermissionContentInTempDirectoryDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(13).succeeded(13));
 	}
 
 	@Test
-	@DisplayName("is capable of removal when its permissions were been changed")
+	@DisplayName("is capable of removing a directory when its permissions have been changed")
 	void nonMintPermissionsDoNotCauseFailure() {
 		executeTestsForClass(NonMintTempDirectoryPermissionsDoNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(42).succeeded(42));
@@ -122,7 +120,7 @@ class TempDirectoryPerContextTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	@DisabledOnOs(OS.WINDOWS)
-	@DisplayName("is capable of removal of a read-only file in a read-only dir")
+	@DisplayName("is capable of removing a read-only file in a read-only dir")
 	void readOnlyFileInReadOnlyDirDoesNotCauseFailure() {
 		executeTestsForClass(ReadOnlyFileInReadOnlyDirDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
@@ -130,7 +128,7 @@ class TempDirectoryPerContextTests extends AbstractJupiterTestEngineTests {
 
 	@Test
 	@DisabledOnOs(OS.WINDOWS)
-	@DisplayName("is capable of removal of a read-only file in a dir in a read-only dir")
+	@DisplayName("is capable of removing a read-only file in a dir in a read-only dir")
 	void readOnlyFileInNestedReadOnlyDirDoesNotCauseFailure() {
 		executeTestsForClass(ReadOnlyFileInDirInReadOnlyDirDoesNotCauseFailureTestCase.class).testEvents()//
 				.assertStatistics(stats -> stats.started(1).succeeded(1));
@@ -786,7 +784,6 @@ class TempDirectoryPerContextTests extends AbstractJupiterTestEngineTests {
 		Path pathTempDir;
 
 		@Test
-		@DisplayName("and injected File and Path reference the same temp directory")
 		void checkFile(@TempDir File tempDir, @TempDir Path ref) {
 			assertFileAndPathAreEqual(tempDir, ref);
 			assertFileAndPathAreEqual(this.fileTempDir, this.pathTempDir);
