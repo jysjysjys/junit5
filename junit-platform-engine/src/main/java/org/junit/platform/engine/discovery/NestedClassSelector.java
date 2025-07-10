@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,16 +10,23 @@
 
 package org.junit.platform.engine.discovery;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.joining;
+import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
  * A {@link DiscoverySelector} that selects a nested {@link Class}
@@ -28,10 +35,10 @@ import org.junit.platform.engine.DiscoverySelector;
  * tests or containers based on classes.
  *
  * <p>If Java {@link Class} references are provided for the nested class or
- * the enclosing classes, the selector will return these {@code Class} and
- * their class names accordingly. If class names are provided, the selector
- * will only attempt to lazily load the {@link Class} if
- * {@link #getEnclosingClasses()} or {@link #getNestedClass()} are invoked.
+ * the enclosing classes, the selector will return those classes and their class
+ * names accordingly. If class names are provided, the selector will only attempt
+ * to lazily load classes if {@link #getEnclosingClasses()} or
+ * {@link #getNestedClass()} is invoked.
  *
  * <p>In this context, Java {@link Class} means anything that can be referenced
  * as a {@link Class} on the JVM &mdash; for example, classes from other JVM
@@ -46,24 +53,41 @@ import org.junit.platform.engine.DiscoverySelector;
 @API(status = STABLE, since = "1.6")
 public class NestedClassSelector implements DiscoverySelector {
 
-	private List<ClassSelector> enclosingClassSelectors;
-	private ClassSelector nestedClassSelector;
+	private final @Nullable ClassLoader classLoader;
 
-	NestedClassSelector(List<String> enclosingClassNames, String nestedClassName) {
-		this.enclosingClassSelectors = enclosingClassNames.stream().map(ClassSelector::new).collect(toList());
-		this.nestedClassSelector = new ClassSelector(nestedClassName);
+	private final List<ClassSelector> enclosingClassSelectors;
+	private final ClassSelector nestedClassSelector;
+
+	NestedClassSelector(@Nullable ClassLoader classLoader, List<String> enclosingClassNames, String nestedClassName) {
+		this.classLoader = classLoader;
+		this.enclosingClassSelectors = enclosingClassNames.stream() //
+				.map(className -> new ClassSelector(classLoader, className)) //
+				.toList();
+		this.nestedClassSelector = new ClassSelector(classLoader, nestedClassName);
 	}
 
 	NestedClassSelector(List<Class<?>> enclosingClasses, Class<?> nestedClass) {
-		this.enclosingClassSelectors = enclosingClasses.stream().map(ClassSelector::new).collect(toList());
+		this.classLoader = nestedClass.getClassLoader();
+		this.enclosingClassSelectors = enclosingClasses.stream().map(ClassSelector::new).toList();
 		this.nestedClassSelector = new ClassSelector(nestedClass);
+	}
+
+	/**
+	 * Get the {@link ClassLoader} used to load the selected nested class.
+	 *
+	 * @return the {@code ClassLoader}; potentially {@code null}
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public @Nullable ClassLoader getClassLoader() {
+		return this.classLoader;
 	}
 
 	/**
 	 * Get the names of the classes enclosing the selected nested class.
 	 */
 	public List<String> getEnclosingClassNames() {
-		return enclosingClassSelectors.stream().map(ClassSelector::getClassName).collect(toList());
+		return this.enclosingClassSelectors.stream().map(ClassSelector::getClassName).toList();
 	}
 
 	/**
@@ -76,14 +100,14 @@ public class NestedClassSelector implements DiscoverySelector {
 	 * {@link PreconditionViolationException} if the classes cannot be loaded.
 	 */
 	public List<Class<?>> getEnclosingClasses() {
-		return enclosingClassSelectors.stream().map(ClassSelector::getJavaClass).collect(toList());
+		return this.enclosingClassSelectors.stream().<Class<?>> map(ClassSelector::getJavaClass).toList();
 	}
 
 	/**
 	 * Get the name of the selected nested class.
 	 */
 	public String getNestedClassName() {
-		return nestedClassSelector.getClassName();
+		return this.nestedClassSelector.getClassName();
 	}
 
 	/**
@@ -95,7 +119,7 @@ public class NestedClassSelector implements DiscoverySelector {
 	 * {@link PreconditionViolationException} if the class cannot be loaded.
 	 */
 	public Class<?> getNestedClass() {
-		return nestedClassSelector.getJavaClass();
+		return this.nestedClassSelector.getJavaClass();
 	}
 
 	@Override
@@ -107,13 +131,13 @@ public class NestedClassSelector implements DiscoverySelector {
 			return false;
 		}
 		NestedClassSelector that = (NestedClassSelector) o;
-		return enclosingClassSelectors.equals(that.enclosingClassSelectors)
-				&& nestedClassSelector.equals(that.nestedClassSelector);
+		return this.enclosingClassSelectors.equals(that.enclosingClassSelectors)
+				&& this.nestedClassSelector.equals(that.nestedClassSelector);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(enclosingClassSelectors, nestedClassSelector);
+		return Objects.hash(this.enclosingClassSelectors, this.nestedClassSelector);
 	}
 
 	@Override
@@ -121,7 +145,42 @@ public class NestedClassSelector implements DiscoverySelector {
 		return new ToStringBuilder(this) //
 				.append("enclosingClassNames", getEnclosingClassNames()) //
 				.append("nestedClassName", getNestedClassName()) //
+				.append("classLoader", getClassLoader()) //
 				.toString();
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		String allClassNames = Stream.concat(enclosingClassSelectors.stream(), Stream.of(nestedClassSelector)) //
+				.map(ClassSelector::getClassName) //
+				.collect(joining("/"));
+		return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, allClassNames));
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for
+	 * {@link NestedClassSelector NestedClassSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		static final String PREFIX = "nested-class";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<NestedClassSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			List<String> parts = Arrays.asList(identifier.getValue().split("/"));
+			return Optional.of(
+				DiscoverySelectors.selectNestedClass(parts.subList(0, parts.size() - 1), parts.get(parts.size() - 1)));
+		}
+
 	}
 
 }

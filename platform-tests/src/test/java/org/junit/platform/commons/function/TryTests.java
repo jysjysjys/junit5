@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,7 +27,9 @@ public class TryTests {
 		var success = Try.success("foo");
 
 		assertThat(success.get()).isEqualTo("foo");
+		assertThat(success.getNonNull()).isEqualTo("foo");
 		assertThat(success.getOrThrow(RuntimeException::new)).isEqualTo("foo");
+		assertThat(success.getNonNullOrThrow(RuntimeException::new)).isEqualTo("foo");
 		assertThat(success.toOptional()).contains("foo");
 
 		assertThat(success.andThen(v -> {
@@ -70,11 +72,14 @@ public class TryTests {
 		assertThat(exception.get()).isSameAs(cause);
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void successfulTriesCanStoreNull() throws Exception {
 		var success = Try.success(null);
 		assertThat(success.get()).isNull();
+		assertThrows(JUnitException.class, success::getNonNull);
 		assertThat(success.getOrThrow(RuntimeException::new)).isNull();
+		assertThrows(RuntimeException.class, () -> success.getNonNullOrThrow(RuntimeException::new));
 		assertThat(success.toOptional()).isEmpty();
 	}
 
@@ -96,6 +101,7 @@ public class TryTests {
 		assertThat(failure).isEqualTo(Try.failure(cause));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void methodPreconditionsAreChecked() {
 		assertThrows(JUnitException.class, () -> Try.call(null));

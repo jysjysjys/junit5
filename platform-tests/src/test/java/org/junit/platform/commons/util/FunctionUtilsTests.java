@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -26,12 +26,14 @@ import org.junit.platform.commons.PreconditionViolationException;
  */
 class FunctionUtilsTests {
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void whereWithNullFunction() {
 		var exception = assertThrows(PreconditionViolationException.class, () -> FunctionUtils.where(null, o -> true));
 		assertEquals("function must not be null", exception.getMessage());
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void whereWithNullPredicate() {
 		var exception = assertThrows(PreconditionViolationException.class, () -> FunctionUtils.where(o -> o, null));

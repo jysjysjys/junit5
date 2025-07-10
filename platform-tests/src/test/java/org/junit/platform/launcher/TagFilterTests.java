@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,6 +20,7 @@ import static org.junit.platform.launcher.TagFilter.includeTags;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.PreconditionViolationException;
@@ -60,7 +61,8 @@ class TagFilterTests {
 		// @formatter:on
 	}
 
-	private void assertSyntaxViolationForIncludes(String tag) {
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	private void assertSyntaxViolationForIncludes(@Nullable String tag) {
 		var exception = assertThrows(PreconditionViolationException.class, () -> includeTags(tag));
 		assertThat(exception).hasMessageStartingWith("Unable to parse tag expression");
 	}
@@ -77,7 +79,8 @@ class TagFilterTests {
 		// @formatter:on
 	}
 
-	private void assertSyntaxViolationForExcludes(String tag) {
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	private void assertSyntaxViolationForExcludes(@Nullable String tag) {
 		var exception = assertThrows(PreconditionViolationException.class, () -> excludeTags(tag));
 		assertThat(exception).hasMessageStartingWith("Unable to parse tag expression");
 	}
@@ -172,12 +175,12 @@ class TagFilterTests {
 
 	private void assertIncluded(FilterResult filterResult, String expectedReason) {
 		assertTrue(filterResult.included());
-		assertThat(filterResult.getReason()).isPresent().contains(expectedReason);
+		assertThat(filterResult.getReason()).contains(expectedReason);
 	}
 
 	private void assertExcluded(FilterResult filterResult, String expectedReason) {
 		assertTrue(filterResult.excluded());
-		assertThat(filterResult.getReason()).isPresent().contains(expectedReason);
+		assertThat(filterResult.getReason()).contains(expectedReason);
 	}
 
 	// -------------------------------------------------------------------------

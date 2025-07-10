@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,14 @@
 
 package org.junit.platform.engine;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
 
 import org.apiguardian.api.API;
+import org.junit.platform.commons.JUnitException;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
 
 /**
  * {@code EngineDiscoveryRequest} provides a {@link TestEngine} access to the
@@ -44,7 +46,8 @@ public interface EngineDiscoveryRequest {
 	 * Get the {@link DiscoverySelector DiscoverySelectors} for this request,
 	 * filtered by a particular type.
 	 *
-	 * @param selectorType the type of {@link DiscoverySelector} to filter by
+	 * @param selectorType the type of {@link DiscoverySelector} to filter by;
+	 * never {@code null}
 	 * @return all selectors of this request that are instances of
 	 * {@code selectorType}; never {@code null} but potentially empty
 	 */
@@ -57,7 +60,8 @@ public interface EngineDiscoveryRequest {
 	 * <p>The returned filters are to be combined using AND semantics, i.e. all
 	 * of them have to include a resource for it to end up in the test plan.
 	 *
-	 * @param filterType the type of {@link DiscoveryFilter} to filter by
+	 * @param filterType the type of {@link DiscoveryFilter} to filter by;
+	 * never {@code null}
 	 * @return all filters of this request that are instances of
 	 * {@code filterType}; never {@code null} but potentially empty
 	 */
@@ -73,16 +77,24 @@ public interface EngineDiscoveryRequest {
 	/**
 	 * Get the {@link EngineDiscoveryListener} for this request.
 	 *
-	 * <p>The default implementation returns a no-op listener that ignores all
-	 * calls so that engines that call this methods can be used with an earlier
-	 * version of the JUnit Platform that did not yet include this API.
-	 *
 	 * @return the discovery listener; never {@code null}
 	 * @since 1.6
 	 */
-	@API(status = EXPERIMENTAL, since = "1.6")
+	@API(status = STABLE, since = "1.10")
 	default EngineDiscoveryListener getDiscoveryListener() {
 		return EngineDiscoveryListener.NOOP;
+	}
+
+	/**
+	 * Get the {@link OutputDirectoryProvider} for this request.
+	 *
+	 * @return the output directory provider; never {@code null}
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	default OutputDirectoryProvider getOutputDirectoryProvider() {
+		throw new JUnitException(
+			"OutputDirectoryProvider not available; probably due to unaligned versions of the junit-platform-engine and junit-platform-launcher jars on the classpath/module path.");
 	}
 
 }

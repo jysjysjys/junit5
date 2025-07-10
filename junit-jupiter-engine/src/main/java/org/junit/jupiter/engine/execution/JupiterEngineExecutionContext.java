@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,15 +10,16 @@
 
 package org.junit.jupiter.engine.execution;
 
+import static java.util.Objects.requireNonNull;
 import static org.apiguardian.api.API.Status.INTERNAL;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
+import org.junit.jupiter.engine.descriptor.LauncherStoreFacade;
 import org.junit.jupiter.engine.extension.MutableExtensionRegistry;
 import org.junit.platform.commons.JUnitException;
-import org.junit.platform.commons.logging.Logger;
-import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.support.hierarchical.EngineExecutionContext;
 import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
@@ -29,17 +30,15 @@ import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 @API(status = INTERNAL, since = "5.0")
 public class JupiterEngineExecutionContext implements EngineExecutionContext {
 
-	private static final Logger logger = LoggerFactory.getLogger(JupiterEngineExecutionContext.class);
-
 	private final State state;
 
 	// The following is not "cloneable" State.
 	private boolean beforeAllCallbacksExecuted = false;
 	private boolean beforeAllMethodsExecuted = false;
 
-	public JupiterEngineExecutionContext(EngineExecutionListener executionListener,
-			JupiterConfiguration configuration) {
-		this(new State(executionListener, configuration));
+	public JupiterEngineExecutionContext(EngineExecutionListener executionListener, JupiterConfiguration configuration,
+			LauncherStoreFacade launcherStoreFacade) {
+		this(new State(executionListener, configuration, launcherStoreFacade));
 	}
 
 	private JupiterEngineExecutionContext(State state) {
@@ -48,13 +47,12 @@ public class JupiterEngineExecutionContext implements EngineExecutionContext {
 
 	public void close() throws Exception {
 		ExtensionContext extensionContext = getExtensionContext();
-		if (extensionContext instanceof AutoCloseable) {
+		if (extensionContext instanceof @SuppressWarnings("resource") AutoCloseable closeable) {
 			try {
-				((AutoCloseable) extensionContext).close();
+				closeable.close();
 			}
 			catch (Exception e) {
-				logger.error(e, () -> "Caught exception while closing extension context: " + extensionContext);
-				throw e;
+				throw new JUnitException("Failed to close extension context", e);
 			}
 		}
 	}
@@ -67,20 +65,24 @@ public class JupiterEngineExecutionContext implements EngineExecutionContext {
 		return this.state.configuration;
 	}
 
+	public LauncherStoreFacade getLauncherStoreFacade() {
+		return this.state.launcherStoreFacade;
+	}
+
 	public TestInstancesProvider getTestInstancesProvider() {
-		return this.state.testInstancesProvider;
+		return requireNonNull(this.state.testInstancesProvider);
 	}
 
 	public MutableExtensionRegistry getExtensionRegistry() {
-		return this.state.extensionRegistry;
+		return requireNonNull(this.state.extensionRegistry);
 	}
 
 	public ExtensionContext getExtensionContext() {
-		return this.state.extensionContext;
+		return requireNonNull(this.state.extensionContext);
 	}
 
 	public ThrowableCollector getThrowableCollector() {
-		return this.state.throwableCollector;
+		return requireNonNull(this.state.throwableCollector);
 	}
 
 	/**
@@ -124,14 +126,25 @@ public class JupiterEngineExecutionContext implements EngineExecutionContext {
 
 		final EngineExecutionListener executionListener;
 		final JupiterConfiguration configuration;
+		final LauncherStoreFacade launcherStoreFacade;
+
+		@Nullable
 		TestInstancesProvider testInstancesProvider;
+
+		@Nullable
 		MutableExtensionRegistry extensionRegistry;
+
+		@Nullable
 		ExtensionContext extensionContext;
+
+		@Nullable
 		ThrowableCollector throwableCollector;
 
-		State(EngineExecutionListener executionListener, JupiterConfiguration configuration) {
+		State(EngineExecutionListener executionListener, JupiterConfiguration configuration,
+				LauncherStoreFacade launcherStoreFacade) {
 			this.executionListener = executionListener;
 			this.configuration = configuration;
+			this.launcherStoreFacade = launcherStoreFacade;
 		}
 
 		@Override
@@ -149,6 +162,8 @@ public class JupiterEngineExecutionContext implements EngineExecutionContext {
 	public static class Builder {
 
 		private State originalState;
+
+		@Nullable
 		private State newState = null;
 
 		private Builder(State originalState) {

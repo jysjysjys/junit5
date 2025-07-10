@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,17 +10,20 @@
 
 package org.junit.jupiter.params.converter;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static java.util.Objects.requireNonNull;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import java.lang.annotation.Annotation;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.params.support.AnnotationConsumer;
+import org.junit.jupiter.params.support.FieldContext;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
- * {@code SimpleArgumentConverter} is an abstract base class for
+ * {@code AnnotationBasedArgumentConverter} is an abstract base class for
  * {@link ArgumentConverter} implementations that also need to consume an
  * annotation in order to perform the conversion.
  *
@@ -29,24 +32,31 @@ import org.junit.platform.commons.util.Preconditions;
  * @see AnnotationConsumer
  * @see SimpleArgumentConverter
  */
-@API(status = EXPERIMENTAL, since = "5.10")
+@API(status = MAINTAINED, since = "5.13.3")
 public abstract class AnnotationBasedArgumentConverter<A extends Annotation>
 		implements ArgumentConverter, AnnotationConsumer<A> {
+
+	private @Nullable A annotation;
 
 	public AnnotationBasedArgumentConverter() {
 	}
 
-	private A annotation;
-
 	@Override
 	public final void accept(A annotation) {
-		Preconditions.notNull(annotation, "annotation must not be null");
-		this.annotation = annotation;
+		this.annotation = Preconditions.notNull(annotation, "annotation must not be null");
+
 	}
 
 	@Override
-	public final Object convert(Object source, ParameterContext context) throws ArgumentConversionException {
-		return convert(source, context.getParameter().getType(), this.annotation);
+	public final @Nullable Object convert(@Nullable Object source, ParameterContext context)
+			throws ArgumentConversionException {
+		return convert(source, context.getParameter().getType(), requireNonNull(this.annotation));
+	}
+
+	@Override
+	public final @Nullable Object convert(@Nullable Object source, FieldContext context)
+			throws ArgumentConversionException {
+		return convert(source, context.getField().getType(), requireNonNull(this.annotation));
 	}
 
 	/**
@@ -62,7 +72,7 @@ public abstract class AnnotationBasedArgumentConverter<A extends Annotation>
 	 * @throws ArgumentConversionException in case an error occurs during the
 	 * conversion
 	 */
-	protected abstract Object convert(Object source, Class<?> targetType, A annotation)
+	protected abstract @Nullable Object convert(@Nullable Object source, Class<?> targetType, A annotation)
 			throws ArgumentConversionException;
 
 }

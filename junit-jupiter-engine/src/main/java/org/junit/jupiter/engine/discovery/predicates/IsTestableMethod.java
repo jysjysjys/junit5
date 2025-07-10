@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,15 +10,21 @@
 
 package org.junit.jupiter.engine.discovery.predicates;
 
-import static org.junit.platform.commons.util.AnnotationUtils.isAnnotated;
-import static org.junit.platform.commons.util.ReflectionUtils.isAbstract;
-import static org.junit.platform.commons.util.ReflectionUtils.isPrivate;
-import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
-import static org.junit.platform.commons.util.ReflectionUtils.returnsVoid;
+import static org.junit.jupiter.engine.support.MethodReflectionUtils.getReturnType;
+import static org.junit.platform.commons.support.AnnotationSupport.isAnnotated;
+import static org.junit.platform.commons.support.ModifierSupport.isNotAbstract;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
+
+import org.junit.platform.commons.support.ModifierSupport;
+import org.junit.platform.engine.DiscoveryIssue;
+import org.junit.platform.engine.DiscoveryIssue.Severity;
+import org.junit.platform.engine.support.descriptor.MethodSource;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter.Condition;
 
 /**
  * @since 5.0
@@ -26,30 +32,50 @@ import java.util.function.Predicate;
 abstract class IsTestableMethod implements Predicate<Method> {
 
 	private final Class<? extends Annotation> annotationType;
-	private final boolean mustReturnVoid;
+	private final Condition<Method> condition;
 
-	IsTestableMethod(Class<? extends Annotation> annotationType, boolean mustReturnVoid) {
+	IsTestableMethod(Class<? extends Annotation> annotationType,
+			BiFunction<Class<? extends Annotation>, DiscoveryIssueReporter, Condition<Method>> returnTypeConditionFactory,
+			DiscoveryIssueReporter issueReporter) {
 		this.annotationType = annotationType;
-		this.mustReturnVoid = mustReturnVoid;
+		this.condition = isNotStatic(annotationType, issueReporter) //
+				.and(isNotPrivate(annotationType, issueReporter)) //
+				.and(returnTypeConditionFactory.apply(annotationType, issueReporter));
 	}
 
 	@Override
 	public boolean test(Method candidate) {
-		// Please do not collapse the following into a single statement.
-		if (isStatic(candidate)) {
-			return false;
+		if (isAnnotated(candidate, this.annotationType)) {
+			return condition.check(candidate) && isNotAbstract(candidate);
 		}
-		if (isPrivate(candidate)) {
-			return false;
-		}
-		if (isAbstract(candidate)) {
-			return false;
-		}
-		if (returnsVoid(candidate) != this.mustReturnVoid) {
-			return false;
-		}
+		return false;
+	}
 
-		return isAnnotated(candidate, this.annotationType);
+	private static Condition<Method> isNotStatic(Class<? extends Annotation> annotationType,
+			DiscoveryIssueReporter issueReporter) {
+		return issueReporter.createReportingCondition(ModifierSupport::isNotStatic,
+			method -> createIssue(annotationType, method, "must not be static"));
+	}
+
+	private static Condition<Method> isNotPrivate(Class<? extends Annotation> annotationType,
+			DiscoveryIssueReporter issueReporter) {
+		return issueReporter.createReportingCondition(ModifierSupport::isNotPrivate,
+			method -> createIssue(annotationType, method, "must not be private"));
+	}
+
+	protected static Condition<Method> hasVoidReturnType(Class<? extends Annotation> annotationType,
+			DiscoveryIssueReporter issueReporter) {
+		return issueReporter.createReportingCondition(method -> getReturnType(method) == void.class,
+			method -> createIssue(annotationType, method, "must not return a value"));
+	}
+
+	protected static DiscoveryIssue createIssue(Class<? extends Annotation> annotationType, Method method,
+			String condition) {
+		String message = "@%s method '%s' %s. It will not be executed.".formatted(annotationType.getSimpleName(),
+			method.toGenericString(), condition);
+		return DiscoveryIssue.builder(Severity.WARNING, message) //
+				.source(MethodSource.from(method)) //
+				.build();
 	}
 
 }

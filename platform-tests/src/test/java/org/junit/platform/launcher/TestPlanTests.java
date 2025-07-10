@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,71 +10,58 @@
 
 package org.junit.platform.launcher;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.platform.launcher.core.OutputDirectoryProviders.dummyOutputDirectoryProvider;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
-import java.util.Set;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.UniqueId;
-import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
+import org.junit.platform.fakes.TestDescriptorStub;
 
 class TestPlanTests {
 
 	private final ConfigurationParameters configParams = mock();
 
-	private EngineDescriptor engineDescriptor = new EngineDescriptor(UniqueId.forEngine("foo"), "Foo");
+	private final EngineDescriptor engineDescriptor = new EngineDescriptor(UniqueId.forEngine("foo"), "Foo");
 
 	@Test
-	void doesNotContainTestsForEmptyContainers() {
-		engineDescriptor.addChild(
-			new AbstractTestDescriptor(engineDescriptor.getUniqueId().append("test", "bar"), "Bar") {
-				@Override
-				public Type getType() {
-					return Type.CONTAINER;
-				}
-			});
+	void acceptsVisitorsInDepthFirstOrder() {
+		var container = new TestDescriptorStub(engineDescriptor.getUniqueId().append("container", "bar"), "Bar");
+		var test1 = new TestDescriptorStub(container.getUniqueId().append("test", "bar"), "Bar");
+		container.addChild(test1);
+		engineDescriptor.addChild(container);
 
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var engineDescriptor2 = new EngineDescriptor(UniqueId.forEngine("baz"), "Baz");
+		var test2 = new TestDescriptorStub(engineDescriptor2.getUniqueId().append("test", "baz1"), "Baz");
+		var test3 = new TestDescriptorStub(engineDescriptor2.getUniqueId().append("test", "baz2"), "Baz");
+		engineDescriptor2.addChild(test2);
+		engineDescriptor2.addChild(test3);
 
-		assertThat(testPlan.containsTests()).as("contains tests").isFalse();
-	}
+		var testPlan = TestPlan.from(true, List.of(engineDescriptor, engineDescriptor2), configParams,
+			dummyOutputDirectoryProvider());
+		var visitor = mock(TestPlan.Visitor.class);
 
-	@Test
-	void containsTestsForTests() {
-		engineDescriptor.addChild(
-			new AbstractTestDescriptor(engineDescriptor.getUniqueId().append("test", "bar"), "Bar") {
-				@Override
-				public Type getType() {
-					return Type.TEST;
-				}
-			});
+		testPlan.accept(visitor);
 
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var inOrder = inOrder(visitor);
 
-		assertThat(testPlan.containsTests()).as("contains tests").isTrue();
-	}
+		inOrder.verify(visitor).preVisitContainer(TestIdentifier.from(engineDescriptor));
+		inOrder.verify(visitor).visit(TestIdentifier.from(engineDescriptor));
+		inOrder.verify(visitor).preVisitContainer(TestIdentifier.from(container));
+		inOrder.verify(visitor).visit(TestIdentifier.from(container));
+		inOrder.verify(visitor).visit(TestIdentifier.from(test1));
+		inOrder.verify(visitor).postVisitContainer(TestIdentifier.from(container));
+		inOrder.verify(visitor).postVisitContainer(TestIdentifier.from(engineDescriptor));
 
-	@Test
-	void containsTestsForContainersThatMayRegisterTests() {
-		engineDescriptor.addChild(
-			new AbstractTestDescriptor(engineDescriptor.getUniqueId().append("test", "bar"), "Bar") {
-				@Override
-				public Type getType() {
-					return Type.CONTAINER;
-				}
-
-				@Override
-				public boolean mayRegisterTests() {
-					return true;
-				}
-			});
-
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
-
-		assertThat(testPlan.containsTests()).as("contains tests").isTrue();
+		inOrder.verify(visitor).preVisitContainer(TestIdentifier.from(engineDescriptor2));
+		inOrder.verify(visitor).visit(TestIdentifier.from(engineDescriptor2));
+		inOrder.verify(visitor).visit(TestIdentifier.from(test2));
+		inOrder.verify(visitor).visit(TestIdentifier.from(test3));
+		inOrder.verify(visitor).postVisitContainer(TestIdentifier.from(engineDescriptor2));
 	}
 
 }

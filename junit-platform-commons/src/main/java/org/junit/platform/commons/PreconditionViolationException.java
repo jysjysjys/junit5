@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,10 @@ package org.junit.platform.commons;
 
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.io.Serial;
+
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Thrown if a <em>precondition</em> is violated.
@@ -20,16 +23,16 @@ import org.apiguardian.api.API;
  * @since 1.5
  */
 @API(status = STABLE, since = "1.5")
-@SuppressWarnings({ "deprecation", "exports" })
-public class PreconditionViolationException extends org.junit.platform.commons.util.PreconditionViolationException {
+public class PreconditionViolationException extends JUnitException {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	public PreconditionViolationException(String message) {
 		super(message);
 	}
 
-	public PreconditionViolationException(String message, Throwable cause) {
+	public PreconditionViolationException(String message, @Nullable Throwable cause) {
 		super(message, cause);
 	}
 

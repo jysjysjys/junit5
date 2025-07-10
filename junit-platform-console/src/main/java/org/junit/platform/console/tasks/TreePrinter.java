@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.console.tasks;
 
+import static java.util.Objects.requireNonNull;
 import static org.junit.platform.commons.util.CollectionUtils.getOnlyElement;
 
 import java.io.PrintWriter;
@@ -21,6 +22,7 @@ import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.console.options.Theme;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestExecutionResult.Status;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 
 /**
@@ -79,19 +81,23 @@ class TreePrinter {
 			out.print(" ");
 			out.print(duration);
 		}
-		out.print(" ");
-		out.print(icon);
+		boolean nodeIsBeingListed = node.duration == 0 && node.result().isEmpty() && node.reason().isEmpty();
+		if (!nodeIsBeingListed) {
+			out.print(" ");
+			out.print(icon);
+		}
 		node.result().ifPresent(result -> printThrowable(tabbed, result));
 		node.reason().ifPresent(reason -> printMessage(Style.SKIPPED, tabbed, reason));
 		node.reports.forEach(e -> printReportEntry(tabbed, e));
 		out.println();
+		node.files.forEach(e -> printFileEntry(tabbed, e));
 	}
 
 	private String tab(TreeNode node, boolean continuous) {
 		// We might be the "last" node in this level, that means
 		// `continuous == false`, but still need to include a vertical
 		// bar for printing stack traces, messages and reports.
-		// See https://github.com/junit-team/junit5/issues/1531
+		// See https://github.com/junit-team/junit-framework/issues/1531
 		if (node.children.size() > 0) {
 			return theme.blank() + theme.vertical();
 		}
@@ -115,7 +121,7 @@ class TreePrinter {
 	}
 
 	private void printThrowable(String indent, TestExecutionResult result) {
-		if (!result.getThrowable().isPresent()) {
+		if (result.getThrowable().isEmpty()) {
 			return;
 		}
 		Throwable throwable = result.getThrowable().get();
@@ -123,7 +129,7 @@ class TreePrinter {
 		if (StringUtils.isBlank(message)) {
 			message = throwable.toString();
 		}
-		printMessage(Style.FAILED, indent, message);
+		printMessage(Style.FAILED, indent, requireNonNull(message));
 	}
 
 	private void printReportEntry(String indent, ReportEntry reportEntry) {
@@ -147,6 +153,14 @@ class TreePrinter {
 		out.print(" = `");
 		out.print(color(Style.SUCCESSFUL, mapEntry.getValue()));
 		out.print("`");
+	}
+
+	private void printFileEntry(String indent, FileEntry fileEntry) {
+		out.print(indent);
+		out.print(fileEntry.getTimestamp());
+		out.print(" ");
+		out.print(color(Style.SUCCESSFUL, fileEntry.getPath().toUri().toString()));
+		out.println();
 	}
 
 	private void printMessage(Style style, String indent, String message) {

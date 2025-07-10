@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -26,8 +26,9 @@ import org.apiguardian.api.API;
  * a test suite on the JUnit Platform.
  *
  * @since 1.0
- * @see org.junit.platform.runner.JUnitPlatform
+ * @see Suite
  * @see org.junit.platform.engine.discovery.DiscoverySelectors#selectClass(Class)
+ * @see org.junit.platform.engine.discovery.DiscoverySelectors#selectClass(String)
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -38,7 +39,23 @@ public @interface SelectClasses {
 
 	/**
 	 * One or more classes to select.
+	 *
+	 * <p>May be use in conjunction with or instead of {@link #names() names}.
 	 */
-	Class<?>[] value();
+	Class<?>[] value() default {};
+
+	/**
+	 * One or more classes to select by their fully qualified names.
+	 *
+	 * <p>May be use in conjunction with or instead of {@link #value() value}.
+	 *
+	 * <p>This attribute is intended to be used when a class cannot be referenced
+	 * directly from where this annotation is used &mdash; for example, when a
+	 * class is not visible due to being private or package-private.
+	 *
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	String[] names() default {};
 
 }

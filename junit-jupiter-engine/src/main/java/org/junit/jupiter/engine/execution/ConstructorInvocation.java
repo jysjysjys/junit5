@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.InvocationInterceptor.Invocation;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.junit.platform.commons.util.ReflectionUtils;
@@ -24,9 +25,9 @@ import org.junit.platform.commons.util.ReflectionUtils;
 class ConstructorInvocation<T> implements Invocation<T>, ReflectiveInvocationContext<Constructor<T>> {
 
 	private final Constructor<T> constructor;
-	private final Object[] arguments;
+	private final @Nullable Object[] arguments;
 
-	ConstructorInvocation(Constructor<T> constructor, Object[] arguments) {
+	ConstructorInvocation(Constructor<T> constructor, @Nullable Object[] arguments) {
 		this.constructor = constructor;
 		this.arguments = arguments;
 	}

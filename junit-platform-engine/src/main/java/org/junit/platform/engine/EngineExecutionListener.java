@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,12 @@
 
 package org.junit.platform.engine;
 
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
 import org.junit.platform.engine.TestExecutionResult.Status;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 
 /**
@@ -137,4 +139,24 @@ public interface EngineExecutionListener {
 	default void reportingEntryPublished(TestDescriptor testDescriptor, ReportEntry entry) {
 	}
 
+	/**
+	 * Can be called for any {@link TestDescriptor} in order to attach a file to
+	 * a test or container &mdash; for example:
+	 *
+	 * <ul>
+	 *     <li>Screenshots</li>
+	 *     <li>Logs</li>
+	 *     <li>Output files written by the code under test</li>
+	 * </ul>
+	 *
+	 * <p>The current lifecycle state of the supplied {@code TestDescriptor} is
+	 * not relevant: file events can occur at any time.
+	 *
+	 * @param testDescriptor the descriptor of the test or container to which
+	* the file entry belongs
+	 * @param file a {@code FileEntry} instance to be attached
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	default void fileEntryPublished(TestDescriptor testDescriptor, FileEntry file) {
+	}
 }

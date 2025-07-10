@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Collection of utilities for working with {@link Function Functions},
@@ -43,7 +44,8 @@ public final class FunctionUtils {
 	 * @param function the function to apply
 	 * @param predicate the predicate to test against the result of the function
 	 */
-	public static <T, V> Predicate<T> where(Function<T, V> function, Predicate<? super V> predicate) {
+	public static <T extends @Nullable Object, V extends @Nullable Object> Predicate<T> where(Function<T, V> function,
+			Predicate<? super V> predicate) {
 		Preconditions.notNull(function, "function must not be null");
 		Preconditions.notNull(predicate, "predicate must not be null");
 		return input -> predicate.test(function.apply(input));

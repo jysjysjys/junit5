@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.launcher.listeners;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -23,6 +24,7 @@ import static org.junit.platform.launcher.listeners.UniqueIdTrackingListener.DEF
 import static org.junit.platform.launcher.listeners.UniqueIdTrackingListener.LISTENER_ENABLED_PROPERTY_NAME;
 import static org.junit.platform.launcher.listeners.UniqueIdTrackingListener.OUTPUT_DIR_PROPERTY_NAME;
 import static org.junit.platform.launcher.listeners.UniqueIdTrackingListener.OUTPUT_FILE_PREFIX_PROPERTY_NAME;
+import static org.junit.platform.launcher.listeners.UniqueIdTrackingListener.WORKING_DIR_PROPERTY_NAME;
 import static org.junit.platform.testkit.engine.Event.byTestDescriptor;
 import static org.junit.platform.testkit.engine.EventConditions.abortedWithReason;
 import static org.junit.platform.testkit.engine.EventConditions.event;
@@ -35,7 +37,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,16 +45,20 @@ import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
 import org.assertj.core.api.Condition;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.discovery.ClassSelector;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
+import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.testkit.engine.EngineTestKit;
 import org.junit.platform.testkit.engine.Event;
@@ -79,11 +84,21 @@ class UniqueIdTrackingListenerIntegrationTests {
 	private static final String testD = "[engine:junit-jupiter]/[class:org.junit.platform.launcher.listeners.UniqueIdTrackingListenerIntegrationTests$TestCase3]/[method:testD()]";
 	private static final String testE = "[engine:junit-jupiter]/[class:org.junit.platform.launcher.listeners.UniqueIdTrackingListenerIntegrationTests$TestCase4]/[method:testE()]";
 	private static final String testF = "[engine:junit-jupiter]/[class:org.junit.platform.launcher.listeners.UniqueIdTrackingListenerIntegrationTests$TestCase4]/[method:testF()]";
+	private static final String testG = "[engine:junit-jupiter]/[class:org.junit.platform.launcher.listeners.UniqueIdTrackingListenerIntegrationTests$DisabledTestCase]/[nested-class:Inner]/[method:testG()]";
 
 	private static final String[] expectedUniqueIds = { passingTest, skippedTest, abortedTest, failingTest,
-			dynamicTest1, dynamicTest2, testA, testB };
+			dynamicTest1, dynamicTest2, testA, testB, testG };
 
 	private static final String[] expectedConcurrentUniqueIds = { testA, testB, testC, testD, testE, testF };
+
+	@TempDir
+	Path workingDir;
+
+	@BeforeEach
+	void createFakeGradleFiles() throws Exception {
+		Files.createFile(workingDir.resolve("build.gradle"));
+		Files.createDirectory(workingDir.resolve("build"));
+	}
 
 	@Test
 	void confirmExpectedUniqueIdsViaEngineTestKit() {
@@ -113,28 +128,18 @@ class UniqueIdTrackingListenerIntegrationTests {
 
 	@Test
 	void listenerIsRegisteredButDisabledByDefault() throws Exception {
-		long numListenersRegistered = ServiceLoader.load(TestExecutionListener.class).stream()//
+		var numListenersRegistered = ServiceLoader.load(TestExecutionListener.class).stream()//
 				.filter(provider -> UniqueIdTrackingListener.class.equals(provider.type()))//
 				.count();
 		assertThat(numListenersRegistered).isEqualTo(1);
 
-		String outputDir = "build";
-		String prefix = DEFAULT_OUTPUT_FILE_PREFIX;
+		var actualUniqueIds = executeTests(Map.of());
 
-		deleteFiles(outputDir, prefix);
+		// Sanity check using the results of our local TestExecutionListener
+		assertThat(actualUniqueIds).containsExactlyInAnyOrder(expectedUniqueIds);
 
-		try {
-			List<String> actualUniqueIds = executeTests(Map.of());
-
-			// Sanity check using the results of our local TestExecutionListener
-			assertThat(actualUniqueIds).containsExactlyInAnyOrder(expectedUniqueIds);
-
-			// Check that files were not generated by the UniqueIdTrackingListener
-			assertThat(findFiles(outputDir, prefix)).isEmpty();
-		}
-		finally {
-			deleteFiles(outputDir, prefix);
-		}
+		// Check that files were not generated by the UniqueIdTrackingListener
+		assertThat(findFiles(workingDir, DEFAULT_OUTPUT_FILE_PREFIX)).isEmpty();
 	}
 
 	@Test
@@ -144,20 +149,20 @@ class UniqueIdTrackingListenerIntegrationTests {
 
 	@Test
 	void verifyUniqueIdsAreTrackedWithCustomOutputFile() throws Exception {
-		String customPrefix = "test_ids";
+		var customPrefix = "test_ids";
 		verifyUniqueIdsAreTracked("build", customPrefix, Map.of(OUTPUT_FILE_PREFIX_PROPERTY_NAME, customPrefix));
 	}
 
 	@Test
 	void verifyUniqueIdsAreTrackedWithCustomOutputDir() throws Exception {
-		String customDir = "build/UniqueIdTrackingListenerIntegrationTests";
+		var customDir = "build/UniqueIdTrackingListenerIntegrationTests";
 		verifyUniqueIdsAreTracked(customDir, DEFAULT_OUTPUT_FILE_PREFIX, Map.of(OUTPUT_DIR_PROPERTY_NAME, customDir));
 	}
 
 	@Test
 	void verifyUniqueIdsAreTrackedWithCustomOutputFileAndCustomOutputDir() throws Exception {
-		String customPrefix = "test_ids";
-		String customDir = "build/UniqueIdTrackingListenerIntegrationTests";
+		var customPrefix = "test_ids";
+		var customDir = "build/UniqueIdTrackingListenerIntegrationTests";
 
 		verifyUniqueIdsAreTracked(customDir, customPrefix,
 			Map.of(OUTPUT_DIR_PROPERTY_NAME, customDir, OUTPUT_FILE_PREFIX_PROPERTY_NAME, customPrefix));
@@ -169,66 +174,58 @@ class UniqueIdTrackingListenerIntegrationTests {
 		configurationParameters = new HashMap<>(configurationParameters);
 		configurationParameters.put(LISTENER_ENABLED_PROPERTY_NAME, "true");
 
-		deleteFiles(outputDir, prefix);
+		var actualUniqueIds = executeTests(configurationParameters);
 
-		try {
-			List<String> actualUniqueIds = executeTests(configurationParameters);
+		// Sanity check using the results of our local TestExecutionListener
+		assertThat(actualUniqueIds).containsExactlyInAnyOrder(expectedUniqueIds);
 
-			// Sanity check using the results of our local TestExecutionListener
-			assertThat(actualUniqueIds).containsExactlyInAnyOrder(expectedUniqueIds);
-
-			// Check contents of the file (or files) generated by the UniqueIdTrackingListener
-			assertThat(readAllFiles(outputDir, prefix)).containsExactlyInAnyOrder(expectedUniqueIds);
-		}
-		finally {
-			deleteFiles(outputDir, prefix);
-		}
+		// Check contents of the file (or files) generated by the UniqueIdTrackingListener
+		assertThat(readAllFiles(workingDir.resolve(outputDir), prefix)).containsExactlyInAnyOrder(expectedUniqueIds);
 	}
 
 	@Test
 	void verifyUniqueIdsAreTrackedWithConcurrentlyExecutingTestPlans() throws Exception {
-		String customDir = "build/UniqueIdTrackingListenerIntegrationTests";
-		String prefix = DEFAULT_OUTPUT_FILE_PREFIX;
+		var customDir = workingDir.resolve("build/UniqueIdTrackingListenerIntegrationTests");
+		var prefix = DEFAULT_OUTPUT_FILE_PREFIX;
 
 		Map<String, String> configurationParameters = new HashMap<>();
 		configurationParameters.put(LISTENER_ENABLED_PROPERTY_NAME, "true");
-		configurationParameters.put(OUTPUT_DIR_PROPERTY_NAME, customDir);
+		configurationParameters.put(OUTPUT_DIR_PROPERTY_NAME, customDir.toAbsolutePath().toString());
 
-		deleteFiles(customDir, prefix);
+		Stream.of(TestCase2.class, TestCase3.class, TestCase4.class).parallel()//
+				.forEach(clazz -> executeTests(configurationParameters, selectClass(clazz)));
 
-		try {
-			Stream.of(TestCase2.class, TestCase3.class, TestCase4.class).parallel()//
-					.forEach(clazz -> executeTests(configurationParameters, selectClass(clazz)));
+		// 3 output files should have been generated.
+		assertThat(findFiles(customDir, prefix)).hasSize(3);
 
-			// 3 output files should have been generated.
-			assertThat(findFiles(customDir, prefix)).hasSize(3);
-
-			// Check contents of the file (or files) generated by the UniqueIdTrackingListener
-			assertThat(readAllFiles(customDir, prefix)).containsExactlyInAnyOrder(expectedConcurrentUniqueIds);
-		}
-		finally {
-			deleteFiles(customDir, prefix);
-		}
+		// Check contents of the file (or files) generated by the UniqueIdTrackingListener
+		assertThat(readAllFiles(customDir, prefix)).containsExactlyInAnyOrder(expectedConcurrentUniqueIds);
 	}
 
-	private static List<String> executeTests(Map<String, String> configurationParameters) {
+	private List<String> executeTests(Map<String, String> configurationParameters) {
 		return executeTests(configurationParameters, selectClasses());
 	}
 
-	private static List<String> executeTests(Map<String, String> configurationParameters,
-			ClassSelector... classSelectors) {
+	private List<String> executeTests(Map<String, String> configurationParameters, ClassSelector... classSelectors) {
 		List<String> uniqueIds = new ArrayList<>();
-		LauncherDiscoveryRequest request = request()//
-				.selectors(classSelectors)//
-				.filters(includeEngines("junit-jupiter"))//
-				.configurationParameters(configurationParameters)//
-				.build();
-		LauncherFactory.create().execute(request, new TestExecutionListener() {
+		var listener = new TestExecutionListener() {
+
+			@Nullable
+			private TestPlan testPlan;
+
+			@Override
+			public void testPlanExecutionStarted(TestPlan testPlan) {
+				this.testPlan = testPlan;
+			}
 
 			@Override
 			public void executionSkipped(TestIdentifier testIdentifier, String reason) {
 				if (testIdentifier.isTest()) {
 					uniqueIds.add(testIdentifier.getUniqueId());
+				}
+				else {
+					requireNonNull(this.testPlan).getChildren(testIdentifier).forEach(
+						child -> executionSkipped(child, reason));
 				}
 			}
 
@@ -238,16 +235,25 @@ class UniqueIdTrackingListenerIntegrationTests {
 					uniqueIds.add(testIdentifier.getUniqueId());
 				}
 			}
-		});
+		};
+		var request = request()//
+				.selectors(classSelectors)//
+				.filters(includeEngines("junit-jupiter"))//
+				.configurationParameters(configurationParameters)//
+				.configurationParameter(WORKING_DIR_PROPERTY_NAME, workingDir.toAbsolutePath().toString())//
+				.forExecution()//
+				.listeners(listener)//
+				.build();
+		LauncherFactory.create().execute(request);
 		return uniqueIds;
 	}
 
 	private static ClassSelector[] selectClasses() {
-		return new ClassSelector[] { selectClass(TestCase1.class), selectClass(TestCase2.class) };
+		return new ClassSelector[] { selectClass(TestCase1.class), selectClass(TestCase2.class),
+				selectClass(DisabledTestCase.class) };
 	}
 
-	private static Stream<Path> findFiles(String dir, String prefix) throws IOException {
-		Path outputDir = Paths.get(dir);
+	private static Stream<Path> findFiles(Path outputDir, String prefix) throws IOException {
 		if (!Files.exists(outputDir)) {
 			return Stream.empty();
 		}
@@ -256,18 +262,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 					&& path.getFileName().toString().startsWith(prefix)));
 	}
 
-	private void deleteFiles(String outputDir, String prefix) throws IOException {
-		findFiles(outputDir, prefix).forEach(file -> {
-			try {
-				Files.deleteIfExists(file);
-			}
-			catch (IOException ex) {
-				throw new UncheckedIOException(ex);
-			}
-		});
-	}
-
-	private Stream<String> readAllFiles(String outputDir, String prefix) throws IOException {
+	private Stream<String> readAllFiles(Path outputDir, String prefix) throws IOException {
 		return findFiles(outputDir, prefix).map(outputFile -> {
 			try {
 				return Files.readAllLines(outputFile);
@@ -280,6 +275,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 
 	// -------------------------------------------------------------------------
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static class TestCase1 {
 
 		@Test
@@ -291,6 +287,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 		void skippedTest() {
 		}
 
+		@SuppressWarnings("DataFlowIssue")
 		@Test
 		void abortedTest() {
 			assumeTrue(false);
@@ -307,6 +304,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static class TestCase2 {
 
 		@Test
@@ -318,6 +316,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static class TestCase3 {
 
 		@Test
@@ -329,6 +328,7 @@ class UniqueIdTrackingListenerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static class TestCase4 {
 
 		@Test
@@ -337,6 +337,18 @@ class UniqueIdTrackingListenerIntegrationTests {
 
 		@Test
 		void testF() {
+		}
+	}
+
+	@Disabled
+	static class DisabledTestCase {
+
+		@Nested
+		class Inner {
+
+			@Test
+			void testG() {
+			}
 		}
 	}
 

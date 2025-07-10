@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.engine.discovery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.platform.AbstractEqualsAndHashCodeTests;
 import org.junit.platform.commons.PreconditionViolationException;
 
 /**
@@ -31,7 +31,7 @@ import org.junit.platform.commons.PreconditionViolationException;
  * @since 1.7
  */
 @DisplayName("FilePosition unit tests")
-class FilePositionTests extends AbstractEqualsAndHashCodeTests {
+class FilePositionTests {
 
 	@Test
 	@DisplayName("factory method preconditions")

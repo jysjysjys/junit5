@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.engine.support.hierarchical;
 import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.doNotSkip;
 import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.skip;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 
@@ -21,7 +22,8 @@ import org.junit.platform.engine.support.descriptor.EngineDescriptor;
  */
 public class DemoHierarchicalEngineDescriptor extends EngineDescriptor implements Node<DemoEngineExecutionContext> {
 
-	private String skippedReason;
+	private @Nullable String skippedReason;
+
 	private boolean skipped;
 	private Runnable beforeAllBehavior = () -> {
 	};

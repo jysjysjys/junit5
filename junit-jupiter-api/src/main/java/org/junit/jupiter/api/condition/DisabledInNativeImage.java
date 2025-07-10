@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -22,16 +22,23 @@ import org.apiguardian.api.API;
 
 /**
  * {@code @DisabledInNativeImage} is used to signal that the annotated test class
- * or test method is only <em>disabled</em> when executing within a GraalVM native
+ * or test method is <em>disabled</em> when executing within a GraalVM native
  * image.
  *
  * <p>When applied at the class level, all test methods within that class will
  * be disabled within a native image.
  *
- * <p>If a test method is disabled via this annotation, that does not prevent
- * the test class from being instantiated. Rather, it prevents the execution of
- * the test method and method-level lifecycle callbacks such as {@code @BeforeEach}
- * methods, {@code @AfterEach} methods, and corresponding extension APIs.
+ * <p>This annotation is not {@link java.lang.annotation.Inherited @Inherited}.
+ * Consequently, if you wish to apply the same semantics to a subclass, this
+ * annotation must be redeclared on the subclass.
+ *
+ * <p>If a test method is disabled via this annotation, that prevents execution
+ * of the test method and method-level lifecycle callbacks such as
+ * {@code @BeforeEach} methods, {@code @AfterEach} methods, and corresponding
+ * extension APIs. However, that does not prevent the test class from being
+ * instantiated, and it does not prevent the execution of class-level lifecycle
+ * callbacks such as {@code @BeforeAll} methods, {@code @AfterAll} methods, and
+ * corresponding extension APIs.
  *
  * <p>This annotation may be used as a meta-annotation in order to create a
  * custom <em>composed annotation</em> that inherits the semantics of this

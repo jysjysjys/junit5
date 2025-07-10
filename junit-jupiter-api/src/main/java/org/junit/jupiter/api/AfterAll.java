@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -25,34 +25,41 @@ import org.apiguardian.api.API;
  * executed <em>after</em> <strong>all</strong> tests in the current test class.
  *
  * <p>In contrast to {@link AfterEach @AfterEach} methods, {@code @AfterAll}
- * methods are only executed once for a given test class.
+ * methods are only executed once per execution of a given test class. If the
+ * test class is annotated with {@link ClassTemplate @ClassTemplate}, the
+ * {@code @AfterAll} methods are executed once after the last invocation of the
+ * class template. If a {@link Nested @Nested} test class is declared in a
+ * {@link ClassTemplate @ClassTemplate}, its {@code @AfterAll} methods are
+ * called once per execution of the nested test class, namely, once per
+ * invocation of the outer class template.
  *
  * <h2>Method Signatures</h2>
  *
- * <p>{@code @AfterAll} methods must have a {@code void} return type, must not
- * be {@code private}, and must be {@code static} by default. Consequently,
- * {@code @AfterAll} methods are not supported in {@link Nested @Nested} test
- * classes or as <em>interface default methods</em> unless the test class is
- * annotated with {@link TestInstance @TestInstance(Lifecycle.PER_CLASS)}.
- * However, beginning with Java 16 {@code @AfterAll} methods may be declared as
- * {@code static} in {@link Nested @Nested} test classes, and the
- * {@code Lifecycle.PER_CLASS} restriction no longer applies. {@code @AfterAll}
- * methods may optionally declare parameters to be resolved by
+ * <p>{@code @AfterAll} methods must have a {@code void} return type and must
+ * be {@code static} by default. Consequently, {@code @AfterAll} methods are
+ * not supported in {@link Nested @Nested} test classes or as <em>interface
+ * default methods</em> unless the test class is annotated with
+ * {@link TestInstance @TestInstance(Lifecycle.PER_CLASS)}. However, beginning
+ * with Java 16 {@code @AfterAll} methods may be declared as {@code static} in
+ * {@link Nested @Nested} test classes, in which case the {@code Lifecycle.PER_CLASS}
+ * restriction no longer applies. In addition, {@code @AfterAll} methods may
+ * optionally declare parameters to be resolved by
  * {@link org.junit.jupiter.api.extension.ParameterResolver ParameterResolvers}.
+ *
+ * <p>Using {@code private} visibility for {@code @AfterAll} methods is strongly
+ * discouraged and will be disallowed in a future release.
  *
  * <h2>Inheritance and Execution Order</h2>
  *
- * <p>{@code @AfterAll} methods are inherited from superclasses as long as
- * they are not <em>hidden</em> (default mode with {@code static} modifier),
- * <em>overridden</em>, or <em>superseded</em> (i.e., replaced based on
- * signature only, irrespective of Java's visibility rules). Furthermore,
- * {@code @AfterAll} methods from superclasses will be executed before
- * {@code @AfterAll} methods in subclasses.
+ * <p>{@code @AfterAll} methods are inherited from superclasses as long as they
+ * are not <em>overridden</em> according to the visibility rules of the Java
+ * language. Furthermore, {@code @AfterAll} methods from superclasses will be
+ * executed after {@code @AfterAll} methods in subclasses.
  *
- * <p>Similarly, {@code @AfterAll} methods declared in an interface are
- * inherited as long as they are not <em>hidden</em> or <em>overridden</em>,
- * and {@code @AfterAll} methods from an interface will be executed after
- * {@code @AfterAll} methods in the class that implements the interface.
+ * <p>Similarly, {@code @AfterAll} methods declared in an interface are inherited
+ * as long as they are not overridden, and {@code @AfterAll} methods from an
+ * interface will be executed after {@code @AfterAll} methods in the class that
+ * implements the interface.
  *
  * <p>JUnit Jupiter does not guarantee the execution order of multiple
  * {@code @AfterAll} methods that are declared within a single test class or

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.engine.support.discovery;
 
+import static java.util.Objects.requireNonNullElse;
 import static java.util.stream.Collectors.joining;
 import static org.junit.platform.commons.util.CollectionUtils.getOnlyElement;
 import static org.junit.platform.engine.SelectorResolutionResult.failed;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.junit.platform.engine.DiscoverySelector;
@@ -120,46 +122,46 @@ class EngineDiscoveryRequestResolution {
 		if (resolvedSelectors.containsKey(selector)) {
 			return Optional.of(resolvedSelectors.get(selector));
 		}
-		if (selector instanceof UniqueIdSelector) {
-			return resolveUniqueId((UniqueIdSelector) selector);
+		if (selector instanceof UniqueIdSelector uniqueIdSelector) {
+			return resolveUniqueId(uniqueIdSelector);
 		}
 		return resolve(selector, resolver -> {
 			Context context = getContext(selector);
-			if (selector instanceof ClasspathResourceSelector) {
-				return resolver.resolve((ClasspathResourceSelector) selector, context);
+			if (selector instanceof ClasspathResourceSelector classpathResourceSelector) {
+				return resolver.resolve(classpathResourceSelector, context);
 			}
-			if (selector instanceof ClasspathRootSelector) {
-				return resolver.resolve((ClasspathRootSelector) selector, context);
+			if (selector instanceof ClasspathRootSelector classpathRootSelector) {
+				return resolver.resolve(classpathRootSelector, context);
 			}
-			if (selector instanceof ClassSelector) {
-				return resolver.resolve((ClassSelector) selector, context);
+			if (selector instanceof ClassSelector classSelector) {
+				return resolver.resolve(classSelector, context);
 			}
-			if (selector instanceof IterationSelector) {
-				return resolver.resolve((IterationSelector) selector, context);
+			if (selector instanceof IterationSelector iterationSelector) {
+				return resolver.resolve(iterationSelector, context);
 			}
-			if (selector instanceof NestedClassSelector) {
-				return resolver.resolve((NestedClassSelector) selector, context);
+			if (selector instanceof NestedClassSelector nestedClassSelector) {
+				return resolver.resolve(nestedClassSelector, context);
 			}
-			if (selector instanceof DirectorySelector) {
-				return resolver.resolve((DirectorySelector) selector, context);
+			if (selector instanceof DirectorySelector directorySelector) {
+				return resolver.resolve(directorySelector, context);
 			}
-			if (selector instanceof FileSelector) {
-				return resolver.resolve((FileSelector) selector, context);
+			if (selector instanceof FileSelector fileSelector) {
+				return resolver.resolve(fileSelector, context);
 			}
-			if (selector instanceof MethodSelector) {
-				return resolver.resolve((MethodSelector) selector, context);
+			if (selector instanceof MethodSelector methodSelector) {
+				return resolver.resolve(methodSelector, context);
 			}
-			if (selector instanceof NestedMethodSelector) {
-				return resolver.resolve((NestedMethodSelector) selector, context);
+			if (selector instanceof NestedMethodSelector nestedMethodSelector) {
+				return resolver.resolve(nestedMethodSelector, context);
 			}
-			if (selector instanceof ModuleSelector) {
-				return resolver.resolve((ModuleSelector) selector, context);
+			if (selector instanceof ModuleSelector moduleSelector) {
+				return resolver.resolve(moduleSelector, context);
 			}
-			if (selector instanceof PackageSelector) {
-				return resolver.resolve((PackageSelector) selector, context);
+			if (selector instanceof PackageSelector packageSelector) {
+				return resolver.resolve(packageSelector, context);
 			}
-			if (selector instanceof UriSelector) {
-				return resolver.resolve((UriSelector) selector, context);
+			if (selector instanceof UriSelector uriSelector) {
+				return resolver.resolve(uriSelector, context);
 			}
 			return resolver.resolve(selector, context);
 		});
@@ -199,18 +201,16 @@ class EngineDiscoveryRequestResolution {
 
 	private class DefaultContext implements Context {
 
+		@Nullable
 		private final TestDescriptor parent;
 
-		DefaultContext(TestDescriptor parent) {
+		DefaultContext(@Nullable TestDescriptor parent) {
 			this.parent = parent;
 		}
 
 		@Override
 		public <T extends TestDescriptor> Optional<T> addToParent(Function<TestDescriptor, Optional<T>> creator) {
-			if (parent != null) {
-				return createAndAdd(parent, creator);
-			}
-			return createAndAdd(engineDescriptor, creator);
+			return createAndAdd(requireNonNullElse(parent, engineDescriptor), creator);
 		}
 
 		@Override

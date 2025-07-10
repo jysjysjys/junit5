@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -28,6 +28,7 @@ import org.junit.platform.commons.PreconditionViolationException;
  */
 class TestTagTests {
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void validSyntax() {
 		// @formatter:off
@@ -65,6 +66,7 @@ class TestTagTests {
 		assertEquals("foo-tag", TestTag.create("\t  foo-tag  \n").getName());
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void factoryPreconditions() {
 		assertSyntaxViolation(null);
@@ -89,11 +91,11 @@ class TestTagTests {
 	}
 
 	private static void yep(String tag) {
-		assertTrue(TestTag.isValid(tag), () -> String.format("'%s' should be a valid tag", tag));
+		assertTrue(TestTag.isValid(tag), () -> "'%s' should be a valid tag".formatted(tag));
 	}
 
 	private static void nope(String tag) {
-		assertFalse(TestTag.isValid(tag), () -> String.format("'%s' should not be a valid tag", tag));
+		assertFalse(TestTag.isValid(tag), () -> "'%s' should not be a valid tag".formatted(tag));
 	}
 
 	private void assertSyntaxViolation(String tag) {

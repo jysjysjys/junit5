@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,11 @@
 
 package org.junit.platform.launcher.core;
 
+import static java.util.Objects.requireNonNull;
+
+import java.util.Optional;
+
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
@@ -25,9 +30,12 @@ class OutcomeDelayingEngineExecutionListener extends DelegatingEngineExecutionLi
 	private final TestDescriptor engineDescriptor;
 
 	private volatile boolean engineStarted;
-	private volatile Outcome outcome;
-	private volatile String skipReason;
-	private volatile TestExecutionResult executionResult;
+
+	private volatile @Nullable Outcome outcome;
+
+	private volatile @Nullable String skipReason;
+
+	private volatile @Nullable TestExecutionResult executionResult;
 
 	OutcomeDelayingEngineExecutionListener(EngineExecutionListener delegate, TestDescriptor engineDescriptor) {
 		super(delegate);
@@ -66,20 +74,23 @@ class OutcomeDelayingEngineExecutionListener extends DelegatingEngineExecutionLi
 
 	void reportEngineOutcome() {
 		if (outcome == Outcome.FINISHED) {
-			super.executionFinished(engineDescriptor, executionResult);
+			super.executionFinished(engineDescriptor, requireNonNull(executionResult));
 		}
 		else if (outcome == Outcome.SKIPPED) {
-			super.executionSkipped(engineDescriptor, skipReason);
+			super.executionSkipped(engineDescriptor, requireNonNull(skipReason));
+		}
+	}
+
+	void reportEngineStartIfNecessary() {
+		if (!engineStarted) {
+			super.executionStarted(engineDescriptor);
 		}
 	}
 
 	void reportEngineFailure(Throwable throwable) {
-		if (!engineStarted) {
-			super.executionStarted(engineDescriptor);
-		}
-		if (executionResult != null && executionResult.getThrowable().isPresent()) {
-			throwable.addSuppressed(executionResult.getThrowable().get());
-		}
+		Optional.ofNullable(this.executionResult) //
+				.flatMap(TestExecutionResult::getThrowable) //
+				.ifPresent(throwable::addSuppressed);
 		super.executionFinished(engineDescriptor, TestExecutionResult.failed(throwable));
 	}
 

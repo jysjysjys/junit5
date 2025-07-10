@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.vintage.engine.descriptor;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.runner.Description;
 
 @API(status = API.Status.INTERNAL, since = "5.8")
@@ -19,7 +20,7 @@ public class DescriptionUtils {
 	private DescriptionUtils() {
 	}
 
-	public static String getMethodName(Description description) {
+	public static @Nullable String getMethodName(Description description) {
 		String displayName = description.getDisplayName();
 		int i = displayName.indexOf('(');
 		if (i >= 0) {

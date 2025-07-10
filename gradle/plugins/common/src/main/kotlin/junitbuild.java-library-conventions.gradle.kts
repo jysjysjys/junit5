@@ -1,45 +1,77 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import junitbuild.java.ModuleCompileOptions
-import junitbuild.java.ModulePathArgumentProvider
-import junitbuild.java.PatchModuleArgumentProvider
+import junitbuild.extensions.dependencyFromLibs
+import junitbuild.extensions.isSnapshot
+import org.gradle.plugins.ide.eclipse.model.Classpath
+import org.gradle.plugins.ide.eclipse.model.Library
+import org.gradle.plugins.ide.eclipse.model.ProjectDependency
+import org.gradle.plugins.ide.eclipse.model.SourceFolder
 
 plugins {
 	`java-library`
 	eclipse
 	idea
-	checkstyle
 	id("junitbuild.base-conventions")
+	id("junitbuild.build-parameters")
+	id("junitbuild.checkstyle-conventions")
 	id("junitbuild.jacoco-java-conventions")
+	id("org.openrewrite.rewrite")
+}
+
+rewrite {
+	activeRecipe("org.openrewrite.java.migrate.UpgradeToJava17")
+}
+
+dependencies {
+	rewrite(platform(dependencyFromLibs("openrewrite-recipe-bom")))
+	rewrite("org.openrewrite.recipe:rewrite-migrate-java")
 }
 
 val mavenizedProjects: List<Project> by rootProject.extra
-val modularProjects: List<Project> by rootProject.extra
 val buildDate: String by rootProject.extra
 val buildTime: String by rootProject.extra
 val buildRevision: Any by rootProject.extra
-val builtByValue: String by rootProject.extra
 
 val extension = extensions.create<JavaLibraryExtension>("javaLibrary")
 
-val moduleSourceDir = file("src/module/$javaModuleName")
-val combinedModuleSourceDir = layout.buildDirectory.dir("module")
-val moduleOutputDir = file("$buildDir/classes/java/module")
-val javaVersion = JavaVersion.current()
-
 eclipse {
 	jdt {
+		sourceCompatibility = JavaVersion.VERSION_21
+		targetCompatibility = JavaVersion.VERSION_21
 		file {
 			// Set properties for org.eclipse.jdt.core.prefs
 			withProperties {
+				// Configure Eclipse projects with -release compiler flag.
+				setProperty("org.eclipse.jdt.core.compiler.release", "enabled")
 				// Configure Eclipse projects with -parameters compiler flag.
 				setProperty("org.eclipse.jdt.core.compiler.codegen.methodParameters", "generate")
 			}
 		}
 	}
+	classpath.file.whenMerged {
+		this as Classpath
+		// Remove classpath entries for non-existent libraries added by various
+		// plugins, such as "junit-jupiter-api/build/classes/kotlin/testFixtures".
+		entries.removeIf { it is Library && !file(it.path).exists() }
+		// Remove classpath entries for the code generator model used by the
+		// Java Template Engine (JTE) which is used to generate the JRE enum and
+		// dependent tests.
+		entries.removeIf { it is ProjectDependency && it.path.equals("/code-generator-model") }
+		// Remove classpath entries for anything used by the Gradle Wrapper.
+		entries.removeIf { it is Library && it.path.contains("gradle/wrapper") }
+		entries.filterIsInstance<SourceFolder>().forEach {
+			it.excludes.add("**/module-info.java")
+		}
+		entries.filterIsInstance<ProjectDependency>().forEach {
+			it.entryAttributes.remove("module")
+		}
+		entries.filterIsInstance<Library>().forEach {
+			it.entryAttributes.remove("module")
+		}
+	}
 }
 
 java {
-	modularity.inferModulePath.set(false)
+	modularity.inferModulePath = true
 }
 
 if (project in mavenizedProjects) {
@@ -80,9 +112,6 @@ if (project in mavenizedProjects) {
 	}
 
 	tasks.named<Jar>("sourcesJar").configure {
-		from(moduleSourceDir) {
-			include("module-info.java")
-		}
 		duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	}
 
@@ -102,8 +131,19 @@ if (project in mavenizedProjects) {
 					}
 				}
 				pom {
-					description.set(provider { "Module \"${project.name}\" of JUnit 5." })
+					description = provider { "Module \"${project.name}\" of JUnit" }
 				}
+			}
+		}
+	}
+
+	if (!project.version.isSnapshot()) {
+		configurations {
+			compileClasspath {
+				resolutionStrategy.failOnChangingVersions()
+			}
+			runtimeClasspath {
+				resolutionStrategy.failOnChangingVersions()
 			}
 		}
 	}
@@ -122,8 +162,12 @@ if (project in mavenizedProjects) {
 tasks.withType<AbstractArchiveTask>().configureEach {
 	isPreserveFileTimestamps = false
 	isReproducibleFileOrder = true
-	dirMode = Integer.parseInt("0755", 8)
-	fileMode = Integer.parseInt("0644", 8)
+	dirPermissions {
+		unix("rwxr-xr-x")
+	}
+	filePermissions {
+		unix("rw-r--r--")
+	}
 }
 
 normalization {
@@ -141,70 +185,26 @@ normalization {
 	}
 }
 
-val allMainClasses by tasks.registering {
-	dependsOn(tasks.classes)
-}
-
-val prepareModuleSourceDir by tasks.registering(Sync::class) {
-    from(moduleSourceDir)
-    from(sourceSets.matching { it.name.startsWith("main") }.map { it.allJava })
-    into(combinedModuleSourceDir.map { it.dir(javaModuleName) })
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-val compileModule by tasks.registering(JavaCompile::class) {
-	dependsOn(allMainClasses)
-    enabled = project in modularProjects
-	source = fileTree(combinedModuleSourceDir).builtBy(prepareModuleSourceDir)
-	destinationDirectory.set(moduleOutputDir)
-	sourceCompatibility = "9"
-	targetCompatibility = "9"
-	classpath = files()
-	options.release.set(9)
-	options.compilerArgs.addAll(listOf(
-			// Suppress warnings for automatic modules: org.apiguardian.api, org.opentest4j
-			"-Xlint:all,-requires-automatic,-requires-transitive-automatic",
-			"-Werror", // Terminates compilation when warnings occur.
-			"--module-version", "${project.version}",
-	))
-
-    val moduleOptions = objects.newInstance(ModuleCompileOptions::class)
-    extensions.add("moduleOptions", moduleOptions)
-    moduleOptions.modulePath.from(configurations.compileClasspath)
-
-	options.compilerArgumentProviders.add(objects.newInstance(ModulePathArgumentProvider::class, project, combinedModuleSourceDir, modularProjects).apply {
-        modulePath.from(moduleOptions.modulePath)
-    })
-	options.compilerArgumentProviders.addAll(modularProjects.map { objects.newInstance(PatchModuleArgumentProvider::class, project, it) })
-
-	modularity.inferModulePath.set(false)
-
-    doFirst {
-        options.allCompilerArgs.forEach {
-            logger.info(it)
-        }
-    }
-}
-
 tasks.withType<Jar>().configureEach {
 	from(rootDir) {
-		include("LICENSE.md", "LICENSE-notice.md")
+		include("LICENSE.md")
 		into("META-INF")
 	}
-	val suffix = archiveClassifier.getOrElse("")
-	if (suffix.isBlank() || this is ShadowJar) {
-		dependsOn(allMainClasses, compileModule)
-		from("$moduleOutputDir/$javaModuleName") {
-			include("module-info.class")
+	from(rootDir) {
+		include("NOTICE.md")
+		rename {
+			"LICENSE-notice.md"
 		}
+		into("META-INF")
 	}
 }
 
 tasks.jar {
 	manifest {
 		attributes(
-				"Created-By" to "${System.getProperty("java.version")} (${System.getProperty("java.vendor")} ${System.getProperty("java.vm.version")})",
-				"Built-By" to builtByValue,
+				"Created-By" to (buildParameters.manifest.createdBy.orNull
+					?: "${System.getProperty("java.version")} (${System.getProperty("java.vendor")} ${System.getProperty("java.vm.version")})"),
+				"Built-By" to buildParameters.manifest.builtBy.orElse("JUnit Team"),
 				"Build-Date" to buildDate,
 				"Build-Time" to buildTime,
 				"Build-Revision" to buildRevision,
@@ -224,90 +224,70 @@ tasks.withType<ShadowJar>().configureEach {
 
 tasks.withType<JavaCompile>().configureEach {
 	options.encoding = "UTF-8"
+	options.compilerArgs.addAll(listOf(
+		"-Xlint:all", // Enables all recommended warnings.
+		"-Werror", // Terminates compilation when warnings occur.
+		"-parameters", // Generates metadata for reflection on method parameters.
+	))
 }
 
 tasks.compileJava {
-	// See: https://docs.oracle.com/en/java/javase/12/tools/javac.html
 	options.compilerArgs.addAll(listOf(
-			"-Xlint:all", // Enables all recommended warnings.
-			"-Werror" // Terminates compilation when warnings occur.
+		"--module-version", "${project.version}"
 	))
 }
 
-tasks.compileTestJava {
-	// See: https://docs.oracle.com/en/java/javase/12/tools/javac.html
-	options.compilerArgs.addAll(listOf(
-			"-Xlint", // Enables all recommended warnings.
-			"-Xlint:-overrides", // Disables "method overrides" warnings.
-			"-Werror", // Terminates compilation when warnings occur.
-			"-parameters" // Generates metadata for reflection on method parameters.
-	))
+configurations {
+	apiElements {
+		attributes {
+			attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, extension.mainJavaVersion.map { it.majorVersion.toInt() })
+		}
+	}
+	runtimeElements {
+		attributes {
+			attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, extension.mainJavaVersion.map { it.majorVersion.toInt() })
+		}
+	}
+}
+
+tasks {
+	compileJava {
+		options.release = extension.mainJavaVersion.map { it.majorVersion.toInt() }
+	}
+	compileTestJava {
+		options.release = extension.testJavaVersion.map { it.majorVersion.toInt() }
+	}
 }
 
 afterEvaluate {
-	configurations {
-		apiElements {
-			attributes {
-				attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, extension.mainJavaVersion.majorVersion.toInt())
-			}
-		}
-		runtimeElements {
-			attributes {
-				attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, extension.mainJavaVersion.majorVersion.toInt())
-			}
-		}
-	}
-	tasks {
-		compileJava {
-			if (extension.configureRelease) {
-				options.release.set(extension.mainJavaVersion.majorVersion.toInt())
-			} else {
-				sourceCompatibility = extension.mainJavaVersion.majorVersion
-				targetCompatibility = extension.mainJavaVersion.majorVersion
-			}
-		}
-		compileTestJava {
-			if (extension.configureRelease) {
-				options.release.set(extension.testJavaVersion.majorVersion.toInt())
-			} else {
-				sourceCompatibility = extension.testJavaVersion.majorVersion
-				targetCompatibility = extension.testJavaVersion.majorVersion
-			}
-		}
-	}
 	pluginManager.withPlugin("groovy") {
 		tasks.named<GroovyCompile>("compileGroovy").configure {
 			// Groovy compiler does not support the --release flag.
-			sourceCompatibility = extension.mainJavaVersion.majorVersion
-			targetCompatibility = extension.mainJavaVersion.majorVersion
+			sourceCompatibility = extension.mainJavaVersion.get().majorVersion
+			targetCompatibility = extension.mainJavaVersion.get().majorVersion
 		}
-		tasks.named<GroovyCompile>("compileTestGroovy").configure {
+		tasks.withType<GroovyCompile>().named { it.startsWith("compileTest") }.configureEach {
 			// Groovy compiler does not support the --release flag.
-			sourceCompatibility = extension.testJavaVersion.majorVersion
-			targetCompatibility = extension.testJavaVersion.majorVersion
+			sourceCompatibility = extension.testJavaVersion.get().majorVersion
+			targetCompatibility = extension.testJavaVersion.get().majorVersion
 		}
 	}
-}
-
-checkstyle {
-	toolVersion = requiredVersionFromLibs("checkstyle")
-	configDirectory.set(rootProject.layout.projectDirectory.dir("gradle/config/checkstyle"))
 }
 
 tasks {
 	checkstyleMain {
-        config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleMain.xml"))
+		config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleMain.xml"))
 	}
 	checkstyleTest {
-        config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleTest.xml"))
+		config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleTest.xml"))
 	}
 }
 
 pluginManager.withPlugin("java-test-fixtures") {
 	tasks.named<Checkstyle>("checkstyleTestFixtures") {
-        config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleTest.xml"))
+		config = resources.text.fromFile(checkstyle.configDirectory.file("checkstyleTest.xml"))
 	}
 	tasks.named<JavaCompile>("compileTestFixturesJava") {
-		options.release.set(extension.testJavaVersion.majorVersion.toInt())
+		options.release = extension.testJavaVersion.map { it.majorVersion.toInt() }
 	}
 }

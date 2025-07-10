@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.platform.engine.support.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 
 import java.io.File;
 import java.util.stream.Stream;
@@ -33,6 +34,7 @@ class FileSystemSourceTests extends AbstractTestSourceTests {
 			FileSource.from(new File("file.and.position"), FilePosition.from(42, 23)));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void nullSourceFileOrDirectoryYieldsException() {
 		assertThrows(PreconditionViolationException.class, () -> FileSource.from(null));

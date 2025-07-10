@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,10 +18,12 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 
 /**
@@ -52,6 +54,23 @@ public class Event {
 	}
 
 	/**
+	 * Create an {@code Event} for a published file for the supplied
+	 * {@link TestDescriptor} and {@link FileEntry}.
+	 *
+	 * @param testDescriptor the {@code TestDescriptor} associated with the event;
+	 * never {@code null}
+	 * @param file the {@code FileEntry} that was published; never {@code null}
+	 * @return the newly created {@code Event}
+	 * @since 1.12
+	 * @see EventType#FILE_ENTRY_PUBLISHED
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public static Event fileEntryPublished(TestDescriptor testDescriptor, FileEntry file) {
+		Preconditions.notNull(file, "FileEntry must not be null");
+		return new Event(EventType.FILE_ENTRY_PUBLISHED, testDescriptor, file);
+	}
+
+	/**
 	 * Create an {@code Event} for the dynamic registration of the
 	 * supplied {@link TestDescriptor}.
 	 *
@@ -74,7 +93,7 @@ public class Event {
 	 * @return the newly created {@code Event}
 	 * @see EventType#SKIPPED
 	 */
-	public static Event executionSkipped(TestDescriptor testDescriptor, String reason) {
+	public static Event executionSkipped(TestDescriptor testDescriptor, @Nullable String reason) {
 		return new Event(EventType.SKIPPED, testDescriptor, reason);
 	}
 
@@ -82,8 +101,8 @@ public class Event {
 	 * Create a <em>started</em> {@code Event} for the supplied
 	 * {@link TestDescriptor}.
 	 *
-	 * @param testDescriptor the {@code TestDescriptor} associated with the
-	 * event; never {@code null}
+	 * @param testDescriptor the {@code TestDescriptor} associated with the event;
+	 * never {@code null}
 	 * @return the newly created {@code Event}
 	 * @see EventType#STARTED
 	 */
@@ -95,8 +114,8 @@ public class Event {
 	 * Create a <em>finished</em> {@code Event} for the supplied
 	 * {@link TestDescriptor} and {@link TestExecutionResult}.
 	 *
-	 * @param testDescriptor the {@code TestDescriptor} associated with the
-	 * event; never {@code null}
+	 * @param testDescriptor the {@code TestDescriptor} associated with the event;
+	 * never {@code null}
 	 * @param result the {@code TestExecutionResult} for the supplied
 	 * {@code TestDescriptor}; never {@code null}
 	 * @return the newly created {@code Event}
@@ -151,7 +170,8 @@ public class Event {
 	private final Instant timestamp = Instant.now();
 	private final EventType type;
 	private final TestDescriptor testDescriptor;
-	private final Object payload;
+
+	private final @Nullable Object payload;
 
 	/**
 	 * Construct an {@code Event} with the supplied arguments.
@@ -161,7 +181,7 @@ public class Event {
 	 * never {@code null}
 	 * @param payload the generic payload associated with the event; may be {@code null}
 	 */
-	private Event(EventType type, TestDescriptor testDescriptor, Object payload) {
+	private Event(EventType type, TestDescriptor testDescriptor, @Nullable Object payload) {
 		this.type = Preconditions.notNull(type, "EventType must not be null");
 		this.testDescriptor = Preconditions.notNull(testDescriptor, "TestDescriptor must not be null");
 		this.payload = payload;

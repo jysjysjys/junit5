@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.launcher;
 
-import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.apiguardian.api.API.Status.STABLE;
 import static org.junit.platform.engine.FilterResult.includedIf;
@@ -128,20 +127,19 @@ public class EngineFilter implements Filter<TestEngine> {
 
 		if (this.type == Type.INCLUDE) {
 			return includedIf(this.engineIds.stream().anyMatch(engineId::equals), //
-				() -> String.format("Engine ID [%s] is in included list [%s]", engineId, this.engineIds), //
-				() -> String.format("Engine ID [%s] is not in included list [%s]", engineId, this.engineIds));
+				() -> "Engine ID [%s] is in included list [%s]".formatted(engineId, this.engineIds), //
+				() -> "Engine ID [%s] is not in included list [%s]".formatted(engineId, this.engineIds));
 		}
 		else {
 			return includedIf(this.engineIds.stream().noneMatch(engineId::equals), //
-				() -> String.format("Engine ID [%s] is not in excluded list [%s]", engineId, this.engineIds), //
-				() -> String.format("Engine ID [%s] is in excluded list [%s]", engineId, this.engineIds));
+				() -> "Engine ID [%s] is not in excluded list [%s]".formatted(engineId, this.engineIds), //
+				() -> "Engine ID [%s] is in excluded list [%s]".formatted(engineId, this.engineIds));
 		}
 	}
 
 	@Override
 	public String toString() {
-		return String.format("%s that %s engines with IDs %s", getClass().getSimpleName(), this.type.verb,
-			this.engineIds);
+		return "%s that %s engines with IDs %s".formatted(getClass().getSimpleName(), this.type.verb, this.engineIds);
 	}
 
 	private static List<String> validateAndTrim(List<String> engineIds) {
@@ -149,9 +147,9 @@ public class EngineFilter implements Filter<TestEngine> {
 
 		// @formatter:off
 		return engineIds.stream()
-				.map(id -> Preconditions.notBlank(id, "engine ID must not be null or blank").trim())
+				.map(id -> Preconditions.notBlank(id, "engine ID must not be null or blank").strip())
 				.distinct()
-				.collect(toList());
+				.toList();
 		// @formatter:on
 	}
 

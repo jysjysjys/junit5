@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,11 @@
 
 package org.junit.platform.suite.engine.testcases;
 
+import java.nio.file.Files;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestReporter;
+import org.junit.jupiter.api.extension.MediaType;
 
 /**
  * @since 1.8
@@ -18,6 +22,7 @@ import org.junit.jupiter.api.Test;
 public class SingleTestTestCase {
 
 	@Test
-	void test() {
+	void test(TestReporter testReporter) {
+		testReporter.publishFile("test.txt", MediaType.TEXT_PLAIN_UTF_8, file -> Files.writeString(file, "test"));
 	}
 }

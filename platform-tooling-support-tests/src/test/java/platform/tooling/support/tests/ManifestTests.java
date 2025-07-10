@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,6 +21,7 @@ import aQute.bnd.osgi.Domain;
 import aQute.bnd.osgi.Jar;
 import aQute.bnd.version.MavenVersion;
 
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.osgi.framework.Version;
@@ -32,12 +33,13 @@ import platform.tooling.support.MavenRepo;
 /**
  * @since 1.5
  */
+@Order(Integer.MAX_VALUE)
 class ManifestTests {
 
 	@ParameterizedTest
 	@MethodSource("platform.tooling.support.Helper#loadModuleDirectoryNames")
 	void manifestEntriesAdhereToConventions(String module) throws Exception {
-		var version = Helper.version(module);
+		var version = Helper.version();
 		var jarFile = MavenRepo.jar(module).toFile();
 		try (var jar = new Jar(jarFile)) {
 			var manifest = jar.getManifest();
@@ -54,10 +56,8 @@ class ManifestTests {
 			assertValue(attributes, "Bundle-SymbolicName", module);
 			assertValue(attributes, "Bundle-Version",
 				MavenVersion.parseMavenString(version).getOSGiVersion().toString());
-			switch (module) {
-				case "junit-platform-commons" -> assertValue(attributes, "Multi-Release", "true");
-				case "junit-platform-console" ->
-					assertValue(attributes, "Main-Class", "org.junit.platform.console.ConsoleLauncher");
+			if (module.equals("junit-platform-console")) {
+				assertValue(attributes, "Main-Class", "org.junit.platform.console.ConsoleLauncher");
 			}
 			var domain = Domain.domain(manifest);
 			domain.getExportPackage().forEach((pkg, attrs) -> {
@@ -86,6 +86,6 @@ class ManifestTests {
 	private static void assertValue(Attributes attributes, String name, String expected) {
 		var actual = attributes.getValue(name);
 		assertEquals(expected, actual,
-			String.format("Manifest attribute %s expected to be %s, but is: %s", name, expected, actual));
+			"Manifest attribute %s expected to be %s, but is: %s".formatted(name, expected, actual));
 	}
 }

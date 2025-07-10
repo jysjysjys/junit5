@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,7 +30,9 @@ import org.junit.platform.commons.annotation.Testable;
  *
  * <p>{@code @TestFactory} methods must not be {@code private} or {@code static}
  * and must return a {@code Stream}, {@code Collection}, {@code Iterable},
- * {@code Iterator}, or array of {@link DynamicNode} instances. Supported
+ * {@code Iterator}, array of {@link DynamicNode} instances, or any type that
+ * provides an {@link java.util.Iterator Iterator}-returning {@code iterator()}
+ * method (such as, for example, a {@code kotlin.sequences.Sequence}). Supported
  * subclasses of {@code DynamicNode} include {@link DynamicContainer} and
  * {@link DynamicTest}. <em>Dynamic tests</em> will be executed lazily,
  * enabling dynamic and even non-deterministic generation of test cases.
@@ -42,6 +44,13 @@ import org.junit.platform.commons.annotation.Testable;
  * <p>{@code @TestFactory} methods may optionally declare parameters to be
  * resolved by {@link org.junit.jupiter.api.extension.ParameterResolver
  * ParameterResolvers}.
+ *
+ * <h2>Inheritance</h2>
+ *
+ * <p>{@code @TestFactory} methods are inherited from superclasses as long as
+ * they are not <em>overridden</em> according to the visibility rules of the Java
+ * language. Similarly, {@code @TestFactory} methods declared as <em>interface
+ * default methods</em> are inherited as long as they are not overridden.
  *
  * <h2>Test Execution Order</h2>
  *

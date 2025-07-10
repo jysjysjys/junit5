@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,17 +10,21 @@
 
 package org.junit.platform.launcher.listeners;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static java.util.Objects.requireNonNull;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.engine.ConfigurationParameters;
@@ -87,7 +91,7 @@ import org.junit.platform.launcher.TestPlan;
  *
  * @since 1.8
  */
-@API(status = EXPERIMENTAL, since = "1.8")
+@API(status = STABLE, since = "1.11")
 public class UniqueIdTrackingListener implements TestExecutionListener {
 
 	/**
@@ -125,11 +129,15 @@ public class UniqueIdTrackingListener implements TestExecutionListener {
 	 */
 	public static final String DEFAULT_OUTPUT_FILE_PREFIX = "junit-platform-unique-ids";
 
+	static final String WORKING_DIR_PROPERTY_NAME = "junit.platform.listeners.uid.tracking.working.dir";
+
 	private final Logger logger = LoggerFactory.getLogger(UniqueIdTrackingListener.class);
 
 	private final List<String> uniqueIds = new ArrayList<>();
 
 	private boolean enabled;
+
+	private @Nullable TestPlan testPlan;
 
 	public UniqueIdTrackingListener() {
 		// to avoid missing-explicit-ctor warning
@@ -138,22 +146,38 @@ public class UniqueIdTrackingListener implements TestExecutionListener {
 	@Override
 	public void testPlanExecutionStarted(TestPlan testPlan) {
 		this.enabled = testPlan.getConfigurationParameters().getBoolean(LISTENER_ENABLED_PROPERTY_NAME).orElse(false);
+		this.testPlan = testPlan;
 	}
 
 	@Override
 	public void executionSkipped(TestIdentifier testIdentifier, String reason) {
-		trackTestUid(testIdentifier);
+		if (this.enabled) {
+			// When a container is skipped, there are no events for its children.
+			// Therefore, in order to track them, we need to traverse the subtree.
+			trackTestUidRecursively(testIdentifier);
+		}
 	}
 
 	@Override
 	public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
-		trackTestUid(testIdentifier);
+		if (this.enabled) {
+			trackTestUid(testIdentifier);
+		}
 	}
 
-	private void trackTestUid(TestIdentifier testIdentifier) {
-		if (this.enabled && testIdentifier.isTest()) {
-			this.uniqueIds.add(testIdentifier.getUniqueId());
+	private void trackTestUidRecursively(TestIdentifier testIdentifier) {
+		boolean tracked = trackTestUid(testIdentifier);
+		if (!tracked) {
+			requireNonNull(this.testPlan).getChildren(testIdentifier).forEach(this::trackTestUidRecursively);
 		}
+	}
+
+	private boolean trackTestUid(TestIdentifier testIdentifier) {
+		if (testIdentifier.isTest()) {
+			this.uniqueIds.add(testIdentifier.getUniqueId());
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -178,12 +202,15 @@ public class UniqueIdTrackingListener implements TestExecutionListener {
 				logger.error(ex, () -> "Failed to write unique IDs to output file " + outputFile.toAbsolutePath());
 			}
 		}
+		this.testPlan = null;
 	}
 
 	private Path createOutputFile(ConfigurationParameters configurationParameters) {
 		String prefix = configurationParameters.get(OUTPUT_FILE_PREFIX_PROPERTY_NAME) //
 				.orElse(DEFAULT_OUTPUT_FILE_PREFIX);
-		return OutputDir.create(configurationParameters.get(OUTPUT_DIR_PROPERTY_NAME)) //
+		Supplier<Path> workingDirSupplier = () -> configurationParameters.get(WORKING_DIR_PROPERTY_NAME).map(
+			Paths::get).orElseGet(() -> Path.of("."));
+		return OutputDir.create(configurationParameters.get(OUTPUT_DIR_PROPERTY_NAME), workingDirSupplier) //
 				.createFile(prefix, "txt");
 	}
 

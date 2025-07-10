@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,7 @@ import static java.lang.String.join;
 import static java.util.Collections.synchronizedList;
 
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -250,7 +251,7 @@ class MutableTestExecutionSummary implements TestExecutionSummary {
 		seenThrowables.add(throwable);
 
 		StackTraceElement[] trace = throwable.getStackTrace();
-		if (parentTrace != null && parentTrace.length > 0) {
+		if (parentTrace.length > 0) {
 			writer.printf("%s%s%s%n", indentation, caption, throwable);
 		}
 		int duplicates = numberOfCommonFrames(trace, parentTrace);
@@ -282,17 +283,10 @@ class MutableTestExecutionSummary implements TestExecutionSummary {
 		return currentTrace.length - 1 - currentIndex;
 	}
 
-	private static class DefaultFailure implements Failure {
+	private record DefaultFailure(TestIdentifier testIdentifier, Throwable exception) implements Failure {
 
+		@Serial
 		private static final long serialVersionUID = 1L;
-
-		private final TestIdentifier testIdentifier;
-		private final Throwable exception;
-
-		DefaultFailure(TestIdentifier testIdentifier, Throwable exception) {
-			this.testIdentifier = testIdentifier;
-			this.exception = exception;
-		}
 
 		@Override
 		public TestIdentifier getTestIdentifier() {

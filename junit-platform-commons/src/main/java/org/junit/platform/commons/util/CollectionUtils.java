@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,29 +12,28 @@ package org.junit.platform.commons.util;
 
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterators.spliteratorUnknownSize;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.junit.platform.commons.support.ReflectionSupport.invokeMethod;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Set;
+import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.stream.Collector;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.support.ReflectionSupport;
 
 /**
  * Collection of utilities for working with {@link Collection Collections}.
@@ -55,7 +54,7 @@ public final class CollectionUtils {
 	}
 
 	/**
-	 * Read the only element of a collection of size 1.
+	 * Get the only element of a collection of size 1.
 	 *
 	 * @param collection the collection to get the element from
 	 * @return the only element of the collection
@@ -66,52 +65,29 @@ public final class CollectionUtils {
 		Preconditions.notNull(collection, "collection must not be null");
 		Preconditions.condition(collection.size() == 1,
 			() -> "collection must contain exactly one element: " + collection);
-		return collection.iterator().next();
+		return firstElement(collection);
 	}
 
 	/**
-	 * Convert the supplied array of values to a {@link Set}.
+	 * Get the first element of the supplied collection unless it's empty.
 	 *
-	 * @param values the array of values; never {@code null}
-	 * @return a set of the values
-	 * @throws PreconditionViolationException if the array is {@code null}
-	 * @since 1.6
+	 * @param collection the collection to get the element from
+	 * @return the first element of the collection; empty if the collection is empty
+	 * @throws PreconditionViolationException if the collection is {@code null}
+	 * @since 1.11
 	 */
-	@API(status = INTERNAL, since = "1.6")
-	public static <T> Set<T> toSet(T[] values) {
-		Preconditions.notNull(values, "values array must not be null");
-		if (values.length == 0) {
-			return Collections.emptySet();
-		}
-		if (values.length == 1) {
-			return Collections.singleton(values[0]);
-		}
-		Set<T> set = new HashSet<>();
-		Collections.addAll(set, values);
-		return set;
+	@API(status = INTERNAL, since = "1.11")
+	public static <T extends @Nullable Object> Optional<T> getFirstElement(Collection<T> collection) {
+		Preconditions.notNull(collection, "collection must not be null");
+		return collection.isEmpty() //
+				? Optional.empty() //
+				: Optional.ofNullable(firstElement(collection));
 	}
 
-	/**
-	 * Return a {@code Collector} that accumulates the input elements into a
-	 * new unmodifiable list, in encounter order.
-	 *
-	 * <p>There are no guarantees on the type or serializability of the list
-	 * returned, so if more control over the returned list is required,
-	 * consider creating a new {@code Collector} implementation like the
-	 * following:
-	 *
-	 * <pre class="code">
-	 * public static &lt;T&gt; Collector&lt;T, ?, List&lt;T&gt;&gt; toUnmodifiableList(Supplier&lt;List&lt;T&gt;&gt; listSupplier) {
-	 *     return Collectors.collectingAndThen(Collectors.toCollection(listSupplier), Collections::unmodifiableList);
-	 * }
-	 * </pre>
-	 *
-	 * @param <T> the type of the input elements
-	 * @return a {@code Collector} which collects all the input elements into
-	 * an unmodifiable list, in encounter order
-	 */
-	public static <T> Collector<T, ?, List<T>> toUnmodifiableList() {
-		return collectingAndThen(toList(), Collections::unmodifiableList);
+	private static <T extends @Nullable Object> T firstElement(Collection<T> collection) {
+		return collection instanceof List<T> list //
+				? list.get(0) //
+				: collection.iterator().next();
 	}
 
 	/**
@@ -128,7 +104,7 @@ public final class CollectionUtils {
 	 * @see #toStream(Object)
 	 */
 	@API(status = INTERNAL, since = "1.9.1")
-	public static boolean isConvertibleToStream(Class<?> type) {
+	public static boolean isConvertibleToStream(@Nullable Class<?> type) {
 		if (type == null || type == void.class) {
 			return false;
 		}
@@ -139,7 +115,8 @@ public final class CollectionUtils {
 				|| Iterable.class.isAssignableFrom(type)//
 				|| Iterator.class.isAssignableFrom(type)//
 				|| Object[].class.isAssignableFrom(type)//
-				|| (type.isArray() && type.getComponentType().isPrimitive()));
+				|| (type.isArray() && type.getComponentType().isPrimitive())//
+				|| findIteratorMethod(type).isPresent());
 	}
 
 	/**
@@ -155,6 +132,9 @@ public final class CollectionUtils {
 	 * <li>{@link Iterator}</li>
 	 * <li>{@link Object} array</li>
 	 * <li>primitive array</li>
+	 * <li>any type that provides an
+	 * {@link java.util.Iterator Iterator}-returning {@code iterator()} method
+	 * (such as, for example, a {@code kotlin.sequences.Sequence})</li>
 	 * </ul>
 	 *
 	 * @param object the object to convert into a stream; never {@code null}
@@ -165,51 +145,64 @@ public final class CollectionUtils {
 	 */
 	public static Stream<?> toStream(Object object) {
 		Preconditions.notNull(object, "Object must not be null");
-		if (object instanceof Stream) {
-			return (Stream<?>) object;
+		if (object instanceof Stream<?> stream) {
+			return stream;
 		}
-		if (object instanceof DoubleStream) {
-			return ((DoubleStream) object).boxed();
+		if (object instanceof DoubleStream stream) {
+			return stream.boxed();
 		}
-		if (object instanceof IntStream) {
-			return ((IntStream) object).boxed();
+		if (object instanceof IntStream stream) {
+			return stream.boxed();
 		}
-		if (object instanceof LongStream) {
-			return ((LongStream) object).boxed();
+		if (object instanceof LongStream stream) {
+			return stream.boxed();
 		}
-		if (object instanceof Collection) {
-			return ((Collection<?>) object).stream();
+		if (object instanceof Collection<?> collection) {
+			return collection.stream();
 		}
-		if (object instanceof Iterable) {
-			return stream(((Iterable<?>) object).spliterator(), false);
+		if (object instanceof Iterable<?> iterable) {
+			return stream(iterable.spliterator(), false);
 		}
-		if (object instanceof Iterator) {
-			return stream(spliteratorUnknownSize((Iterator<?>) object, ORDERED), false);
+		if (object instanceof Iterator<?> iterator) {
+			return stream(spliteratorUnknownSize(iterator, ORDERED), false);
 		}
-		if (object instanceof Object[]) {
-			return Arrays.stream((Object[]) object);
+		if (object instanceof Object[] array) {
+			return Arrays.stream(array);
 		}
-		if (object instanceof double[]) {
-			return DoubleStream.of((double[]) object).boxed();
+		if (object instanceof double[] array) {
+			return DoubleStream.of(array).boxed();
 		}
-		if (object instanceof int[]) {
-			return IntStream.of((int[]) object).boxed();
+		if (object instanceof int[] array) {
+			return IntStream.of(array).boxed();
 		}
-		if (object instanceof long[]) {
-			return LongStream.of((long[]) object).boxed();
+		if (object instanceof long[] array) {
+			return LongStream.of(array).boxed();
 		}
 		if (object.getClass().isArray() && object.getClass().getComponentType().isPrimitive()) {
 			return IntStream.range(0, Array.getLength(object)).mapToObj(i -> Array.get(object, i));
 		}
-		throw new PreconditionViolationException(
-			"Cannot convert instance of " + object.getClass().getName() + " into a Stream: " + object);
+		return tryConvertToStreamByReflection(object);
+	}
+
+	private static Stream<?> tryConvertToStreamByReflection(Object object) {
+		return findIteratorMethod(object.getClass()) //
+				.map(method -> (Iterator<?>) invokeMethod(method, object)) //
+				.map(iterator -> spliteratorUnknownSize(iterator, ORDERED)) //
+				.map(spliterator -> stream(spliterator, false)) //
+				.orElseThrow(() -> new PreconditionViolationException(
+					"Cannot convert instance of %s into a Stream: %s".formatted(object.getClass().getName(), object)));
+	}
+
+	private static Optional<Method> findIteratorMethod(Class<?> type) {
+		return ReflectionSupport.findMethod(type, "iterator") //
+				.filter(method -> method.getReturnType() == Iterator.class);
 	}
 
 	/**
 	 * Call the supplied action on each element of the supplied {@link List} from last to first element.
 	 */
 	@API(status = INTERNAL, since = "1.9.2")
-	public static <T> void forEachInReverseOrder(List<T> list, Consumer<? super T> action) {
+	public static <T extends @Nullable Object> void forEachInReverseOrder(List<T> list, Consumer<? super T> action) {
 		if (list.isEmpty()) {
 			return;
 		}

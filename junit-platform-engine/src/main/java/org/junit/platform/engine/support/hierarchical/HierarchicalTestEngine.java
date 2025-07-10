@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,11 +10,12 @@
 
 package org.junit.platform.engine.support.hierarchical;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.JUnitException;
+import org.junit.platform.engine.CancellationToken;
 import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestEngine;
 
@@ -40,6 +41,9 @@ public abstract class HierarchicalTestEngine<C extends EngineExecutionContext> i
 	 * {@linkplain ExecutionRequest#getRootTestDescriptor() root} and notify
 	 * its {@linkplain ExecutionRequest#getEngineExecutionListener() execution
 	 * listener} of test execution events.
+	 *
+	 * <p>Supports cancellation via the {@link CancellationToken} passed in the
+	 * supplied {@code request}.
 	 *
 	 * @see Node
 	 * @see #createExecutorService
@@ -75,7 +79,7 @@ public abstract class HierarchicalTestEngine<C extends EngineExecutionContext> i
 	 * @see ForkJoinPoolHierarchicalTestExecutorService
 	 * @see SameThreadHierarchicalTestExecutorService
 	 */
-	@API(status = EXPERIMENTAL, since = "1.3")
+	@API(status = STABLE, since = "1.10")
 	protected HierarchicalTestExecutorService createExecutorService(ExecutionRequest request) {
 		return new SameThreadHierarchicalTestExecutorService();
 	}
@@ -98,7 +102,7 @@ public abstract class HierarchicalTestEngine<C extends EngineExecutionContext> i
 	 * @see OpenTest4JAwareThrowableCollector
 	 * @see ThrowableCollector
 	 */
-	@API(status = EXPERIMENTAL, since = "1.3")
+	@API(status = STABLE, since = "1.10")
 	protected ThrowableCollector.Factory createThrowableCollectorFactory(ExecutionRequest request) {
 		return OpenTest4JAwareThrowableCollector::new;
 	}

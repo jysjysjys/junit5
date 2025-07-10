@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,13 @@
 
 package org.junit.jupiter.api;
 
+import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 
 import java.util.function.Supplier;
 
+import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.junit.platform.commons.util.StringUtils;
@@ -36,15 +39,15 @@ class AssertDoesNotThrow {
 		assertDoesNotThrow(executable, (Object) null);
 	}
 
-	static void assertDoesNotThrow(Executable executable, String message) {
+	static void assertDoesNotThrow(Executable executable, @Nullable String message) {
 		assertDoesNotThrow(executable, (Object) message);
 	}
 
-	static void assertDoesNotThrow(Executable executable, Supplier<String> messageSupplier) {
+	static void assertDoesNotThrow(Executable executable, Supplier<@Nullable String> messageSupplier) {
 		assertDoesNotThrow(executable, (Object) messageSupplier);
 	}
 
-	private static void assertDoesNotThrow(Executable executable, Object messageOrSupplier) {
+	private static void assertDoesNotThrow(Executable executable, @Nullable Object messageOrSupplier) {
 		try {
 			executable.execute();
 		}
@@ -54,19 +57,21 @@ class AssertDoesNotThrow {
 		}
 	}
 
-	static <T> T assertDoesNotThrow(ThrowingSupplier<T> supplier) {
+	static <T extends @Nullable Object> T assertDoesNotThrow(ThrowingSupplier<T> supplier) {
 		return assertDoesNotThrow(supplier, (Object) null);
 	}
 
-	static <T> T assertDoesNotThrow(ThrowingSupplier<T> supplier, String message) {
+	static <T extends @Nullable Object> T assertDoesNotThrow(ThrowingSupplier<T> supplier, @Nullable String message) {
 		return assertDoesNotThrow(supplier, (Object) message);
 	}
 
-	static <T> T assertDoesNotThrow(ThrowingSupplier<T> supplier, Supplier<String> messageSupplier) {
+	static <T extends @Nullable Object> T assertDoesNotThrow(ThrowingSupplier<T> supplier,
+			Supplier<@Nullable String> messageSupplier) {
 		return assertDoesNotThrow(supplier, (Object) messageSupplier);
 	}
 
-	private static <T> T assertDoesNotThrow(ThrowingSupplier<T> supplier, Object messageOrSupplier) {
+	private static <T extends @Nullable Object> T assertDoesNotThrow(ThrowingSupplier<T> supplier,
+			@Nullable Object messageOrSupplier) {
 		try {
 			return supplier.get();
 		}
@@ -76,7 +81,8 @@ class AssertDoesNotThrow {
 		}
 	}
 
-	private static AssertionFailedError createAssertionFailedError(Object messageOrSupplier, Throwable t) {
+	@API(status = INTERNAL, since = "6.0")
+	public static AssertionFailedError createAssertionFailedError(@Nullable Object messageOrSupplier, Throwable t) {
 		return assertionFailure() //
 				.message(messageOrSupplier) //
 				.reason("Unexpected exception thrown: " + t.getClass().getName() + buildSuffix(t.getMessage())) //
@@ -84,7 +90,7 @@ class AssertDoesNotThrow {
 				.build();
 	}
 
-	private static String buildSuffix(String message) {
+	private static String buildSuffix(@Nullable String message) {
 		return StringUtils.isNotBlank(message) ? ": " + message : "";
 	}
 

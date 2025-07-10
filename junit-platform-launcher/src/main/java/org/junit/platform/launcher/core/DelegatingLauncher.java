@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.launcher.core;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.LauncherExecutionRequest;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 
@@ -42,14 +43,20 @@ class DelegatingLauncher implements Launcher {
 		return delegate.discover(launcherDiscoveryRequest);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute(LauncherDiscoveryRequest launcherDiscoveryRequest, TestExecutionListener... listeners) {
 		delegate.execute(launcherDiscoveryRequest, listeners);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute(TestPlan testPlan, TestExecutionListener... listeners) {
 		delegate.execute(testPlan, listeners);
 	}
 
+	@Override
+	public void execute(LauncherExecutionRequest launcherExecutionRequest) {
+		delegate.execute(launcherExecutionRequest);
+	}
 }

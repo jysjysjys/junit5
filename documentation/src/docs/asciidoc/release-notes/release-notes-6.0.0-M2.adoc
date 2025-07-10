@@ -1,0 +1,89 @@
+[[release-notes-6.0.0-M2]]
+== 6.0.0-M2
+
+*Date of Release:* ❓
+
+*Scope:* ❓
+
+For a complete list of all _closed_ issues and pull requests for this release, consult the
+link:{junit-framework-repo}+/milestone/99?closed=1+[6.0.0-M2] milestone page in the JUnit
+repository on GitHub.
+
+
+[[release-notes-6.0.0-M2-junit-platform]]
+=== JUnit Platform
+
+[[release-notes-6.0.0-M2-junit-platform-bug-fixes]]
+==== Bug Fixes
+
+* ❓
+
+[[release-notes-6.0.0-M2-junit-platform-deprecations-and-breaking-changes]]
+==== Deprecations and Breaking Changes
+
+* Discontinue `junit-platform-suite-commons` which is now integrated into
+  `junit-platform-suite`.
+* Deprecate `Launcher.execute(TestPlan, TestExecutionListener[])` and
+  `Launcher.execute(LauncherDiscoveryRequest, TestExecutionListener[])` in favor of
+  `Launcher.execute(LauncherExecutionRequest)`
+
+[[release-notes-6.0.0-M2-junit-platform-new-features-and-improvements]]
+==== New Features and Improvements
+
+* Introduce new `Launcher.execute({LauncherExecutionRequest})` API with corresponding
+  `LauncherExecutionRequestBuilder` to enable the addition of parameters to test
+  executions without additional overloads of `execute`.
+* Introduce `LauncherDiscoveryRequestBuilder.forExecution()` method as a convenience
+  method for constructing a `{LauncherExecutionRequest}` that contains a
+  `{LauncherDiscoveryRequest}`.
+* Introduce support for cancelling a running test execution via a `{CancellationToken}`
+  passed to the `{Launcher}` as part of a `{LauncherExecutionRequest}` and from there to
+  all registered test engines. Please refer to the
+  <<../user-guide/index.adoc#launcher-api-launcher-cancellation, User Guide>> for details
+  and a usage example.
+* Passing the `--fail-fast` option to the `execute` subcommand of the `ConsoleLauncher`
+  now causes test execution to be cancelled after the first failed test.
+* Provide cancellation support for implementations of `{HierarchicalTestEngine}` such as
+  JUnit Jupiter, Spock, and Cucumber.
+* Provide cancellation support for the Suite and Vintage test engines
+* Introduce `TestTask.getTestDescriptor()` method for use in
+  `HierarchicalTestExecutorService` implementations.
+
+
+[[release-notes-6.0.0-M2-junit-jupiter]]
+=== JUnit Jupiter
+
+[[release-notes-6.0.0-M2-junit-jupiter-bug-fixes]]
+==== Bug Fixes
+
+* ❓
+
+[[release-notes-6.0.0-M2-junit-jupiter-deprecations-and-breaking-changes]]
+==== Deprecations and Breaking Changes
+
+* ❓
+
+[[release-notes-6.0.0-M2-junit-jupiter-new-features-and-improvements]]
+==== New Features and Improvements
+
+* Reason strings supplied to `ConditionEvaluationResult` APIs are now officially declared
+  as `@Nullable`.
+
+
+[[release-notes-6.0.0-M2-junit-vintage]]
+=== JUnit Vintage
+
+[[release-notes-6.0.0-M2-junit-vintage-bug-fixes]]
+==== Bug Fixes
+
+* ❓
+
+[[release-notes-6.0.0-M2-junit-vintage-deprecations-and-breaking-changes]]
+==== Deprecations and Breaking Changes
+
+* ❓
+
+[[release-notes-6.0.0-M2-junit-vintage-new-features-and-improvements]]
+==== New Features and Improvements
+
+* ❓

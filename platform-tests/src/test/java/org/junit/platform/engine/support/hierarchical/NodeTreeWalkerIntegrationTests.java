@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.engine.JupiterTestEngine;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
@@ -161,12 +162,12 @@ class NodeTreeWalkerIntegrationTests {
 
 		var nestedTestClassDescriptor = getOnlyElement(testClassDescriptor.getChildren());
 		assertThat(advisor.getResourceLock(nestedTestClassDescriptor)).extracting(allLocks()) //
-				.isEqualTo(List.of(getLock(GLOBAL_READ)));
+				.isEqualTo(List.of());
 		assertThat(advisor.getForcedExecutionMode(nestedTestClassDescriptor)).contains(SAME_THREAD);
 
 		var testMethodDescriptor = getOnlyElement(nestedTestClassDescriptor.getChildren());
 		assertThat(advisor.getResourceLock(testMethodDescriptor)).extracting(allLocks()) //
-				.isEqualTo(List.of(getLock(GLOBAL_READ_WRITE)));
+				.isEqualTo(List.of());
 		assertThat(advisor.getForcedExecutionMode(testMethodDescriptor)).contains(SAME_THREAD);
 	}
 
@@ -191,6 +192,7 @@ class NodeTreeWalkerIntegrationTests {
 		return new JupiterTestEngine().discover(discoveryRequest, UniqueId.forEngine("junit-jupiter"));
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@ResourceLock("a")
 	static class TestCaseWithResourceLock {
 		@Test
@@ -199,6 +201,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static class TestCaseWithoutResourceLock {
 		@Test
 		@ResourceLock("a")
@@ -215,6 +218,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@ResourceLock(Resources.SYSTEM_PROPERTIES)
 	static class TestCaseWithGlobalLockRequiringChild {
 		@Nested
 		class NestedTestCaseWithResourceLock {
@@ -225,6 +229,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@ResourceLock("a")
 	static class TestCaseWithResourceWriteLockOnClass {
 		@Test
@@ -232,6 +237,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@ResourceLock(value = "a", mode = ResourceAccessMode.READ)
 	static class TestCaseWithResourceReadLockOnClass {
 		@Test
@@ -239,6 +245,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@ResourceLock(value = "a", mode = ResourceAccessMode.READ)
 	static class TestCaseWithResourceReadLockOnClassAndWriteClockOnTestCase {
 		@Test
@@ -247,6 +254,7 @@ class NodeTreeWalkerIntegrationTests {
 		}
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@ResourceLock(value = "a", mode = ResourceAccessMode.READ)
 	static class TestCaseWithResourceReadLockOnClassAndReadClockOnTestCase {
 		@Test

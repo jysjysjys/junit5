@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,6 @@
 package org.junit.platform.engine.discovery;
 
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +35,7 @@ abstract class AbstractClassNameFilter implements ClassNameFilter {
 	AbstractClassNameFilter(String... patterns) {
 		Preconditions.notEmpty(patterns, "patterns array must not be null or empty");
 		Preconditions.containsNoNullElements(patterns, "patterns array must not contain null elements");
-		this.patterns = Arrays.stream(patterns).map(Pattern::compile).collect(toList());
+		this.patterns = Arrays.stream(patterns).map(Pattern::compile).toList();
 		this.patternDescription = Arrays.stream(patterns).collect(joining("' OR '", "'", "'"));
 	}
 

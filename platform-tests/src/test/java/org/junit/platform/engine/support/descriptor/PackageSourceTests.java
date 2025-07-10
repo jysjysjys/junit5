@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.platform.engine.support.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 
 import java.io.Serializable;
 import java.util.stream.Stream;
@@ -31,6 +32,7 @@ class PackageSourceTests extends AbstractTestSourceTests {
 		return Stream.of(PackageSource.from("package.source"));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void packageSourceFromNullPackageName() {
 		assertThrows(PreconditionViolationException.class, () -> PackageSource.from((String) null));
@@ -41,6 +43,7 @@ class PackageSourceTests extends AbstractTestSourceTests {
 		assertThrows(PreconditionViolationException.class, () -> PackageSource.from("  "));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void packageSourceFromNullPackageReference() {
 		assertThrows(PreconditionViolationException.class, () -> PackageSource.from((Package) null));

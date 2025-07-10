@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,21 +13,13 @@ package org.junit.platform.launcher.tagexpression;
 /**
  * @since 1.1
  */
-class Token {
-
-	final int startIndex;
-	final String rawString;
-
-	Token(int startIndex, String rawString) {
-		this.startIndex = startIndex;
-		this.rawString = rawString;
-	}
+record Token(int startIndex, String rawString) {
 
 	String string() {
-		return rawString.trim();
+		return rawString.strip();
 	}
 
-	public int trimmedTokenStartIndex() {
+	public int strippedTokenStartIndex() {
 		return startIndex + rawString.indexOf(string());
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,7 +13,9 @@ package org.junit.jupiter.params.converter;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.params.support.FieldContext;
 
 /**
  * {@code SimpleArgumentConverter} is an abstract base class for
@@ -32,8 +34,15 @@ public abstract class SimpleArgumentConverter implements ArgumentConverter {
 	}
 
 	@Override
-	public final Object convert(Object source, ParameterContext context) throws ArgumentConversionException {
+	public final @Nullable Object convert(@Nullable Object source, ParameterContext context)
+			throws ArgumentConversionException {
 		return convert(source, context.getParameter().getType());
+	}
+
+	@Override
+	public final @Nullable Object convert(@Nullable Object source, FieldContext context)
+			throws ArgumentConversionException {
+		return convert(source, context.getField().getType());
 	}
 
 	/**
@@ -48,6 +57,7 @@ public abstract class SimpleArgumentConverter implements ArgumentConverter {
 	 * @throws ArgumentConversionException in case an error occurs during the
 	 * conversion
 	 */
-	protected abstract Object convert(Object source, Class<?> targetType) throws ArgumentConversionException;
+	protected abstract @Nullable Object convert(@Nullable Object source, Class<?> targetType)
+			throws ArgumentConversionException;
 
 }

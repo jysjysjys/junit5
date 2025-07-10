@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,29 +15,36 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.InvocationInterceptor.Invocation;
 
 /**
  * @since 5.9
  */
-class SeparateThreadTimeoutInvocation<T> implements Invocation<T> {
+class SeparateThreadTimeoutInvocation<T extends @Nullable Object> implements Invocation<T> {
 
 	private final Invocation<T> delegate;
 	private final TimeoutDuration timeout;
 	private final Supplier<String> descriptionSupplier;
+	private final PreInterruptCallbackInvocation preInterruptCallback;
 
 	SeparateThreadTimeoutInvocation(Invocation<T> delegate, TimeoutDuration timeout,
-			Supplier<String> descriptionSupplier) {
+			Supplier<String> descriptionSupplier, PreInterruptCallbackInvocation preInterruptCallback) {
 		this.delegate = delegate;
 		this.timeout = timeout;
 		this.descriptionSupplier = descriptionSupplier;
+		this.preInterruptCallback = preInterruptCallback;
 	}
 
 	@Override
+	@SuppressWarnings("NullAway")
 	public T proceed() throws Throwable {
 		return assertTimeoutPreemptively(timeout.toDuration(), delegate::proceed, descriptionSupplier,
-			(__, messageSupplier, cause) -> {
-				TimeoutException exception = TimeoutExceptionFactory.create(messageSupplier.get(), timeout, null);
+			(__, ___, cause, testThread) -> {
+				TimeoutException exception = TimeoutExceptionFactory.create(descriptionSupplier.get(), timeout, null);
+				if (testThread != null) {
+					preInterruptCallback.executePreInterruptCallback(testThread, exception::addSuppressed);
+				}
 				exception.initCause(cause);
 				return exception;
 			});

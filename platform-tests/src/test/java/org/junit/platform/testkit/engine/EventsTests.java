@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,9 @@
 
 package org.junit.platform.testkit.engine;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.platform.testkit.engine.EventConditions.engine;
 import static org.junit.platform.testkit.engine.EventConditions.event;
 import static org.junit.platform.testkit.engine.EventConditions.finishedSuccessfully;
@@ -146,7 +146,7 @@ class EventsTests {
 
 		var failures = error.getFailures();
 		assertEquals(1, failures.size());
-		assertEquals(AssertionError.class, failures.get(0).getClass());
+		assertEquals(AssertionError.class, failures.getFirst().getClass());
 	}
 
 	@Test
@@ -171,7 +171,7 @@ class EventsTests {
 		);
 
 		var error = assertThrows(AssertionFailedError.class, willFail);
-		assertTrue(error.getMessage().contains("Conditions are not in the correct order."));
+		assertThat(error).hasMessageContaining("Conditions are not in the correct order.");
 	}
 
 	@Test
@@ -201,7 +201,7 @@ class EventsTests {
 		);
 
 		var error = assertThrows(AssertionFailedError.class, willFail);
-		assertTrue(error.getMessage().contains("Conditions are not in the correct order."));
+		assertThat(error).hasMessageContaining("Conditions are not in the correct order.");
 	}
 
 	@Test
@@ -266,7 +266,7 @@ class EventsTests {
 		);
 
 		var error = assertThrows(AssertionFailedError.class, willFail);
-		assertTrue(error.getMessage().contains("Conditions are not in the correct order."));
+		assertThat(error).hasMessageContaining("Conditions are not in the correct order.");
 	}
 
 	@Test
@@ -281,7 +281,7 @@ class EventsTests {
 			event(engine(), finishedSuccessfully()));
 
 		var error = assertThrows(AssertionError.class, willFail);
-		assertTrue(error.getMessage().endsWith("to be less than or equal to 4 but was 6"));
+		assertThat(error).hasMessageEndingWith("to be less than or equal to 4 but was 6");
 	}
 
 }

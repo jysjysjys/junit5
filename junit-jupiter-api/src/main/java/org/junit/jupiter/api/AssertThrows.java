@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,12 @@
 
 package org.junit.jupiter.api;
 
-import static java.lang.String.format;
 import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 import static org.junit.jupiter.api.AssertionUtils.getCanonicalName;
 
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
 
@@ -35,19 +35,20 @@ class AssertThrows {
 		return assertThrows(expectedType, executable, (Object) null);
 	}
 
-	static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable, String message) {
+	static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable,
+			@Nullable String message) {
 		return assertThrows(expectedType, executable, (Object) message);
 	}
 
 	static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable,
-			Supplier<String> messageSupplier) {
+			Supplier<@Nullable String> messageSupplier) {
 
 		return assertThrows(expectedType, executable, (Object) messageSupplier);
 	}
 
 	@SuppressWarnings("unchecked")
 	private static <T extends Throwable> T assertThrows(Class<T> expectedType, Executable executable,
-			Object messageOrSupplier) {
+			@Nullable Object messageOrSupplier) {
 
 		try {
 			executable.execute();
@@ -69,7 +70,7 @@ class AssertThrows {
 		}
 		throw assertionFailure() //
 				.message(messageOrSupplier) //
-				.reason(format("Expected %s to be thrown, but nothing was thrown.", getCanonicalName(expectedType))) //
+				.reason("Expected %s to be thrown, but nothing was thrown.".formatted(getCanonicalName(expectedType))) //
 				.build();
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -125,6 +125,7 @@ class VintageDiscovererTests {
 		return new VintageDiscoverer().discover(request, engineId());
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	public static class Foo {
 
 		@org.junit.Test
@@ -133,6 +134,7 @@ class VintageDiscovererTests {
 
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	public static class Bar {
 
 		@org.junit.Test

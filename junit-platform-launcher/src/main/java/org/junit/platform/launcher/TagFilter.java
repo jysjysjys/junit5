@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,6 @@ package org.junit.platform.launcher;
 
 import static java.util.Arrays.asList;
 import static org.apiguardian.api.API.Status.STABLE;
-import static org.junit.platform.commons.util.CollectionUtils.toUnmodifiableList;
 
 import java.util.List;
 import java.util.Set;
@@ -20,6 +19,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.FilterResult;
@@ -33,7 +33,7 @@ import org.junit.platform.launcher.tagexpression.TagExpression;
  * <p>Tag expressions are boolean expressions with the following allowed
  * operators: {@code !} (not), {@code &} (and), and {@code |} (or). Parentheses
  * can be used to adjust for operator precedence. Please refer to the
- * <a href="https://junit.org/junit5/docs/current/user-guide/#running-tests-tag-expressions">JUnit 5 User Guide</a>
+ * <a href="https://docs.junit.org/current/user-guide/#running-tests-tag-expressions">JUnit User Guide</a>
  * for usage examples.
  *
  * <p>Please note that a tag name is a valid tag expression. Thus, wherever a tag
@@ -128,8 +128,8 @@ public final class TagFilter {
 	}
 
 	private static PostDiscoveryFilter includeMatching(List<String> tagExpressions) {
-		Supplier<String> inclusionReason = () -> inclusionReasonExpressionSatisfy(tagExpressions);
-		Supplier<String> exclusionReason = () -> exclusionReasonExpressionNotSatisfy(tagExpressions);
+		Supplier<@Nullable String> inclusionReason = () -> inclusionReasonExpressionSatisfy(tagExpressions);
+		Supplier<@Nullable String> exclusionReason = () -> exclusionReasonExpressionNotSatisfy(tagExpressions);
 		List<TagExpression> parsedTagExpressions = parseAll(tagExpressions);
 		return descriptor -> {
 			Set<TestTag> tags = descriptor.getTags();
@@ -140,17 +140,16 @@ public final class TagFilter {
 	}
 
 	private static String inclusionReasonExpressionSatisfy(List<String> tagExpressions) {
-		return String.format("included because tags match expression(s): [%s]", formatToString(tagExpressions));
+		return "included because tags match expression(s): [%s]".formatted(formatToString(tagExpressions));
 	}
 
 	private static String exclusionReasonExpressionNotSatisfy(List<String> tagExpressions) {
-		return String.format("excluded because tags do not match tag expression(s): [%s]",
-			formatToString(tagExpressions));
+		return "excluded because tags do not match tag expression(s): [%s]".formatted(formatToString(tagExpressions));
 	}
 
 	private static PostDiscoveryFilter excludeMatching(List<String> tagExpressions) {
-		Supplier<String> inclusionReason = () -> inclusionReasonExpressionNotSatisfy(tagExpressions);
-		Supplier<String> exclusionReason = () -> exclusionReasonExpressionSatisfy(tagExpressions);
+		Supplier<@Nullable String> inclusionReason = () -> inclusionReasonExpressionNotSatisfy(tagExpressions);
+		Supplier<@Nullable String> exclusionReason = () -> exclusionReasonExpressionSatisfy(tagExpressions);
 		List<TagExpression> parsedTagExpressions = parseAll(tagExpressions);
 		return descriptor -> {
 			Set<TestTag> tags = descriptor.getTags();
@@ -161,22 +160,22 @@ public final class TagFilter {
 	}
 
 	private static String inclusionReasonExpressionNotSatisfy(List<String> tagExpressions) {
-		return String.format("included because tags do not match expression(s): [%s]", formatToString(tagExpressions));
+		return "included because tags do not match expression(s): [%s]".formatted(formatToString(tagExpressions));
 	}
 
 	private static String exclusionReasonExpressionSatisfy(List<String> tagExpressions) {
-		return String.format("excluded because tags match tag expression(s): [%s]", formatToString(tagExpressions));
+		return "excluded because tags match tag expression(s): [%s]".formatted(formatToString(tagExpressions));
 	}
 
 	private static String formatToString(List<String> tagExpressions) {
-		return tagExpressions.stream().map(String::trim).sorted().collect(Collectors.joining(","));
+		return tagExpressions.stream().map(String::strip).sorted().collect(Collectors.joining(","));
 	}
 
 	private static List<TagExpression> parseAll(List<String> tagExpressions) {
-		return tagExpressions.stream().map(TagFilter::parse).collect(toUnmodifiableList());
+		return tagExpressions.stream().map(TagFilter::parse).toList();
 	}
 
-	private static TagExpression parse(String tagExpression) {
+	private static TagExpression parse(@Nullable String tagExpression) {
 		return TagExpression.parseFrom(tagExpression).tagExpressionOrThrow(
 			message -> new PreconditionViolationException(
 				"Unable to parse tag expression \"" + tagExpression + "\": " + message));

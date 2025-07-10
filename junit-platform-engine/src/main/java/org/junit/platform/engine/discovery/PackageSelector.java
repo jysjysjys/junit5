@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,13 +10,16 @@
 
 package org.junit.platform.engine.discovery;
 
+import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
  * A {@link DiscoverySelector} that selects a package name so that
@@ -71,6 +74,35 @@ public class PackageSelector implements DiscoverySelector {
 	@Override
 	public String toString() {
 		return new ToStringBuilder(this).append("packageName", this.packageName).toString();
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, this.packageName));
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for {@link PackageSelector
+	 * PackageSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		private static final String PREFIX = "package";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<PackageSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			return Optional.of(DiscoverySelectors.selectPackage(identifier.getValue()));
+		}
+
 	}
 
 }

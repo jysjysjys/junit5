@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,6 @@ package org.junit.platform.testkit.engine;
 
 import static java.util.Collections.sort;
 import static java.util.function.Predicate.isEqual;
-import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.junit.platform.commons.util.FunctionUtils.where;
 import static org.junit.platform.testkit.engine.Event.byPayload;
@@ -23,7 +22,6 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +36,7 @@ import org.assertj.core.api.Condition;
 import org.assertj.core.api.ListAssert;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.data.Index;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestExecutionResult.Status;
@@ -56,14 +55,14 @@ public final class Events {
 	private final String category;
 
 	Events(Stream<Event> events, String category) {
-		this(Preconditions.notNull(events, "Event stream must not be null").collect(toList()), category);
+		this(Preconditions.notNull(events, "Event stream must not be null").toList(), category);
 	}
 
 	Events(List<Event> events, String category) {
 		Preconditions.notNull(events, "Event list must not be null");
 		Preconditions.containsNoNullElements(events, "Event list must not contain null elements");
 
-		this.events = Collections.unmodifiableList(events);
+		this.events = List.copyOf(events);
 		this.category = category;
 	}
 
@@ -205,6 +204,18 @@ public final class Events {
 	public Events reportingEntryPublished() {
 		return new Events(eventsByType(EventType.REPORTING_ENTRY_PUBLISHED),
 			this.category + " Reporting Entry Published");
+	}
+
+	/**
+	 * Get the file entry publication {@link Events} contained in this
+	 * {@code Events} object.
+	 *
+	 * @return the filtered {@code Events}; never {@code null}
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public Events fileEntryPublished() {
+		return new Events(eventsByType(EventType.FILE_ENTRY_PUBLISHED), this.category + " File Entry Published");
 	}
 
 	/**
@@ -433,7 +444,7 @@ public final class Events {
 				.map(condition -> findEvent(events, softly, condition))
 				.filter(Objects::nonNull)
 				.map(events::indexOf)
-				.collect(toList());
+				.toList();
 		// @formatter:on
 
 		if (isNotInIncreasingOrder(indices)) {
@@ -456,14 +467,15 @@ public final class Events {
 		}
 	}
 
-	private static Event findEvent(List<Event> events, SoftAssertions softly, Condition<? super Event> condition) {
+	private static @Nullable Event findEvent(List<Event> events, SoftAssertions softly,
+			Condition<? super Event> condition) {
 		// @formatter:off
 		Optional<Event> matchedEvent = events.stream()
 				.filter(condition::matches)
 				.findFirst();
 		// @formatter:on
 
-		if (!matchedEvent.isPresent()) {
+		if (matchedEvent.isEmpty()) {
 			softly.fail("Condition did not match any event: " + condition);
 		}
 

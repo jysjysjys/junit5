@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -32,7 +32,8 @@ class TestRunTests {
 	void returnsEmptyOptionalForUnknownDescriptions() throws Exception {
 		Class<?> testClass = PlainJUnit4TestCaseWithSingleTestWhichFails.class;
 		var runnerId = engineId().append(SEGMENT_TYPE_RUNNER, testClass.getName());
-		var runnerTestDescriptor = new RunnerTestDescriptor(runnerId, testClass, new BlockJUnit4ClassRunner(testClass));
+		var runnerTestDescriptor = new RunnerTestDescriptor(runnerId, testClass, new BlockJUnit4ClassRunner(testClass),
+			false);
 		var unknownDescription = createTestDescription(testClass, "dynamicTest");
 
 		var testRun = new TestRun(runnerTestDescriptor);
@@ -45,7 +46,8 @@ class TestRunTests {
 	void registersDynamicTestDescriptors() throws Exception {
 		Class<?> testClass = PlainJUnit4TestCaseWithSingleTestWhichFails.class;
 		var runnerId = engineId().append(SEGMENT_TYPE_RUNNER, testClass.getName());
-		var runnerTestDescriptor = new RunnerTestDescriptor(runnerId, testClass, new BlockJUnit4ClassRunner(testClass));
+		var runnerTestDescriptor = new RunnerTestDescriptor(runnerId, testClass, new BlockJUnit4ClassRunner(testClass),
+			false);
 		var dynamicTestId = runnerId.append(SEGMENT_TYPE_DYNAMIC, "dynamicTest");
 		var dynamicDescription = createTestDescription(testClass, "dynamicTest");
 		var dynamicTestDescriptor = new VintageTestDescriptor(dynamicTestId, dynamicDescription, null);

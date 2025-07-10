@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Simple builder for generating strings in custom implementations of
@@ -50,13 +51,13 @@ public class ToStringBuilder {
 		this.typeName = Preconditions.notNull(typeName, "Type name must not be null");
 	}
 
-	public ToStringBuilder append(String name, Object value) {
+	public ToStringBuilder append(String name, @Nullable Object value) {
 		Preconditions.notBlank(name, "Name must not be null or blank");
 		this.values.add(name + " = " + toString(value));
 		return this;
 	}
 
-	private String toString(Object obj) {
+	private String toString(@Nullable Object obj) {
 		return (obj instanceof CharSequence) ? ("'" + obj + "'") : StringUtils.nullSafeToString(obj);
 	}
 

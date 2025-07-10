@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -41,8 +41,9 @@ class AssertionsDemo {
 		assertEquals(2, calculator.add(1, 1));
 		assertEquals(4, calculator.multiply(2, 2),
 				"The optional failure message is now the last parameter");
-		assertTrue('a' < 'b', () -> "Assertion messages can be lazily evaluated -- "
-				+ "to avoid constructing complex messages unnecessarily.");
+
+		// Lazily evaluates generateFailureMessage('a','b').
+		assertTrue('a' < 'b', () -> generateFailureMessage('a','b'));
 	}
 
 	@Test
@@ -85,6 +86,9 @@ class AssertionsDemo {
 		);
 	}
 
+	// end::user_guide[]
+	@extensions.DisabledOnOpenJ9
+	// tag::user_guide[]
 	@Test
 	void exceptionTesting() {
 		Exception exception = assertThrows(ArithmeticException.class, () ->
@@ -157,6 +161,10 @@ class AssertionsDemo {
 		return "Hello, World!";
 	}
 
+	private static String generateFailureMessage(char a, char b) {
+		return "Assertion messages can be lazily evaluated -- "
+				+ "to avoid constructing complex messages unnecessarily." + (a < b);
+	}
 }
 // end::user_guide[]
 // @formatter:on

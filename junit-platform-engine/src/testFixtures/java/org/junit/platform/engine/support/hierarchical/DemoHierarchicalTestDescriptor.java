@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.ski
 
 import java.util.function.BiConsumer;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
@@ -25,17 +26,19 @@ import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
  */
 public class DemoHierarchicalTestDescriptor extends AbstractTestDescriptor implements Node<DemoEngineExecutionContext> {
 
-	private final BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock;
-	private String skippedReason;
+	private final @Nullable BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock;
+
+	private @Nullable String skippedReason;
+
 	private boolean skipped;
 
 	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName,
-			BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
+			@Nullable BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
 		this(uniqueId, displayName, null, executeBlock);
 	}
 
-	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName, TestSource source,
-			BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
+	public DemoHierarchicalTestDescriptor(UniqueId uniqueId, String displayName, @Nullable TestSource source,
+			@Nullable BiConsumer<DemoEngineExecutionContext, TestDescriptor> executeBlock) {
 		super(uniqueId, displayName, source);
 		this.executeBlock = executeBlock;
 	}

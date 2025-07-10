@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,15 +20,8 @@ import org.junit.platform.commons.util.ToStringBuilder;
  *
  * @since 5.3
  */
-class DefaultTestInstanceFactoryContext implements TestInstanceFactoryContext {
-
-	private final Class<?> testClass;
-	private final Optional<Object> outerInstance;
-
-	DefaultTestInstanceFactoryContext(Class<?> testClass, Optional<Object> outerInstance) {
-		this.testClass = testClass;
-		this.outerInstance = outerInstance;
-	}
+record DefaultTestInstanceFactoryContext(Class<?> testClass, Optional<Object> outerInstance)
+		implements TestInstanceFactoryContext {
 
 	@Override
 	public Class<?> getTestClass() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,8 @@
 
 package org.junit.jupiter.api.parallel;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -19,6 +20,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * {@code @Execution} is used to configure the parallel execution
@@ -40,15 +43,20 @@ import org.apiguardian.api.API;
  *     <dd>Default execution mode for top-level classes</dd>
  * </dl>
  *
- * <p>{@value #DEFAULT_CLASSES_EXECUTION_MODE_PROPERTY_NAME}
- * overrides {@value #DEFAULT_EXECUTION_MODE_PROPERTY_NAME} for top-level
- * classes
+ * <p>{@value #DEFAULT_CLASSES_EXECUTION_MODE_PROPERTY_NAME} overrides
+ * {@value #DEFAULT_EXECUTION_MODE_PROPERTY_NAME} for top-level classes.
+ *
+ * <p>The default execution mode is not applied to classes that use the
+ * {@link TestInstance.Lifecycle#PER_CLASS PER_CLASS} lifecycle or a
+ * {@link MethodOrderer}. In both cases, test methods in such test classes are
+ * only executed concurrently if the {@code @Execution(CONCURRENT)} annotation
+ * is present on the test class or method.
  *
  * @see Isolated
  * @see ResourceLock
  * @since 5.3
  */
-@API(status = EXPERIMENTAL, since = "5.3")
+@API(status = STABLE, since = "5.10")
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD })
 @Inherited
@@ -69,7 +77,7 @@ public @interface Execution {
 	 *
 	 * @since 5.4
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = MAINTAINED, since = "5.13.3")
 	String DEFAULT_EXECUTION_MODE_PROPERTY_NAME = "junit.jupiter.execution.parallel.mode.default";
 
 	/**
@@ -88,7 +96,7 @@ public @interface Execution {
 	 *
 	 * @since 5.4
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = MAINTAINED, since = "5.13.3")
 	String DEFAULT_CLASSES_EXECUTION_MODE_PROPERTY_NAME = "junit.jupiter.execution.parallel.mode.classes.default";
 
 	/**
@@ -97,5 +105,15 @@ public @interface Execution {
 	 * @see ExecutionMode
 	 */
 	ExecutionMode value();
+
+	/**
+	 * The reason for using the selected execution mode.
+	 *
+	 * <p>This is for informational purposes only.
+	 *
+	 * @since 5.10
+	 */
+	@API(status = STABLE, since = "5.10")
+	String reason() default "";
 
 }

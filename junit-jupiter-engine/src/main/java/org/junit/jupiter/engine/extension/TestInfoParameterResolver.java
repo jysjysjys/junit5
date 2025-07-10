@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -27,6 +28,11 @@ import org.junit.platform.commons.util.ToStringBuilder;
  * @since 5.0
  */
 class TestInfoParameterResolver implements ParameterResolver {
+
+	@Override
+	public ExtensionContextScope getTestInstantiationExtensionContextScope(ExtensionContext rootContext) {
+		return ExtensionContextScope.TEST_METHOD;
+	}
 
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
@@ -84,7 +90,8 @@ class TestInfoParameterResolver implements ParameterResolver {
 			// @formatter:on
 		}
 
-		private static Object nullSafeGet(Optional<?> optional) {
+		@SuppressWarnings("OptionalAssignedToNull")
+		private static @Nullable Object nullSafeGet(@Nullable Optional<?> optional) {
 			return optional != null ? optional.orElse(null) : null;
 		}
 

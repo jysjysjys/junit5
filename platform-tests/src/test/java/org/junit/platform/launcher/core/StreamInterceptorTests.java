@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.stream.IntStream;
 
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -27,21 +29,24 @@ import org.junit.jupiter.api.Test;
  */
 class StreamInterceptorTests {
 
-	private ByteArrayOutputStream originalOut = new ByteArrayOutputStream();
-	private PrintStream targetStream = new PrintStream(originalOut);
+	final ByteArrayOutputStream originalOut = new ByteArrayOutputStream();
+	PrintStream targetStream = new PrintStream(originalOut);
+
+	@AutoClose
+	@Nullable
+	StreamInterceptor streamInterceptor;
 
 	@Test
 	void interceptsWriteOperationsToStreamPerThread() {
-		var streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
+		streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
 			3).orElseThrow(RuntimeException::new);
 		// @formatter:off
 		IntStream.range(0, 1000)
 				.parallel()
-				.peek(i -> targetStream.println(i))
 				.mapToObj(String::valueOf)
 				.peek(i -> streamInterceptor.capture())
 				.peek(i -> targetStream.println(i))
-				.forEach(i -> assertEquals(i, streamInterceptor.consume().trim()));
+				.forEach(i -> assertEquals(i, streamInterceptor.consume().strip()));
 		// @formatter:on
 	}
 
@@ -49,7 +54,7 @@ class StreamInterceptorTests {
 	void unregisterRestoresOriginalStream() {
 		var originalStream = targetStream;
 
-		var streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
+		streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
 			3).orElseThrow(RuntimeException::new);
 		assertSame(streamInterceptor, targetStream);
 
@@ -61,8 +66,8 @@ class StreamInterceptorTests {
 	void writeForwardsOperationsToOriginalStream() throws IOException {
 		var originalStream = targetStream;
 
-		StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream, 2).orElseThrow(
-			RuntimeException::new);
+		streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
+			2).orElseThrow(RuntimeException::new);
 		assertNotSame(originalStream, targetStream);
 
 		targetStream.write('a');
@@ -73,7 +78,7 @@ class StreamInterceptorTests {
 
 	@Test
 	void handlesNestedCaptures() {
-		var streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
+		streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
 			100).orElseThrow(RuntimeException::new);
 
 		String outermost, inner, innermost;
@@ -99,5 +104,20 @@ class StreamInterceptorTests {
 			() -> assertEquals("before inner - after inner", inner), //
 			() -> assertEquals("innermost", innermost) //
 		);
+	}
+
+	@Test
+	void capturesOutputFromNonTestThreads() throws Exception {
+		streamInterceptor = StreamInterceptor.register(targetStream, newStream -> this.targetStream = newStream,
+			100).orElseThrow(RuntimeException::new);
+
+		streamInterceptor.capture();
+		var thread = new Thread(() -> {
+			targetStream.println("from non-test thread");
+		});
+		thread.start();
+		thread.join();
+
+		assertEquals("from non-test thread", streamInterceptor.consume().strip());
 	}
 }

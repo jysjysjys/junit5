@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.engine.support.descriptor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -31,18 +32,21 @@ import org.junit.platform.engine.UniqueId;
  *
  * @since 1.0
  */
-class AbstractTestDescriptorTests {
+class AbstractTestDescriptorTests implements TestDescriptorOrderChildrenTests {
 
 	private EngineDescriptor engineDescriptor;
+	private GroupDescriptor group1;
+	private GroupDescriptor group11;
+	private LeafDescriptor leaf111;
 
 	@BeforeEach
 	void initTree() {
 		engineDescriptor = new EngineDescriptor(UniqueId.forEngine("testEngine"), "testEngine");
-		var group1 = new GroupDescriptor(UniqueId.root("group", "group1"));
+		group1 = new GroupDescriptor(UniqueId.root("group", "group1"));
 		engineDescriptor.addChild(group1);
 		var group2 = new GroupDescriptor(UniqueId.root("group", "group2"));
 		engineDescriptor.addChild(group2);
-		var group11 = new GroupDescriptor(UniqueId.root("group", "group1-1"));
+		group11 = new GroupDescriptor(UniqueId.root("group", "group1-1"));
 		group1.addChild(group11);
 
 		group1.addChild(new LeafDescriptor(UniqueId.root("leaf", "leaf1-1")));
@@ -50,7 +54,13 @@ class AbstractTestDescriptorTests {
 
 		group2.addChild(new LeafDescriptor(UniqueId.root("leaf", "leaf2-1")));
 
-		group11.addChild(new LeafDescriptor(UniqueId.root("leaf", "leaf11-1")));
+		leaf111 = new LeafDescriptor(UniqueId.root("leaf", "leaf11-1"));
+		group11.addChild(leaf111);
+	}
+
+	@Override
+	public TestDescriptor createEmptyTestDescriptor() {
+		return new GroupDescriptor(UniqueId.root("group", "1"));
 	}
 
 	@Test
@@ -101,8 +111,9 @@ class AbstractTestDescriptorTests {
 	@Test
 	void pruneLeaf() {
 		TestDescriptor.Visitor visitor = descriptor -> {
-			if (descriptor.getUniqueId().equals(UniqueId.root("leaf", "leaf1-1")))
+			if (descriptor.getUniqueId().equals(UniqueId.root("leaf", "leaf1-1"))) {
 				descriptor.removeFromHierarchy();
+			}
 		};
 		engineDescriptor.accept(visitor);
 
@@ -118,8 +129,9 @@ class AbstractTestDescriptorTests {
 	void pruneGroup() {
 		final var countVisited = new AtomicInteger();
 		TestDescriptor.Visitor visitor = descriptor -> {
-			if (descriptor.getUniqueId().equals(UniqueId.root("group", "group1")))
+			if (descriptor.getUniqueId().equals(UniqueId.root("group", "group1"))) {
 				descriptor.removeFromHierarchy();
+			}
 			countVisited.incrementAndGet();
 		};
 		engineDescriptor.accept(visitor);
@@ -131,6 +143,27 @@ class AbstractTestDescriptorTests {
 
 		assertEquals(3, visited.size());
 		assertFalse(visited.contains(UniqueId.root("group", "group1")));
+	}
+
+	@Test
+	void getAncestors() {
+		assertThat(getAncestorsUniqueIds(engineDescriptor)).isEmpty();
+
+		assertThat(getAncestorsUniqueIds(group1)).containsExactly( //
+			UniqueId.forEngine("testEngine"));
+
+		assertThat(getAncestorsUniqueIds(group11)).containsExactly( //
+			UniqueId.root("group", "group1"), //
+			UniqueId.forEngine("testEngine"));
+
+		assertThat(getAncestorsUniqueIds(leaf111)).containsExactly( //
+			UniqueId.root("group", "group1-1"), //
+			UniqueId.root("group", "group1"), //
+			UniqueId.forEngine("testEngine"));
+	}
+
+	private List<UniqueId> getAncestorsUniqueIds(TestDescriptor descriptor) {
+		return descriptor.getAncestors().stream().map(TestDescriptor::getUniqueId).toList();
 	}
 
 }

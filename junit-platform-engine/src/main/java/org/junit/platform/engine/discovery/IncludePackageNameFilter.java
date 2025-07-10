@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -51,11 +51,11 @@ class IncludePackageNameFilter implements PackageNameFilter {
 	}
 
 	private String formatInclusionReason(String packageName, String matchedName) {
-		return String.format("Package name [%s] matches included name: '%s'", packageName, matchedName);
+		return "Package name [%s] matches included name: '%s'".formatted(packageName, matchedName);
 	}
 
 	private String formatExclusionReason(String packageName) {
-		return String.format("Package name [%s] does not match any included names: %s", packageName,
+		return "Package name [%s] does not match any included names: %s".formatted(packageName,
 			this.patternDescription);
 	}
 
@@ -71,8 +71,7 @@ class IncludePackageNameFilter implements PackageNameFilter {
 
 	@Override
 	public String toString() {
-		return String.format(
-			"%s that includes packages whose names are either equal to or start with one of the following: %s",
+		return "%s that includes packages whose names are either equal to or start with one of the following: %s".formatted(
 			getClass().getSimpleName(), this.patternDescription);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,14 +10,20 @@
 
 package org.junit.platform.engine;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
@@ -95,7 +101,7 @@ public interface TestDescriptor {
 	 *
 	 * @param parent the new parent of this descriptor; may be {@code null}.
 	 */
-	void setParent(TestDescriptor parent);
+	void setParent(@Nullable TestDescriptor parent);
 
 	/**
 	 * Get the immutable set of <em>children</em> of this descriptor.
@@ -105,6 +111,29 @@ public interface TestDescriptor {
 	 * @see #getDescendants()
 	 */
 	Set<? extends TestDescriptor> getChildren();
+
+	/**
+	 * Get the immutable set of all <em>ancestors</em> of this descriptor.
+	 *
+	 * <p>An <em>ancestor</em> is the parent of this descriptor or the parent of
+	 * one of its parents, recursively.
+	 *
+	 * @see #getParent()
+	 */
+	@API(status = STABLE, since = "1.10")
+	default Set<? extends TestDescriptor> getAncestors() {
+		if (getParent().isEmpty()) {
+			return Collections.emptySet();
+		}
+		TestDescriptor parent = getParent().get();
+		Set<TestDescriptor> ancestors = new LinkedHashSet<>();
+		ancestors.add(parent);
+		// Need to recurse?
+		if (parent.getParent().isPresent()) {
+			ancestors.addAll(parent.getAncestors());
+		}
+		return Collections.unmodifiableSet(ancestors);
+	}
 
 	/**
 	 * Get the immutable set of all <em>descendants</em> of this descriptor.
@@ -150,12 +179,45 @@ public interface TestDescriptor {
 	void removeFromHierarchy();
 
 	/**
+	 * Order the children of this descriptor.
+	 *
+	 * <p>The {@code orderer} is provided a modifiable list of child test
+	 * descriptors of this test descriptor; never {@code null}. The
+	 * {@code orderer} must return a list containing the same descriptors in any
+	 * order; potentially the same list, but never {@code null}. If descriptors
+	 * are added or removed, an exception is thrown.
+	 *
+	 * @param orderer a unary operator to order the children of this test descriptor
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	default void orderChildren(UnaryOperator<List<TestDescriptor>> orderer) {
+		Preconditions.notNull(orderer, "orderer must not be null");
+		Set<? extends TestDescriptor> originalChildren = getChildren();
+		List<TestDescriptor> suggestedOrder = orderer.apply(new ArrayList<>(originalChildren));
+		Preconditions.notNull(suggestedOrder, "orderer may not return null");
+
+		Set<? extends TestDescriptor> orderedChildren = new LinkedHashSet<>(suggestedOrder);
+		boolean unmodified = originalChildren.equals(orderedChildren);
+		Preconditions.condition(unmodified && originalChildren.size() == suggestedOrder.size(),
+			"orderer may not add or remove test descriptors");
+
+		suggestedOrder.stream() //
+				.distinct() //
+				.filter(originalChildren::contains)//
+				.forEach(testDescriptor -> {
+					removeChild(testDescriptor);
+					addChild(testDescriptor);
+				});
+	}
+
+	/**
 	 * Determine if this descriptor is a <em>root</em> descriptor.
 	 *
 	 * <p>A <em>root</em> descriptor is a descriptor without a parent.
 	 */
 	default boolean isRoot() {
-		return !getParent().isPresent();
+		return getParent().isEmpty();
 	}
 
 	/**
@@ -258,6 +320,25 @@ public interface TestDescriptor {
 	 */
 	@FunctionalInterface
 	interface Visitor {
+
+		/**
+		 * Combine the supplied {@code visitors} into a single {@code Visitor}.
+		 *
+		 * <p>If the supplied array contains only a single {@code Visitor}, that
+		 * {@code Visitor} is returned as is.
+		 *
+		 * @param visitors the {@code Visitor}s to combine; never {@code null}
+		 * or empty
+		 * @return the combined {@code Visitor}
+		 * @throws org.junit.platform.commons.PreconditionViolationException if
+		 * {@code visitors} is {@code null}, contains {@code null} elements, or
+		 * is empty
+		 * @since 1.13
+		 */
+		@API(status = EXPERIMENTAL, since = "6.0")
+		static Visitor composite(Visitor... visitors) {
+			return CompositeTestDescriptorVisitor.from(visitors);
+		}
 
 		/**
 		 * Visit a {@link TestDescriptor}.

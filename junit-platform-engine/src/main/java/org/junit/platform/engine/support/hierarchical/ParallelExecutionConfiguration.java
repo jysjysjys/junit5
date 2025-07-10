@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,13 @@
 
 package org.junit.platform.engine.support.hierarchical;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Configuration to use for parallel test execution.
@@ -30,7 +31,7 @@ import org.apiguardian.api.API;
  * @see ParallelExecutionConfigurationStrategy
  * @see DefaultParallelExecutionConfigurationStrategy
  */
-@API(status = EXPERIMENTAL, since = "1.3")
+@API(status = STABLE, since = "1.10")
 public interface ParallelExecutionConfiguration {
 
 	/**
@@ -66,10 +67,10 @@ public interface ParallelExecutionConfiguration {
 	 * @return the saturate predicate to be passed to the {@code ForkJoinPool} constructor; may be {@code null}
 	 * @since 1.9
 	 * @see ForkJoinPool#ForkJoinPool(int, ForkJoinPool.ForkJoinWorkerThreadFactory, Thread.UncaughtExceptionHandler,
-	 * boolean, int, int, int, Predicate, long, TimeUnit)
+	 * boolean, int, int, int, Predicate, long, java.util.concurrent.TimeUnit)
 	 */
-	@API(status = EXPERIMENTAL, since = "1.9")
-	default Predicate<? super ForkJoinPool> getSaturatePredicate() {
+	@API(status = STABLE, since = "1.11")
+	default @Nullable Predicate<? super ForkJoinPool> getSaturatePredicate() {
 		return null;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertLinesMatch;
 import java.nio.file.Files;
 import java.util.List;
 
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import platform.tooling.support.MavenRepo;
@@ -22,6 +23,7 @@ import platform.tooling.support.MavenRepo;
 /**
  * @since 1.4
  */
+@Order(Integer.MAX_VALUE)
 class MavenPomFileTests {
 
 	@Test

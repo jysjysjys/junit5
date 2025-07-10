@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,6 @@
 
 package org.junit.jupiter.params.provider;
 
-import static java.util.stream.Collectors.toList;
-
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
@@ -19,6 +17,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
@@ -27,28 +26,29 @@ import org.junit.platform.commons.util.Preconditions;
 class ValueArgumentsProvider extends AnnotationBasedArgumentsProvider<ValueSource> {
 
 	@Override
-	protected Stream<? extends Arguments> provideArguments(ExtensionContext context, ValueSource source) {
-		Object[] arguments = getArgumentsFromSource(source);
+	protected Stream<? extends Arguments> provideArguments(ParameterDeclarations parameters, ExtensionContext context,
+			ValueSource valueSource) {
+		Object[] arguments = getArgumentsFromSource(valueSource);
 		return Arrays.stream(arguments).map(Arguments::of);
 	}
 
-	private Object[] getArgumentsFromSource(ValueSource source) {
+	private Object[] getArgumentsFromSource(ValueSource valueSource) {
 		// @formatter:off
-		List<Object> arrays =
+		List<?> arrays =
 			Stream.of(
-				source.shorts(),
-				source.bytes(),
-				source.ints(),
-				source.longs(),
-				source.floats(),
-				source.doubles(),
-				source.chars(),
-				source.booleans(),
-				source.strings(),
-				source.classes()
+				valueSource.shorts(),
+				valueSource.bytes(),
+				valueSource.ints(),
+				valueSource.longs(),
+				valueSource.floats(),
+				valueSource.doubles(),
+				valueSource.chars(),
+				valueSource.booleans(),
+				valueSource.strings(),
+				valueSource.classes()
 			)
 			.filter(array -> Array.getLength(array) > 0)
-			.collect(toList());
+			.toList();
 		// @formatter:on
 
 		Preconditions.condition(arrays.size() == 1, () -> "Exactly one type of input must be provided in the @"
@@ -59,4 +59,5 @@ class ValueArgumentsProvider extends AnnotationBasedArgumentsProvider<ValueSourc
 				.mapToObj(index -> Array.get(originalArray, index)) //
 				.toArray();
 	}
+
 }

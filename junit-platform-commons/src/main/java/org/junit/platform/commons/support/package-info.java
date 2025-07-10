@@ -1,5 +1,5 @@
 /**
- * Maintained common support APIs provided by the JUnit Platform.
+ * Common support APIs provided by the JUnit Platform.
  *
  * <p>The purpose of this package is to provide {@code TestEngine} and
  * {@code Extension} authors convenient access to a subset of internal utility
@@ -8,4 +8,7 @@
  * extensions with the same semantics as within the JUnit Platform itself.
  */
 
+@NullMarked
 package org.junit.platform.commons.support;
+
+import org.jspecify.annotations.NullMarked;

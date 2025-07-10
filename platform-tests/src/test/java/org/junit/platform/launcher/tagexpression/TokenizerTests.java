@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,12 @@
 
 package org.junit.platform.launcher.tagexpression;
 
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class TokenizerTests {
@@ -79,18 +79,18 @@ class TokenizerTests {
 	}
 
 	private Stream<Integer> startIndicesExtractedFrom(String expression) {
-		return tokensExtractedFrom(expression).map(token -> token.startIndex);
+		return tokensExtractedFrom(expression).map(Token::startIndex);
 	}
 
 	private Stream<String> rawStringsExtractedFrom(String expression) {
-		return tokensExtractedFrom(expression).map(token -> token.rawString);
+		return tokensExtractedFrom(expression).map(Token::rawString);
 	}
 
-	private List<String> tokenStringsExtractedFrom(String expression) {
-		return tokensExtractedFrom(expression).map(Token::string).collect(toList());
+	private List<String> tokenStringsExtractedFrom(@Nullable String expression) {
+		return tokensExtractedFrom(expression).map(Token::string).toList();
 	}
 
-	private Stream<Token> tokensExtractedFrom(String expression) {
+	private Stream<Token> tokensExtractedFrom(@Nullable String expression) {
 		return new Tokenizer().tokenize(expression).stream();
 	}
 }

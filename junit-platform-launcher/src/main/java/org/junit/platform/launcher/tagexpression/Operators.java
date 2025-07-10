@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,8 @@ import static org.junit.platform.launcher.tagexpression.Operator.Associativity.R
 import java.util.Map;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * @since 1.1
  */
@@ -30,10 +32,7 @@ class Operators {
 	private final Map<String, Operator> representationToOperator = Stream.of(Not, And, Or).collect(
 		toMap(Operator::representation, identity()));
 
-	boolean isOperator(String token) {
-		return representationToOperator.containsKey(token);
-	}
-
+	@Nullable
 	Operator operatorFor(String token) {
 		return representationToOperator.get(token);
 	}

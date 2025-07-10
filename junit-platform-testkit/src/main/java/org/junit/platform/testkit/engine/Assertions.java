@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,6 @@ package org.junit.platform.testkit.engine;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.platform.commons.util.Preconditions;
@@ -50,7 +49,7 @@ class Assertions {
 					}
 				}) //
 				.filter(Objects::nonNull) //
-				.collect(Collectors.toList());
+				.toList();
 
 		if (!failures.isEmpty()) {
 			MultipleFailuresError multipleFailuresError = new MultipleFailuresError(heading, failures);
@@ -82,7 +81,7 @@ class Assertions {
 	}
 
 	private static String formatValues(long expected, long actual) {
-		return String.format("expected: <%d> but was: <%d>", expected, actual);
+		return "expected: <%d> but was: <%d>".formatted(expected, actual);
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -19,15 +19,15 @@ import java.util.Deque;
 
 import org.junit.platform.console.options.Theme;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
-import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 /**
  * @since 1.0
  */
-class VerboseTreePrintingListener implements TestExecutionListener {
+class VerboseTreePrintingListener implements DetailsPrintingListener {
 
 	private final PrintWriter out;
 	private final Theme theme;
@@ -60,9 +60,8 @@ class VerboseTreePrintingListener implements TestExecutionListener {
 	public void testPlanExecutionStarted(TestPlan testPlan) {
 		frames.push(System.currentTimeMillis());
 
-		long tests = testPlan.countTestIdentifiers(TestIdentifier::isTest);
-		printf(NONE, "%s", "Test plan execution started. Number of static tests: ");
-		printf(Style.TEST, "%d%n", tests);
+		String prefix = "Test plan execution started. Number of static tests: ";
+		printNumberOfTests(testPlan, prefix);
 		printf(Style.CONTAINER, "%s%n", theme.root());
 	}
 
@@ -70,8 +69,12 @@ class VerboseTreePrintingListener implements TestExecutionListener {
 	public void testPlanExecutionFinished(TestPlan testPlan) {
 		frames.pop();
 
+		printNumberOfTests(testPlan, "Test plan execution finished. Number of all tests: ");
+	}
+
+	private void printNumberOfTests(TestPlan testPlan, String prefix) {
 		long tests = testPlan.countTestIdentifiers(TestIdentifier::isTest);
-		printf(NONE, "%s", "Test plan execution finished. Number of all tests: ");
+		printf(NONE, "%s", prefix);
 		printf(Style.TEST, "%d%n", tests);
 	}
 
@@ -126,6 +129,11 @@ class VerboseTreePrintingListener implements TestExecutionListener {
 	@Override
 	public void reportingEntryPublished(TestIdentifier testIdentifier, ReportEntry entry) {
 		printDetail(Style.REPORTED, "reports", entry.toString());
+	}
+
+	@Override
+	public void fileEntryPublished(TestIdentifier testIdentifier, FileEntry file) {
+		printDetail(Style.REPORTED, "reports", file.toString());
 	}
 
 	/**
@@ -186,4 +194,38 @@ class VerboseTreePrintingListener implements TestExecutionListener {
 		printf(NONE, "%n");
 	}
 
+	@Override
+	public void listTests(TestPlan testPlan) {
+		frames.push(0L);
+		testPlan.accept(new TestPlan.Visitor() {
+			@Override
+			public void preVisitContainer(TestIdentifier testIdentifier) {
+				if (!testPlan.getChildren(testIdentifier).isEmpty()) {
+					printVerticals(theme.entry());
+					printf(Style.CONTAINER, " %s", testIdentifier.getDisplayName());
+					printf(NONE, "%n");
+					frames.push(0L);
+				}
+			}
+
+			@Override
+			public void visit(TestIdentifier testIdentifier) {
+				if (testPlan.getChildren(testIdentifier).isEmpty()) {
+					printVerticals(theme.entry());
+					printf(Style.valueOf(testIdentifier), " %s%n", testIdentifier.getDisplayName());
+					printDetails(testIdentifier);
+				}
+			}
+
+			@Override
+			public void postVisitContainer(TestIdentifier testIdentifier) {
+				if (!testPlan.getChildren(testIdentifier).isEmpty()) {
+					frames.pop();
+					printVerticals(theme.end());
+					printf(Style.CONTAINER, " %s%n", testIdentifier.getDisplayName());
+				}
+			}
+		});
+		frames.pop();
+	}
 }

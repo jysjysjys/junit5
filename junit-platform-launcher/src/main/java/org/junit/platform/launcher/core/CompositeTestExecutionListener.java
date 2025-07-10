@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,6 @@
 
 package org.junit.platform.launcher.core;
 
-import static java.util.stream.Collectors.toList;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -21,6 +19,7 @@ import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
@@ -38,7 +37,7 @@ class CompositeTestExecutionListener implements TestExecutionListener {
 		this.eagerTestExecutionListeners = this.testExecutionListeners.stream() //
 				.filter(EagerTestExecutionListener.class::isInstance) //
 				.map(EagerTestExecutionListener.class::cast) //
-				.collect(toList());
+				.toList();
 	}
 
 	@Override
@@ -95,6 +94,13 @@ class CompositeTestExecutionListener implements TestExecutionListener {
 			() -> "reportingEntryPublished(" + testIdentifier + ", " + entry + ")");
 	}
 
+	@Override
+	public void fileEntryPublished(TestIdentifier testIdentifier, FileEntry file) {
+		notifyEach(testExecutionListeners, IterationOrder.ORIGINAL,
+			listener -> listener.fileEntryPublished(testIdentifier, file),
+			() -> "fileEntryPublished(" + testIdentifier + ", " + file + ")");
+	}
+
 	private static <T extends TestExecutionListener> void notifyEach(List<T> listeners, IterationOrder iterationOrder,
 			Consumer<T> consumer, Supplier<String> description) {
 		iterationOrder.forEach(listeners, listener -> {
@@ -103,7 +109,7 @@ class CompositeTestExecutionListener implements TestExecutionListener {
 			}
 			catch (Throwable throwable) {
 				UnrecoverableExceptions.rethrowIfUnrecoverable(throwable);
-				logger.warn(throwable, () -> String.format("TestExecutionListener [%s] threw exception for method: %s",
+				logger.warn(throwable, () -> "TestExecutionListener [%s] threw exception for method: %s".formatted(
 					listener.getClass().getName(), description.get()));
 			}
 		});

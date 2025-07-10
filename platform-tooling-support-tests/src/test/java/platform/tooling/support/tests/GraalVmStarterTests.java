@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,49 +10,60 @@
 
 package platform.tooling.support.tests;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
-import static platform.tooling.support.tests.XmlAssertions.verifyContainsExpectedStartedOpenTestReport;
+import static platform.tooling.support.Helper.getJavaHomeWithNativeImageSupport;
+import static platform.tooling.support.ProcessStarters.getGradleJavaVersion;
+import static platform.tooling.support.tests.Projects.copyToWorkspace;
 
-import java.nio.file.Paths;
-import java.time.Duration;
+import java.nio.file.Path;
 
-import de.sormuras.bartholdy.tool.GradleWrapper;
-
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.DisabledOnOpenJ9;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.platform.tests.process.OutputFiles;
+import org.opentest4j.TestAbortedException;
 
 import platform.tooling.support.MavenRepo;
-import platform.tooling.support.Request;
+import platform.tooling.support.ProcessStarters;
 
 /**
  * @since 1.9.1
  */
+@Order(Integer.MIN_VALUE)
+@DisabledOnOpenJ9
 class GraalVmStarterTests {
 
 	@Test
-	void runsTestsInNativeImage() {
-		var request = Request.builder() //
-				.setTool(new GradleWrapper(Paths.get(".."))) //
-				.setProject("graalvm-starter") //
+	@Timeout(value = 10, unit = MINUTES)
+	void runsTestsInNativeImage(@TempDir Path workspace, @FilePrefix("gradle") OutputFiles outputFiles)
+			throws Exception {
+
+		var graalVmHome = getJavaHomeWithNativeImageSupport(getGradleJavaVersion());
+
+		var result = ProcessStarters.gradlew() //
+				.workingDir(copyToWorkspace(Projects.GRAALVM_STARTER, workspace)) //
+				.putEnvironment("GRAALVM_HOME", graalVmHome.orElseThrow(TestAbortedException::new).toString()) //
 				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
-				.addArguments("javaToolchains", "nativeTest", "--no-daemon", "--stacktrace") //
-				.setTimeout(Duration.ofMinutes(5)) //
-				.build();
+				.addArguments("javaToolchains", "nativeTest", "--no-daemon", "--stacktrace", "--no-build-cache",
+					"--warning-mode=fail", "--refresh-dependencies") //
+				.redirectOutput(outputFiles) //
+				.startAndWait();
 
-		var result = request.run();
-
-		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);
-
-		assumeFalse(
-			result.getOutputLines("err").stream().anyMatch(line -> line.contains("No matching toolchains found")),
-			"Abort test if GraalVM is not installed");
-
-		assertEquals(0, result.getExitCode());
-		assertTrue(result.getOutputLines("out").stream().anyMatch(line -> line.contains("BUILD SUCCESSFUL")));
-
-		var testResultsDir = Request.WORKSPACE.resolve(request.getWorkspace()).resolve("build/test-results/test");
-		verifyContainsExpectedStartedOpenTestReport(testResultsDir);
+		assertEquals(0, result.exitCode());
+		assertThat(result.stdOutLines()) //
+				.anyMatch(line -> line.contains("CalculatorTests > 1 + 1 = 2 SUCCESSFUL")) //
+				.anyMatch(line -> line.contains("CalculatorTests > 1 + 100 = 101 SUCCESSFUL")) //
+				.anyMatch(line -> line.contains(
+					"ClassLevelAnnotationTests$Inner > ClassLevelAnnotationTests, Inner, test SUCCESSFUL")) //
+				.anyMatch(
+					line -> line.contains("com.example.project.CalculatorParameterizedClassTests > [1] 1 SUCCESSFUL")) //
+				.anyMatch(
+					line -> line.contains("com.example.project.CalculatorParameterizedClassTests > [2] 2 SUCCESSFUL")) //
+				.anyMatch(line -> line.contains("com.example.project.VintageTests > test SUCCESSFUL")) //
+				.anyMatch(line -> line.contains("BUILD SUCCESSFUL"));
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * {@code AssertNotNull} is a collection of utility methods that support asserting
  * that there is an object.
@@ -26,23 +28,23 @@ class AssertNotNull {
 		/* no-op */
 	}
 
-	static void assertNotNull(Object actual) {
+	static void assertNotNull(@Nullable Object actual) {
 		assertNotNull(actual, (String) null);
 	}
 
-	static void assertNotNull(Object actual, String message) {
+	static void assertNotNull(@Nullable Object actual, @Nullable String message) {
 		if (actual == null) {
 			failNull(message);
 		}
 	}
 
-	static void assertNotNull(Object actual, Supplier<String> messageSupplier) {
+	static void assertNotNull(@Nullable Object actual, Supplier<@Nullable String> messageSupplier) {
 		if (actual == null) {
 			failNull(messageSupplier);
 		}
 	}
 
-	private static void failNull(Object messageOrSupplier) {
+	private static void failNull(@Nullable Object messageOrSupplier) {
 		assertionFailure() //
 				.message(messageOrSupplier) //
 				.reason("expected: not <null>") //

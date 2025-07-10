@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,11 +12,11 @@ package org.junit.platform.engine.discovery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.junit.platform.AbstractEqualsAndHashCodeTests;
 import org.junit.platform.commons.PreconditionViolationException;
 
 /**
@@ -25,36 +25,37 @@ import org.junit.platform.commons.PreconditionViolationException;
  * @since 1.6
  * @see DiscoverySelectorsTests
  */
-class NestedMethodSelectorTests extends AbstractEqualsAndHashCodeTests {
+class NestedMethodSelectorTests {
 
 	@Test
 	void equalsAndHashCode() {
-		var selector1 = new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method",
+		var selector1 = new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method",
 			"int, boolean");
-		var selector2 = new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method",
+		var selector2 = new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method",
 			"int, boolean");
 
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("X"), "NestedTestClass", "method", "int, boolean"));
+			new NestedMethodSelector(null, List.of("X"), "NestedTestClass", "method", "int, boolean"));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("X"), "NestedTestClass", "method"));
+			new NestedMethodSelector(null, List.of("X"), "NestedTestClass", "method", ""));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method", "int"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method", "int"));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method", ""));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "X", "int, boolean"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "X", "int, boolean"));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "X"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "X", ""));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "X", "method", "int, boolean"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "X", "method", "int, boolean"));
 		assertEqualsAndHashCode(selector1, selector2,
-			new NestedMethodSelector(List.of("EnclosingClass"), "X", "method"));
+			new NestedMethodSelector(null, List.of("EnclosingClass"), "X", "method", ""));
 	}
 
 	@Test
 	void preservesOriginalExceptionWhenTryingToLoadEnclosingClass() {
-		var selector = new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method", "int, boolean");
+		var selector = new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method",
+			"int, boolean");
 
 		var exception = assertThrows(PreconditionViolationException.class, selector::getEnclosingClasses);
 
@@ -64,12 +65,26 @@ class NestedMethodSelectorTests extends AbstractEqualsAndHashCodeTests {
 
 	@Test
 	void preservesOriginalExceptionWhenTryingToLoadNestedClass() {
-		var selector = new NestedMethodSelector(List.of("EnclosingClass"), "NestedTestClass", "method", "int, boolean");
+		var selector = new NestedMethodSelector(null, List.of("EnclosingClass"), "NestedTestClass", "method",
+			"int, boolean");
 
 		var exception = assertThrows(PreconditionViolationException.class, selector::getNestedClass);
 
 		assertThat(exception).hasMessage("Could not load class with name: NestedTestClass") //
 				.hasCauseInstanceOf(ClassNotFoundException.class);
+	}
+
+	@Test
+	void usesClassClassLoader() {
+		var selector = new NestedMethodSelector(List.of(getClass()), NestedTestCase.class, "method", "");
+
+		assertThat(selector.getClassLoader()).isNotNull().isSameAs(getClass().getClassLoader());
+	}
+
+	@SuppressWarnings("InnerClassMayBeStatic")
+	class NestedTestCase {
+		void method() {
+		}
 	}
 
 }

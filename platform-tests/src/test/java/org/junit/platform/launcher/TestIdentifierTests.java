@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -70,6 +70,21 @@ class TestIdentifierTests {
 			var deserializedIdentifier = (TestIdentifier) deserialize(bytes);
 			assertDeepEquals(createOriginalTestIdentifier(), deserializedIdentifier);
 		}
+	}
+
+	@Test
+	void identifierWithNoParentCanBeSerializedAndDeserialized() throws Exception {
+		TestIdentifier originalIdentifier = TestIdentifier.from(
+			new AbstractTestDescriptor(UniqueId.root("example", "id"), "Example") {
+				@Override
+				public Type getType() {
+					return Type.CONTAINER;
+				}
+			});
+
+		var deserializedIdentifier = (TestIdentifier) deserialize(serialize(originalIdentifier));
+
+		assertDeepEquals(originalIdentifier, deserializedIdentifier);
 	}
 
 	private static void assertDeepEquals(TestIdentifier first, TestIdentifier second) {

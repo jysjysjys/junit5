@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,7 +12,7 @@ package org.junit.jupiter.migrationsupport.rules;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
-import static org.apiguardian.api.API.Status.STABLE;
+import static org.apiguardian.api.API.Status.DEPRECATED;
 
 import org.apiguardian.api.API;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 import org.junit.jupiter.api.extension.TestExecutionExceptionHandler;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.migrationsupport.rules.adapter.ExpectedExceptionAdapter;
 import org.junit.rules.ExpectedException;
 
@@ -38,8 +39,13 @@ import org.junit.rules.ExpectedException;
  * @see org.junit.rules.ExpectedException
  * @see org.junit.rules.TestRule
  * @see org.junit.Rule
+ * @deprecated Please use
+ * {@link org.junit.jupiter.api.Assertions#assertThrows(Class, Executable)}
+ * instead.
  */
-@API(status = STABLE, since = "5.7")
+@SuppressWarnings("removal")
+@API(status = DEPRECATED, since = "6.0")
+@Deprecated(since = "6.0", forRemoval = true)
 public class ExpectedExceptionSupport implements AfterEachCallback, TestExecutionExceptionHandler {
 
 	private static final String EXCEPTION_WAS_HANDLED = "exceptionWasHandled";
@@ -57,8 +63,8 @@ public class ExpectedExceptionSupport implements AfterEachCallback, TestExecutio
 
 	@Override
 	public void afterEach(ExtensionContext context) throws Exception {
-		boolean handled = getStore(context).getOrComputeIfAbsent(EXCEPTION_WAS_HANDLED, key -> FALSE, Boolean.class);
-		if (!handled) {
+		Boolean handled = getStore(context).getOrComputeIfAbsent(EXCEPTION_WAS_HANDLED, key -> FALSE, Boolean.class);
+		if (handled != null && !handled) {
 			this.support.afterEach(context);
 		}
 	}

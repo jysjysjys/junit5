@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,11 +11,15 @@
 package org.junit.platform.launcher.core;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.junit.platform.engine.support.store.Namespace;
+import org.junit.platform.engine.support.store.NamespacedHierarchicalStore;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.LauncherExecutionRequest;
 import org.junit.platform.launcher.LauncherInterceptor;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
@@ -28,14 +32,14 @@ import org.junit.platform.launcher.TestPlan;
 class SessionPerRequestLauncher implements Launcher {
 
 	private final LauncherListenerRegistry listenerRegistry = new LauncherListenerRegistry();
-	private final Supplier<Launcher> launcherSupplier;
+	private final Function<NamespacedHierarchicalStore<Namespace>, Launcher> launcherFactory;
 	private final Supplier<LauncherSessionListener> sessionListenerSupplier;
 	private final Supplier<List<LauncherInterceptor>> interceptorFactory;
 
-	SessionPerRequestLauncher(Supplier<Launcher> launcherSupplier,
+	SessionPerRequestLauncher(Function<NamespacedHierarchicalStore<Namespace>, Launcher> launcherFactory,
 			Supplier<LauncherSessionListener> sessionListenerSupplier,
 			Supplier<List<LauncherInterceptor>> interceptorFactory) {
-		this.launcherSupplier = launcherSupplier;
+		this.launcherFactory = launcherFactory;
 		this.sessionListenerSupplier = sessionListenerSupplier;
 		this.interceptorFactory = interceptorFactory;
 	}
@@ -57,6 +61,7 @@ class SessionPerRequestLauncher implements Launcher {
 		}
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute(LauncherDiscoveryRequest launcherDiscoveryRequest, TestExecutionListener... listeners) {
 		try (LauncherSession session = createSession()) {
@@ -64,6 +69,7 @@ class SessionPerRequestLauncher implements Launcher {
 		}
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute(TestPlan testPlan, TestExecutionListener... listeners) {
 		try (LauncherSession session = createSession()) {
@@ -71,9 +77,16 @@ class SessionPerRequestLauncher implements Launcher {
 		}
 	}
 
+	@Override
+	public void execute(LauncherExecutionRequest launcherExecutionRequest) {
+		try (LauncherSession session = createSession()) {
+			session.getLauncher().execute(launcherExecutionRequest);
+		}
+	}
+
 	private LauncherSession createSession() {
 		LauncherSession session = new DefaultLauncherSession(interceptorFactory.get(), sessionListenerSupplier,
-			launcherSupplier);
+			this.launcherFactory);
 		Launcher launcher = session.getLauncher();
 		listenerRegistry.launcherDiscoveryListeners.getListeners().forEach(
 			launcher::registerLauncherDiscoveryListeners);

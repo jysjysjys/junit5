@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,13 +13,15 @@ package org.junit.platform.engine.support.descriptor;
 import static org.apiguardian.api.API.Status.STABLE;
 import static org.junit.platform.commons.util.ClassUtils.nullSafeToString;
 
+import java.io.Serial;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.commons.util.Preconditions;
-import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestSource;
@@ -36,6 +38,7 @@ import org.junit.platform.engine.TestSource;
 @API(status = STABLE, since = "1.0")
 public class MethodSource implements TestSource {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	/**
@@ -106,15 +109,18 @@ public class MethodSource implements TestSource {
 
 	private final String className;
 	private final String methodName;
-	private final String methodParameterTypes;
-	private Class<?> javaClass;
-	private transient Method javaMethod;
+
+	private final @Nullable String methodParameterTypes;
+
+	private @Nullable Class<?> javaClass;
+
+	private transient @Nullable Method javaMethod;
 
 	private MethodSource(String className, String methodName) {
 		this(className, methodName, null);
 	}
 
-	private MethodSource(String className, String methodName, String methodParameterTypes) {
+	private MethodSource(String className, String methodName, @Nullable String methodParameterTypes) {
 		Preconditions.notBlank(className, "Class name must not be null or blank");
 		Preconditions.notBlank(methodName, "Method name must not be null or blank");
 		this.className = className;
@@ -156,7 +162,7 @@ public class MethodSource implements TestSource {
 	/**
 	 * Get the method parameter types of this source.
 	 */
-	public final String getMethodParameterTypes() {
+	public final @Nullable String getMethodParameterTypes() {
 		return this.methodParameterTypes;
 	}
 
@@ -172,8 +178,7 @@ public class MethodSource implements TestSource {
 	 */
 	@API(status = STABLE, since = "1.7")
 	public final Class<?> getJavaClass() {
-		lazyLoadJavaClass();
-		return this.javaClass;
+		return lazyLoadJavaClass();
 	}
 
 	/**
@@ -188,37 +193,37 @@ public class MethodSource implements TestSource {
 	 */
 	@API(status = STABLE, since = "1.7")
 	public final Method getJavaMethod() {
-		lazyLoadJavaMethod();
-		return this.javaMethod;
+		return lazyLoadJavaMethod();
 	}
 
-	private void lazyLoadJavaClass() {
+	private Class<?> lazyLoadJavaClass() {
 		if (this.javaClass == null) {
 			// @formatter:off
-			this.javaClass = ReflectionUtils.tryToLoadClass(this.className).getOrThrow(
+			this.javaClass = ReflectionSupport.tryToLoadClass(this.className).getNonNullOrThrow(
 				cause -> new PreconditionViolationException("Could not load class with name: " + this.className, cause));
 			// @formatter:on
 		}
+		return this.javaClass;
 	}
 
-	private void lazyLoadJavaMethod() {
-		lazyLoadJavaClass();
-
+	private Method lazyLoadJavaMethod() {
 		if (this.javaMethod == null) {
+			Class<?> javaClass = getJavaClass();
 			if (StringUtils.isNotBlank(this.methodParameterTypes)) {
-				this.javaMethod = ReflectionUtils.findMethod(this.javaClass, this.methodName,
+				this.javaMethod = ReflectionSupport.findMethod(javaClass, this.methodName,
 					this.methodParameterTypes).orElseThrow(
-						() -> new PreconditionViolationException(String.format(
-							"Could not find method with name [%s] and parameter types [%s] in class [%s].",
-							this.methodName, this.methodParameterTypes, this.javaClass.getName())));
+						() -> new PreconditionViolationException(
+							"Could not find method with name [%s] and parameter types [%s] in class [%s].".formatted(
+								this.methodName, this.methodParameterTypes, javaClass.getName())));
 			}
 			else {
-				this.javaMethod = ReflectionUtils.findMethod(this.javaClass, this.methodName).orElseThrow(
+				this.javaMethod = ReflectionSupport.findMethod(javaClass, this.methodName).orElseThrow(
 					() -> new PreconditionViolationException(
-						String.format("Could not find method with name [%s] in class [%s].", this.methodName,
-							this.javaClass.getName())));
+						"Could not find method with name [%s] in class [%s].".formatted(this.methodName,
+							javaClass.getName())));
 			}
 		}
+		return this.javaMethod;
 	}
 
 	@Override

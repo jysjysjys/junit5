@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.PreconditionViolationException;
 
@@ -26,16 +27,19 @@ import org.junit.platform.commons.PreconditionViolationException;
  */
 class ToStringBuilderTests {
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void withNullObject() {
 		assertThrows(PreconditionViolationException.class, () -> new ToStringBuilder((Object) null));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void withNullClass() {
 		assertThrows(PreconditionViolationException.class, () -> new ToStringBuilder((Class<?>) null));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void appendWithIllegalName() {
 		var builder = new ToStringBuilder("");
@@ -141,6 +145,7 @@ class ToStringBuilderTests {
 		assertEquals("RoleModel [name = 'Dilbert', age = 42]", roleModel.toString());
 	}
 
+	@NullUnmarked
 	static class RoleModel {
 
 		String name;

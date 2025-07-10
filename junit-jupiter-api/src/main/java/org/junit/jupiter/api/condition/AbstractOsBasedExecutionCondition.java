@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,7 @@
 package org.junit.jupiter.api.condition;
 
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.enabled;
-import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
+import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
 
 import java.lang.annotation.Annotation;
 
@@ -50,7 +50,7 @@ abstract class AbstractOsBasedExecutionCondition<A extends Annotation> implement
 				.append(osSpecified ? " on operating system: " : " on architecture: ");
 
 		if (osSpecified && archSpecified) {
-			reason.append(String.format("%s (%s)", CURRENT_OS, CURRENT_ARCHITECTURE));
+			reason.append("%s (%s)".formatted(CURRENT_OS, CURRENT_ARCHITECTURE));
 		}
 		else if (osSpecified) {
 			reason.append(CURRENT_OS);
@@ -63,7 +63,7 @@ abstract class AbstractOsBasedExecutionCondition<A extends Annotation> implement
 	}
 
 	private ConditionEvaluationResult enabledByDefault() {
-		String reason = String.format("@%s is not present", this.annotationType.getSimpleName());
+		String reason = "@%s is not present".formatted(this.annotationType.getSimpleName());
 		return enabled(reason);
 	}
 

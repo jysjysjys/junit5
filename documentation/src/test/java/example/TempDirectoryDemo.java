@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,15 +13,29 @@ package example;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.io.CleanupMode.ON_SUCCESS;
 
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+
+import example.TempDirectoryDemo.InMemoryTempDirDemo.JimfsTempDirFactory;
 import example.util.ListWriter;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.AnnotatedElementContext;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.io.TempDirFactory;
 
 class TempDirectoryDemo {
 
@@ -49,6 +63,7 @@ class TempDirectoryDemo {
 	}
 	// end::user_guide_multiple_directories[]
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	static
 	// tag::user_guide_field_injection[]
 	class SharedTempDirectoryDemo {
@@ -72,5 +87,92 @@ class TempDirectoryDemo {
 
 	}
 	// end::user_guide_field_injection[]
+
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	static
+	// tag::user_guide_cleanup_mode[]
+	class CleanupModeDemo {
+
+		@Test
+		void fileTest(@TempDir(cleanup = ON_SUCCESS) Path tempDir) {
+			// perform test
+		}
+
+	}
+	// end::user_guide_cleanup_mode[]
+
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	static
+	// tag::user_guide_factory_name_prefix[]
+	class TempDirFactoryDemo {
+
+		@Test
+		void factoryTest(@TempDir(factory = Factory.class) Path tempDir) {
+			assertTrue(tempDir.getFileName().toString().startsWith("factoryTest"));
+		}
+
+		static class Factory implements TempDirFactory {
+
+			@Override
+			public Path createTempDirectory(AnnotatedElementContext elementContext, ExtensionContext extensionContext)
+					throws IOException {
+				return Files.createTempDirectory(extensionContext.getRequiredTestMethod().getName());
+			}
+
+		}
+
+	}
+	// end::user_guide_factory_name_prefix[]
+
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	static
+	// tag::user_guide_factory_jimfs[]
+	class InMemoryTempDirDemo {
+
+		@Test
+		void test(@TempDir(factory = JimfsTempDirFactory.class) Path tempDir) {
+			// perform test
+		}
+
+		static class JimfsTempDirFactory implements TempDirFactory {
+
+			private final FileSystem fileSystem = Jimfs.newFileSystem(Configuration.unix());
+
+			@Override
+			public Path createTempDirectory(AnnotatedElementContext elementContext, ExtensionContext extensionContext)
+					throws IOException {
+				return Files.createTempDirectory(fileSystem.getPath("/"), "junit-");
+			}
+
+			@Override
+			public void close() throws IOException {
+				fileSystem.close();
+			}
+
+		}
+
+	}
+	// end::user_guide_factory_jimfs[]
+
+	// tag::user_guide_composed_annotation[]
+	@Target({ ElementType.ANNOTATION_TYPE, ElementType.FIELD, ElementType.PARAMETER })
+	@Retention(RetentionPolicy.RUNTIME)
+	@TempDir(factory = JimfsTempDirFactory.class)
+	@interface JimfsTempDir {
+	}
+	// end::user_guide_composed_annotation[]
+
+	@SuppressWarnings("JUnitMalformedDeclaration")
+	static
+	// tag::user_guide_composed_annotation_usage[]
+	class JimfsTempDirAnnotationDemo {
+
+		@Test
+		void test(@JimfsTempDir Path tempDir) {
+			// perform test
+		}
+
+	}
+	// end::user_guide_composed_annotation_usage[]
 
 }

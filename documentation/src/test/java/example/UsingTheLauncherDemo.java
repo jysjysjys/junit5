@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,69 +10,50 @@
 
 package example;
 
-// tag::imports[]
+import static org.junit.platform.engine.TestExecutionResult.Status.FAILED;
 import static org.junit.platform.engine.discovery.ClassNameFilter.includeClassNamePatterns;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectPackage;
 
 import java.io.PrintWriter;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.platform.engine.CancellationToken;
 import org.junit.platform.engine.FilterResult;
 import org.junit.platform.engine.TestDescriptor;
+import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.LauncherExecutionRequest;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
 import org.junit.platform.launcher.PostDiscoveryFilter;
 import org.junit.platform.launcher.TestExecutionListener;
+import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.launcher.core.LauncherExecutionRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener;
-// end::imports[]
 
 /**
  * @since 5.0
  */
 class UsingTheLauncherDemo {
 
-	@org.junit.jupiter.api.Test
-	@SuppressWarnings("unused")
-	void discovery() {
-		// @formatter:off
-		// tag::discovery[]
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
-			.selectors(
-				selectPackage("com.example.mytests"),
-				selectClass(MyTestClass.class)
-			)
-			.filters(
-				includeClassNamePatterns(".*Tests")
-			)
-			.build();
-
-		try (LauncherSession session = LauncherFactory.openSession()) {
-			TestPlan testPlan = session.getLauncher().discover(request);
-
-			// ... discover additional test plans or execute tests
-		}
-		// end::discovery[]
-		// @formatter:on
-	}
-
-	@org.junit.jupiter.api.Tag("exclude")
-	@org.junit.jupiter.api.Test
+	@Tag("exclude")
+	@Test
 	@SuppressWarnings("unused")
 	void execution() {
 		// @formatter:off
 		// tag::execution[]
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+		LauncherDiscoveryRequest discoveryRequest = LauncherDiscoveryRequestBuilder.request()
 			.selectors(
 				selectPackage("com.example.mytests"),
 				selectClass(MyTestClass.class)
@@ -80,6 +61,9 @@ class UsingTheLauncherDemo {
 			.filters(
 				includeClassNamePatterns(".*Tests")
 			)
+			// end::execution[]
+			.configurationParameter("enableHttpServer", "false")
+			// tag::execution[]
 			.build();
 
 		SummaryGeneratingListener listener = new SummaryGeneratingListener();
@@ -89,11 +73,11 @@ class UsingTheLauncherDemo {
 			// Register a listener of your choice
 			launcher.registerTestExecutionListeners(listener);
 			// Discover tests and build a test plan
-			TestPlan testPlan = launcher.discover(request);
+			TestPlan testPlan = launcher.discover(discoveryRequest);
 			// Execute test plan
-			launcher.execute(testPlan);
-			// Alternatively, execute the request directly
-			launcher.execute(request);
+			launcher.execute(LauncherExecutionRequestBuilder.request(testPlan).build());
+			// Alternatively, execute the discoveryRequest request directly
+			launcher.execute(LauncherExecutionRequestBuilder.request(discoveryRequest).build());
 		}
 
 		TestExecutionSummary summary = listener.getSummary();
@@ -103,9 +87,9 @@ class UsingTheLauncherDemo {
 		// @formatter:on
 	}
 
-	@org.junit.jupiter.api.Test
+	@Test
 	void launcherConfig() {
-		Path reportsDir = Paths.get("target", "xml-reports");
+		Path reportsDir = Path.of("target", "xml-reports");
 		PrintWriter out = new PrintWriter(System.out);
 		// @formatter:off
 		// tag::launcherConfig[]
@@ -123,14 +107,50 @@ class UsingTheLauncherDemo {
 			.addTestExecutionListeners(new CustomTestExecutionListener())
 			.build();
 
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+		LauncherExecutionRequest request = LauncherDiscoveryRequestBuilder.request()
 			.selectors(selectPackage("com.example.mytests"))
+			.forExecution()
 			.build();
 
 		try (LauncherSession session = LauncherFactory.openSession(launcherConfig)) {
 			session.getLauncher().execute(request);
 		}
 		// end::launcherConfig[]
+		// @formatter:on
+	}
+
+	@Test
+	@SuppressWarnings("unused")
+	void cancellation() {
+		// tag::cancellation[]
+		CancellationToken cancellationToken = CancellationToken.create(); // <1>
+
+		TestExecutionListener failFastListener = new TestExecutionListener() {
+			@Override
+			public void executionFinished(TestIdentifier identifier, TestExecutionResult result) {
+				if (result.getStatus() == FAILED) {
+					cancellationToken.cancel(); // <2>
+				}
+			}
+		};
+
+		// end::cancellation[]
+		// @formatter:off
+		// tag::cancellation[]
+		LauncherExecutionRequest executionRequest = LauncherDiscoveryRequestBuilder.request()
+				.selectors(selectClass(MyTestClass.class))
+				.forExecution()
+				.cancellationToken(cancellationToken) // <3>
+				.listeners(failFastListener) // <4>
+				.build();
+		// end::cancellation[]
+		// @formatter:off
+		// tag::cancellation[]
+
+		try (LauncherSession session = LauncherFactory.openSession()) {
+			session.getLauncher().execute(executionRequest); // <5>
+		}
+		// end::cancellation[]
 		// @formatter:on
 	}
 

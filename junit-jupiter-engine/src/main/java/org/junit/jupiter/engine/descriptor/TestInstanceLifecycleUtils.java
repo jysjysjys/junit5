@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,7 +15,7 @@ import static org.apiguardian.api.API.Status.INTERNAL;
 import org.apiguardian.api.API;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
-import org.junit.platform.commons.util.AnnotationUtils;
+import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
@@ -37,7 +37,7 @@ public final class TestInstanceLifecycleUtils {
 		Preconditions.notNull(configuration, "configuration must not be null");
 
 		// @formatter:off
-		return AnnotationUtils.findAnnotation(testClass, TestInstance.class)
+		return AnnotationSupport.findAnnotation(testClass, TestInstance.class)
 				.map(TestInstance::value)
 				.orElseGet(configuration::getDefaultTestInstanceLifecycle);
 		// @formatter:on

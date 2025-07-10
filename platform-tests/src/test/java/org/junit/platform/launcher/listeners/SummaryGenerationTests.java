@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.platform.commons.test.ConcurrencyTestingUtils.executeConcurrently;
+import static org.junit.platform.launcher.core.OutputDirectoryProviders.dummyOutputDirectoryProvider;
 import static org.mockito.Mockito.mock;
 
 import java.io.PrintWriter;
@@ -39,7 +40,7 @@ import org.junit.platform.launcher.TestPlan;
 class SummaryGenerationTests {
 
 	private final SummaryGeneratingListener listener = new SummaryGeneratingListener();
-	private final TestPlan testPlan = TestPlan.from(List.of(), mock());
+	private final TestPlan testPlan = TestPlan.from(true, List.of(), mock(), dummyOutputDirectoryProvider());
 
 	@Test
 	void emptyReport() {
@@ -148,8 +149,8 @@ class SummaryGenerationTests {
 		listener.testPlanExecutionFinished(testPlan);
 		final var failures = listener.getSummary().getFailures();
 		assertThat(failures).hasSize(1);
-		assertThat(failures.get(0).getException()).isEqualTo(failedException);
-		assertThat(failures.get(0).getTestIdentifier()).isEqualTo(failingTest);
+		assertThat(failures.getFirst().getException()).isEqualTo(failedException);
+		assertThat(failures.getFirst().getTestIdentifier()).isEqualTo(failingTest);
 	}
 
 	@Test

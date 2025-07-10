@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,8 +11,8 @@
 package org.junit.platform.launcher.listeners.discovery;
 
 import static java.util.stream.Collectors.joining;
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,9 +21,7 @@ import java.util.function.Supplier;
 import org.apiguardian.api.API;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.Preconditions;
-import org.junit.platform.engine.SelectorResolutionResult.Status;
 import org.junit.platform.engine.TestEngine;
-import org.junit.platform.engine.discovery.UniqueIdSelector;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 
 /**
@@ -32,7 +30,7 @@ import org.junit.platform.launcher.LauncherDiscoveryListener;
  *
  * @since 1.6
  */
-@API(status = EXPERIMENTAL, since = "1.6")
+@API(status = STABLE, since = "1.10")
 public class LauncherDiscoveryListeners {
 
 	private LauncherDiscoveryListeners() {
@@ -45,13 +43,6 @@ public class LauncherDiscoveryListeners {
 	 * <p>The following events are considered failures:
 	 *
 	 * <ul>
-	 *     <li>
-	 *         a {@linkplain Status#FAILED failed} resolution result.
-	 *     </li>
-	 *     <li>
-	 *         an {@linkplain Status#FAILED unresolved} resolution result for a
-	 *         {@link UniqueIdSelector} that starts with the engine's unique ID.
-	 *     </li>
 	 *     <li>
 	 *         any recoverable {@link Throwable} thrown by
 	 *         {@link TestEngine#discover}.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -36,7 +36,7 @@ class EngineTestKitFailedMethodDemo {
 			.assertThatEvents().haveExactly(1, // <5>
 				event(test("failingTest"),
 					finishedWithFailure(
-						instanceOf(ArithmeticException.class), message("/ by zero"))));
+						instanceOf(ArithmeticException.class), message(it -> it.endsWith("by zero")))));
 	}
 
 }

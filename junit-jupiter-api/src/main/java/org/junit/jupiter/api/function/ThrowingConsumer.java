@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.jupiter.api.function;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code ThrowingConsumer} is a functional interface that can be used to
@@ -41,7 +42,7 @@ import org.apiguardian.api.API;
  */
 @FunctionalInterface
 @API(status = STABLE, since = "5.0")
-public interface ThrowingConsumer<T> {
+public interface ThrowingConsumer<T extends @Nullable Object> {
 
 	/**
 	 * Consume the supplied argument, potentially throwing an exception.

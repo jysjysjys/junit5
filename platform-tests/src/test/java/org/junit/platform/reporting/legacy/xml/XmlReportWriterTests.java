@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.reporting.legacy.xml;
 
+import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.joox.JOOX.$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,7 +20,9 @@ import static org.junit.platform.engine.TestExecutionResult.failed;
 import static org.junit.platform.engine.TestExecutionResult.successful;
 import static org.junit.platform.launcher.LauncherConstants.STDERR_REPORT_ENTRY_KEY;
 import static org.junit.platform.launcher.LauncherConstants.STDOUT_REPORT_ENTRY_KEY;
+import static org.junit.platform.launcher.core.OutputDirectoryProviders.dummyOutputDirectoryProvider;
 import static org.junit.platform.reporting.legacy.xml.XmlReportAssertions.assertValidAccordingToJenkinsSchema;
+import static org.junit.platform.reporting.legacy.xml.XmlReportWriter.ILLEGAL_CHARACTER_REPLACEMENT;
 import static org.mockito.Mockito.mock;
 
 import java.io.StringReader;
@@ -28,6 +31,7 @@ import java.io.Writer;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.joox.Match;
@@ -54,7 +58,7 @@ class XmlReportWriterTests {
 
 	@Test
 	void writesTestsuiteElementsWithoutTestcaseElementsWithoutAnyTests() throws Exception {
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 
@@ -72,7 +76,7 @@ class XmlReportWriterTests {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		var testDescriptor = new TestDescriptorStub(uniqueId, "successfulTest");
 		engineDescriptor.addChild(testDescriptor);
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		reportData.addReportEntry(TestIdentifier.from(testDescriptor), ReportEntry.from("myKey", "myValue"));
@@ -90,7 +94,7 @@ class XmlReportWriterTests {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		var testDescriptor = new TestDescriptorStub(uniqueId, "successfulTest");
 		engineDescriptor.addChild(testDescriptor);
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		var reportEntry = ReportEntry.from(Map.of( //
@@ -109,9 +113,9 @@ class XmlReportWriterTests {
 		assertThat(testsuite.find("system-out").text(1)) //
 				.containsSubsequence("Report Entry #1 (timestamp: ", "- foo: bar", "Report Entry #2 (timestamp: ",
 					"- baz: qux");
-		assertThat(testsuite.find("system-out").text(2).trim()) //
+		assertThat(testsuite.find("system-out").text(2).strip()) //
 				.isEqualTo("normal output");
-		assertThat(testsuite.find("system-err").text().trim()) //
+		assertThat(testsuite.find("system-err").text().strip()) //
 				.isEqualTo("error output");
 	}
 
@@ -119,7 +123,7 @@ class XmlReportWriterTests {
 	void writesEmptySkippedElementForSkippedTestWithoutReason() throws Exception {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		engineDescriptor.addChild(new TestDescriptorStub(uniqueId, "skippedTest"));
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		reportData.markSkipped(testPlan.getTestIdentifier(uniqueId), null);
@@ -149,7 +153,7 @@ class XmlReportWriterTests {
 				return "failedTest";
 			}
 		});
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		reportData.markFinished(testPlan.getTestIdentifier(uniqueId), failed(null));
@@ -169,7 +173,7 @@ class XmlReportWriterTests {
 	void omitsMessageAttributeForFailedTestWithThrowableWithoutMessage() throws Exception {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		engineDescriptor.addChild(new TestDescriptorStub(uniqueId, "failedTest"));
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		reportData.markFinished(testPlan.getTestIdentifier(uniqueId), failed(new NullPointerException()));
@@ -186,7 +190,7 @@ class XmlReportWriterTests {
 	void writesValidXmlEvenIfExceptionMessageContainsCData() throws Exception {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		engineDescriptor.addChild(new TestDescriptorStub(uniqueId, "test"));
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		var assertionError = new AssertionError("<foo><![CDATA[bar]]></foo>");
@@ -202,7 +206,7 @@ class XmlReportWriterTests {
 	void escapesInvalidCharactersInSystemPropertiesAndExceptionMessages() throws Exception {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		engineDescriptor.addChild(new TestDescriptorStub(uniqueId, "test"));
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
 		var assertionError = new AssertionError("expected: <A> but was: <B\0>");
@@ -219,50 +223,55 @@ class XmlReportWriterTests {
 
 		assertValidAccordingToJenkinsSchema(testsuite.document());
 		assertThat(testsuite.find("property").matchAttr("name", "foo\\.bar").attr("value")) //
-				.isEqualTo("&#1;");
+				.isEqualTo(String.valueOf(ILLEGAL_CHARACTER_REPLACEMENT));
 		var failure = testsuite.find("failure");
 		assertThat(failure.attr("message")) //
-				.isEqualTo("expected: <A> but was: <B&#0;>");
+				.isEqualTo("expected: <A> but was: <B" + ILLEGAL_CHARACTER_REPLACEMENT + ">");
 		assertThat(failure.text()) //
-				.contains("AssertionError: expected: <A> but was: <B&#0;>");
+				.contains("AssertionError: expected: <A> but was: <B" + ILLEGAL_CHARACTER_REPLACEMENT + ">");
+	}
+
+	@ParameterizedTest(name = "[{index}]")
+	@MethodSource("stringPairs")
+	void replacesIllegalCharacters(String input, String output) {
+		assertEquals(output, XmlReportWriter.replaceIllegalCharacters(input));
 	}
 
 	@Test
-	void doesNotReopenCDataWithinCDataContent() throws Exception {
+	void writesValidXmlForExceptionMessagesContainingLineBreaks() throws Exception {
 		var uniqueId = engineDescriptor.getUniqueId().append("test", "test");
 		engineDescriptor.addChild(new TestDescriptorStub(uniqueId, "test"));
-		var testPlan = TestPlan.from(Set.of(engineDescriptor), configParams);
+		var testPlan = TestPlan.from(true, Set.of(engineDescriptor), configParams, dummyOutputDirectoryProvider());
 
+		var allWhitespaceCharacters = IntStream.range(0, 0x10000) //
+				.filter(Character::isWhitespace) //
+				.filter(XmlReportWriter::isAllowedXmlCharacter) //
+				.mapToObj(Character::toString) //
+				.collect(joining());
+
+		var message = "a" + allWhitespaceCharacters + " b<&>";
 		var reportData = new XmlReportData(testPlan, Clock.systemDefaultZone());
-		var assertionError = new AssertionError("<foo><![CDATA[bar]]></foo>");
+		var assertionError = new AssertionError(message);
 		reportData.markFinished(testPlan.getTestIdentifier(uniqueId), failed(assertionError));
-		Writer assertingWriter = new StringWriter() {
 
-			@SuppressWarnings("NullableProblems")
-			@Override
-			public void write(char[] buffer, int off, int len) {
-				assertThat(new String(buffer, off, len)).doesNotContain("]]><![CDATA[");
-			}
-		};
+		var testsuite = writeXmlReport(testPlan, reportData);
 
-		writeXmlReport(testPlan, reportData, assertingWriter);
-	}
+		assertValidAccordingToJenkinsSchema(testsuite.document());
 
-	@ParameterizedTest
-	@MethodSource("stringPairs")
-	void escapesIllegalChars(String input, String output) {
-		assertEquals(output, XmlReportWriter.escapeIllegalChars(input));
+		var attributeValue = testsuite.find("failure").attr("message");
+		assertThat(attributeValue).isEqualTo(message);
 	}
 
 	static Stream<Arguments> stringPairs() {
 		return Stream.of( //
-			arguments("\0", "&#0;"), //
-			arguments("\1", "&#1;"), //
+			arguments("\0", String.valueOf(ILLEGAL_CHARACTER_REPLACEMENT)), //
+			arguments("\1", String.valueOf(ILLEGAL_CHARACTER_REPLACEMENT)), //
 			arguments("\t", "\t"), //
 			arguments("\r", "\r"), //
 			arguments("\n", "\n"), //
-			arguments("\u001f", "&#31;"), //
-			arguments("\u0020", "\u0020"), //
+			arguments("\u001f", String.valueOf(ILLEGAL_CHARACTER_REPLACEMENT)), //
+			arguments("✅", "✅"), //
+			arguments(" ", " "), //
 			arguments("foo!", "foo!"), //
 			arguments("\uD801\uDC00", "\uD801\uDC00") //
 		);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.commons.util;
 
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,13 +35,23 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.util.pkg1.ClassLevelDir;
+import org.junit.platform.commons.util.pkg1.InstanceLevelDir;
+import org.junit.platform.commons.util.pkg1.SuperclassWithStaticPackagePrivateBeforeMethod;
+import org.junit.platform.commons.util.pkg1.SuperclassWithStaticPackagePrivateTempDirField;
+import org.junit.platform.commons.util.pkg1.subpkg.SubclassWithNonStaticPackagePrivateBeforeMethod;
+import org.junit.platform.commons.util.pkg1.subpkg.SubclassWithNonStaticPackagePrivateTempDirField;
 
 /**
  * Unit tests for {@link AnnotationUtils}.
@@ -85,7 +94,7 @@ class AnnotationUtilsTests {
 	}
 
 	/**
-	 * Test for https://github.com/junit-team/junit5/issues/1133
+	 * Test for https://github.com/junit-team/junit-framework/issues/1133
 	 */
 	@Test
 	void findInheritedAnnotationMetaPresentOnNonInheritedComposedAnnotationPresentOnSuperclass() {
@@ -264,8 +273,7 @@ class AnnotationUtilsTests {
 	}
 
 	private void assertTagsFound(Class<?> clazz, String... tags) {
-		assertEquals(List.of(tags),
-			findRepeatableAnnotations(clazz, Tag.class).stream().map(Tag::value).collect(toList()),
+		assertEquals(List.of(tags), findRepeatableAnnotations(clazz, Tag.class).stream().map(Tag::value).toList(),
 			() -> "Tags found for class " + clazz.getName());
 	}
 
@@ -323,16 +331,18 @@ class AnnotationUtilsTests {
 
 	private void assertExtensionsFound(Class<?> clazz, String... tags) {
 		assertEquals(List.of(tags),
-			findRepeatableAnnotations(clazz, ExtendWith.class).stream().map(ExtendWith::value).collect(toList()),
+			findRepeatableAnnotations(clazz, ExtendWith.class).stream().map(ExtendWith::value).toList(),
 			() -> "Extensions found for class " + clazz.getName());
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAnnotatedMethodsForNullClass() {
 		assertThrows(PreconditionViolationException.class,
 			() -> findAnnotatedMethods(null, Annotation1.class, TOP_DOWN));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAnnotatedMethodsForNullAnnotationType() {
 		assertThrows(PreconditionViolationException.class,
@@ -376,8 +386,30 @@ class AnnotationUtilsTests {
 		var methods = findAnnotatedMethods(ClassWithAnnotatedMethods.class, Annotation1.class, TOP_DOWN);
 
 		assertEquals(3, methods.size());
-		assertEquals(superMethod, methods.get(0));
+		assertEquals(superMethod, methods.getFirst());
 		assertThat(methods.subList(1, 3)).containsOnly(method1, method3);
+	}
+
+	/*
+	 * see https://github.com/junit-team/junit-framework/issues/3553
+	 */
+	@Test
+	void findAnnotatedMethodsDoesNotAllowInstanceMethodToHideStaticMethod() throws Exception {
+		final String BEFORE = "before";
+		Class<?> superclass = SuperclassWithStaticPackagePrivateBeforeMethod.class;
+		Method beforeAllMethod = superclass.getDeclaredMethod(BEFORE);
+		Class<?> subclass = SubclassWithNonStaticPackagePrivateBeforeMethod.class;
+		Method beforeEachMethod = subclass.getDeclaredMethod(BEFORE);
+
+		// Prerequisite
+		var methods = findAnnotatedMethods(superclass, BeforeAll.class, TOP_DOWN);
+		assertThat(methods).containsExactly(beforeAllMethod);
+
+		// Actual use cases for this test
+		methods = findAnnotatedMethods(subclass, BeforeAll.class, TOP_DOWN);
+		assertThat(methods).containsExactly(beforeAllMethod);
+		methods = findAnnotatedMethods(subclass, BeforeEach.class, TOP_DOWN);
+		assertThat(methods).containsExactly(beforeEachMethod);
 	}
 
 	@Test
@@ -391,18 +423,21 @@ class AnnotationUtilsTests {
 
 	// === findAnnotatedFields() ===============================================
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAnnotatedFieldsForNullClass() {
 		assertThrows(PreconditionViolationException.class,
 			() -> findAnnotatedFields(null, Annotation1.class, isStringField, TOP_DOWN));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAnnotatedFieldsForNullAnnotationType() {
 		assertThrows(PreconditionViolationException.class,
 			() -> findAnnotatedFields(ClassWithAnnotatedFields.class, null, isStringField, TOP_DOWN));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAnnotatedFieldsForNullPredicate() {
 		assertThrows(PreconditionViolationException.class,
@@ -446,7 +481,7 @@ class AnnotationUtilsTests {
 		var fields = findAnnotatedFields(ClassWithAnnotatedFields.class, Annotation1.class, isStringField, TOP_DOWN);
 
 		assertEquals(3, fields.size());
-		assertEquals(superField, fields.get(0));
+		assertEquals(superField, fields.getFirst());
 		assertThat(fields.subList(1, 3)).containsOnly(field1, field3);
 	}
 
@@ -460,37 +495,60 @@ class AnnotationUtilsTests {
 	}
 
 	@Test
-	void findAnnotatedFieldsForShadowedFields() throws Exception {
-		Class<?> clazz = ClassWithShadowedAnnotatedFields.class;
-		var interfaceField = clazz.getDeclaredField("interfaceField");
-		var superField = clazz.getDeclaredField("superField");
-		var field1 = clazz.getDeclaredField("field1");
-		var field2 = clazz.getDeclaredField("field2");
-		var field3 = clazz.getDeclaredField("field3");
-
-		assertThat(findShadowingAnnotatedFields(Annotation1.class)).containsExactly(superField, field1, field3);
-		assertThat(findShadowingAnnotatedFields(Annotation2.class)).containsExactly(field2, field3);
-		assertThat(findShadowingAnnotatedFields(Annotation3.class)).containsExactly(interfaceField);
+	void findAnnotatedFieldsFindsAllFieldsInTypeHierarchy() {
+		assertThat(findShadowingAnnotatedFields(Annotation1.class))//
+				.containsExactly("super", "foo", "baz", "super-shadow", "foo-shadow", "baz-shadow");
+		assertThat(findShadowingAnnotatedFields(Annotation2.class))//
+				.containsExactly("bar", "baz", "bar-shadow", "baz-shadow");
+		assertThat(findShadowingAnnotatedFields(Annotation3.class))//
+				.containsExactly("interface", "interface-shadow");
 	}
 
-	private List<Field> findShadowingAnnotatedFields(Class<? extends Annotation> annotationType) {
-		return findAnnotatedFields(ClassWithShadowedAnnotatedFields.class, annotationType, isStringField);
+	private List<String> findShadowingAnnotatedFields(Class<? extends Annotation> annotationType) {
+		var fields = findAnnotatedFields(ClassWithShadowedAnnotatedFields.class, annotationType, isStringField);
+		var values = ReflectionUtils.readFieldValues(fields, new ClassWithShadowedAnnotatedFields());
+		return values.stream().map(String::valueOf).toList();
+	}
+
+	/*
+	 * see https://github.com/junit-team/junit-framework/issues/3553
+	 */
+	@Test
+	void findAnnotatedFieldsDoesNotAllowInstanceFieldToHideStaticField() throws Exception {
+		final String TEMP_DIR = "tempDir";
+		Class<?> superclass = SuperclassWithStaticPackagePrivateTempDirField.class;
+		Field staticField = superclass.getDeclaredField(TEMP_DIR);
+		Class<?> subclass = SubclassWithNonStaticPackagePrivateTempDirField.class;
+		Field nonStaticField = subclass.getDeclaredField(TEMP_DIR);
+
+		// Prerequisite
+		var fields = findAnnotatedFields(superclass, ClassLevelDir.class, field -> true);
+		assertThat(fields).containsExactly(staticField);
+
+		// Actual use cases for this test
+		fields = findAnnotatedFields(subclass, ClassLevelDir.class, field -> true);
+		assertThat(fields).containsExactly(staticField);
+		fields = findAnnotatedFields(subclass, InstanceLevelDir.class, field -> true);
+		assertThat(fields).containsExactly(nonStaticField);
 	}
 
 	// === findPublicAnnotatedFields() =========================================
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findPublicAnnotatedFieldsForNullClass() {
 		assertThrows(PreconditionViolationException.class,
 			() -> findPublicAnnotatedFields(null, String.class, Annotation1.class));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findPublicAnnotatedFieldsForNullFieldType() {
 		assertThrows(PreconditionViolationException.class,
 			() -> findPublicAnnotatedFields(getClass(), null, Annotation1.class));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findPublicAnnotatedFieldsForNullAnnotationType() {
 		assertThrows(PreconditionViolationException.class,
@@ -542,7 +600,7 @@ class AnnotationUtilsTests {
 	}
 
 	private List<String> asNames(List<Field> fields) {
-		return fields.stream().map(Field::getName).collect(toList());
+		return fields.stream().map(Field::getName).toList();
 	}
 
 	// -------------------------------------------------------------------------
@@ -938,13 +996,13 @@ class AnnotationUtilsTests {
 	// -------------------------------------------------------------------------
 
 	@Annotation1
-	private Boolean privateDirectlyAnnotatedField;
+	private @Nullable Boolean privateDirectlyAnnotatedField;
 
 	@Annotation1
-	public String directlyAnnotatedField;
+	public @Nullable String directlyAnnotatedField;
 
 	@ComposedAnnotation
-	public Integer metaAnnotatedField;
+	public @Nullable Integer metaAnnotatedField;
 
 	interface InterfaceWithAnnotatedFields {
 

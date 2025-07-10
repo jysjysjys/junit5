@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,13 +10,16 @@
 
 package org.junit.jupiter.api.extension;
 
+import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +28,9 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.api.function.ThrowingConsumer;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.support.ReflectionSupport;
@@ -37,6 +42,8 @@ import org.junit.platform.commons.util.Preconditions;
  *
  * <p>{@link Extension Extensions} are provided an instance of
  * {@code ExtensionContext} to perform their work.
+ *
+ * <p>This interface is not intended to be implemented by clients.
  *
  * @since 5.0
  * @see Store
@@ -126,6 +133,31 @@ public interface ExtensionContext {
 	 * @see #getRequiredTestClass()
 	 */
 	Optional<Class<?>> getTestClass();
+
+	/**
+	 * Get the enclosing test classes of the current test or container.
+	 *
+	 * <p>This method is useful to look up annotations on nested test classes
+	 * and their enclosing <em>runtime</em> types:
+	 *
+	 * <pre>{@code
+	 * AnnotationSupport.findAnnotation(
+	 *     extensionContext.getRequiredTestClass(),
+	 *     MyAnnotation.class,
+	 *     extensionContext.getEnclosingTestClasses()
+	 * );
+	 * }</pre>
+	 *
+	 * @return an empty list if there is no class associated with the current
+	 * test or container or when it is not nested; otherwise, a list containing
+	 * the enclosing test classes in order from outermost to innermost; never
+	 * {@code null}
+	 *
+	 * @since 5.12.1
+	 * @see org.junit.platform.commons.support.AnnotationSupport#findAnnotation(Class, Class, List)
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	List<Class<?>> getEnclosingTestClasses();
 
 	/**
 	 * Get the <em>required</em> {@link Class} associated with the current test
@@ -313,8 +345,8 @@ public interface ExtensionContext {
 	 * @see System#getProperty(String)
 	 * @see org.junit.platform.engine.ConfigurationParameters
 	 */
-	@API(status = EXPERIMENTAL, since = "5.7")
-	<T> Optional<T> getConfigurationParameter(String key, Function<String, T> transformer);
+	@API(status = STABLE, since = "5.10")
+	<T> Optional<T> getConfigurationParameter(String key, Function<? super String, ? extends @Nullable T> transformer);
 
 	/**
 	 * Publish a map of key-value pairs to be consumed by an
@@ -366,6 +398,40 @@ public interface ExtensionContext {
 	}
 
 	/**
+	 * Publish a file with the supplied name written by the supplied action and
+	 * attach it to the current test or container.
+	 *
+	 * <p>The file will be resolved in the report output directory prior to
+	 * invoking the supplied action.
+	 *
+	 * @param name the name of the file to be attached; never {@code null} or
+	 * blank and must not contain any path separators
+	 * @param mediaType the media type of the file; never {@code null}; use
+	 * {@link MediaType#APPLICATION_OCTET_STREAM} if unknown
+	 * @param action the action to be executed to write the file; never {@code null}
+	 * @since 5.12
+	 * @see org.junit.platform.engine.EngineExecutionListener#fileEntryPublished
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	void publishFile(String name, MediaType mediaType, ThrowingConsumer<Path> action);
+
+	/**
+	 * Publish a directory with the supplied name written by the supplied action
+	 * and attach it to the current test or container.
+	 *
+	 * <p>The directory will be resolved and created in the report output directory
+	 * prior to invoking the supplied action, if it doesn't already exist.
+	 *
+	 * @param name the name of the directory to be attached; never {@code null}
+	 * or blank and must not contain any path separators
+	 * @param action the action to be executed to write the file; never {@code null}
+	 * @since 5.12
+	 * @see org.junit.platform.engine.EngineExecutionListener#fileEntryPublished
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	void publishDirectory(String name, ThrowingConsumer<Path> action);
+
+	/**
 	 * Get the {@link Store} for the supplied {@link Namespace}.
 	 *
 	 * <p>Use {@code getStore(Namespace.GLOBAL)} to get the default, global {@link Namespace}.
@@ -379,8 +445,27 @@ public interface ExtensionContext {
 	 * @return the store in which to put and get objects for other invocations
 	 * working in the same namespace; never {@code null}
 	 * @see Namespace#GLOBAL
+	 * @see #getStore(StoreScope, Namespace)
 	 */
 	Store getStore(Namespace namespace);
+
+	/**
+	 * Returns the store for supplied scope and namespace.
+	 *
+	 * <p>If {@code scope} is
+	 * {@link StoreScope#EXTENSION_CONTEXT EXTENSION_CONTEXT}, the store behaves
+	 * exactly like the one returned by {@link #getStore(Namespace)}. If the
+	 * {@code scope} is {@link StoreScope#LAUNCHER_SESSION LAUNCHER_SESSION} or
+	 * {@link StoreScope#EXECUTION_REQUEST EXECUTION_REQUEST}, all stored values
+	 * that are instances of {@link AutoCloseable} are notified by invoking
+	 * their {@code close()} methods when the scope is closed.
+	 *
+	 * @since 5.13
+	 * @see StoreScope
+	 * @see #getStore(Namespace)
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	Store getStore(StoreScope scope, Namespace namespace);
 
 	/**
 	 * Get the {@link ExecutionMode} associated with the current test or container.
@@ -399,7 +484,7 @@ public interface ExtensionContext {
 	 *
 	 * @since 5.9
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = STABLE, since = "5.11")
 	ExecutableInvoker getExecutableInvoker();
 
 	/**
@@ -419,8 +504,10 @@ public interface ExtensionContext {
 		 * inverse order they were added in.
 		 *
 		 * @since 5.1
+		 * @deprecated Please extend {@code AutoCloseable} directly.
 		 */
-		@API(status = STABLE, since = "5.1")
+		@Deprecated
+		@API(status = DEPRECATED, since = "5.13")
 		interface CloseableResource {
 
 			/**
@@ -448,6 +535,7 @@ public interface ExtensionContext {
 		 * @see #get(Object, Class)
 		 * @see #getOrDefault(Object, Class, Object)
 		 */
+		@Nullable
 		Object get(Object key);
 
 		/**
@@ -466,7 +554,7 @@ public interface ExtensionContext {
 		 * @see #get(Object)
 		 * @see #getOrDefault(Object, Class, Object)
 		 */
-		<V> V get(Object key, Class<V> requiredType);
+		<V> @Nullable V get(Object key, Class<V> requiredType);
 
 		/**
 		 * Get the value of the specified required type that is stored under
@@ -483,7 +571,8 @@ public interface ExtensionContext {
 		 * @param requiredType the required type of the value; never {@code null}
 		 * @param defaultValue the default value
 		 * @param <V> the value type
-		 * @return the value; potentially {@code null}
+		 * @return the value; potentially {@code null} if {@code defaultValue}
+		 * is {@code null}
 		 * @since 5.5
 		 * @see #get(Object, Class)
 		 */
@@ -511,9 +600,11 @@ public interface ExtensionContext {
 		 * <p>See {@link #getOrComputeIfAbsent(Object, Function, Class)} for
 		 * further details.
 		 *
-		 * <p>If {@code type} implements {@link ExtensionContext.Store.CloseableResource}
-		 * the {@code close()} method will be invoked on the stored object when
-		 * the store is closed.
+		 * <p>If {@code type} implements {@link CloseableResource} or
+		 * {@link AutoCloseable} (unless the
+		 * {@code junit.jupiter.extensions.store.close.autocloseable.enabled}
+		 * configuration parameter is set to {@code false}), then the {@code close()}
+		 * method will be invoked on the stored object when the store is closed.
 		 *
 		 * @param type the type of object to retrieve; never {@code null}
 		 * @param <V> the key and value type
@@ -522,9 +613,10 @@ public interface ExtensionContext {
 		 * @see #getOrComputeIfAbsent(Object, Function)
 		 * @see #getOrComputeIfAbsent(Object, Function, Class)
 		 * @see CloseableResource
+		 * @see AutoCloseable
 		 */
 		@API(status = STABLE, since = "5.1")
-		default <V> V getOrComputeIfAbsent(Class<V> type) {
+		default <V> @Nullable V getOrComputeIfAbsent(Class<V> type) {
 			return getOrComputeIfAbsent(type, ReflectionSupport::newInstance, type);
 		}
 
@@ -541,21 +633,25 @@ public interface ExtensionContext {
 		 * <p>For greater type safety, consider using
 		 * {@link #getOrComputeIfAbsent(Object, Function, Class)} instead.
 		 *
-		 * <p>If the created value is an instance of {@link ExtensionContext.Store.CloseableResource}
-		 * the {@code close()} method will be invoked on the stored object when
-		 * the store is closed.
+		 * <p>If the created value is an instance of {@link CloseableResource} or
+		 * {@link AutoCloseable} (unless the
+		 * {@code junit.jupiter.extensions.store.close.autocloseable.enabled}
+		 * configuration parameter is set to {@code false}), then the {@code close()}
+		 * method will be invoked on the stored object when the store is closed.
 		 *
 		 * @param key the key; never {@code null}
 		 * @param defaultCreator the function called with the supplied {@code key}
-		 * to create a new value; never {@code null}
+		 * to create a new value; never {@code null} but may return {@code null}
 		 * @param <K> the key type
 		 * @param <V> the value type
 		 * @return the value; potentially {@code null}
 		 * @see #getOrComputeIfAbsent(Class)
 		 * @see #getOrComputeIfAbsent(Object, Function, Class)
 		 * @see CloseableResource
+		 * @see AutoCloseable
 		 */
-		<K, V> Object getOrComputeIfAbsent(K key, Function<K, V> defaultCreator);
+		<K, V extends @Nullable Object> @Nullable Object getOrComputeIfAbsent(K key,
+				Function<? super K, ? extends V> defaultCreator);
 
 		/**
 		 * Get the value of the specified required type that is stored under the
@@ -568,13 +664,15 @@ public interface ExtensionContext {
 		 * a new value will be computed by the {@code defaultCreator} (given
 		 * the {@code key} as input), stored, and returned.
 		 *
-		 * <p>If {@code requiredType} implements {@link ExtensionContext.Store.CloseableResource}
-		 * the {@code close()} method will be invoked on the stored object when
-		 * the store is closed.
+		 * <p>If {@code requiredType} implements {@link CloseableResource} or
+		 * {@link AutoCloseable} (unless the
+		 * {@code junit.jupiter.extensions.store.close.autocloseable.enabled}
+		 * configuration parameter is set to {@code false}), then the {@code close()}
+		 * method will be invoked on the stored object when the store is closed.
 		 *
 		 * @param key the key; never {@code null}
 		 * @param defaultCreator the function called with the supplied {@code key}
-		 * to create a new value; never {@code null}
+		 * to create a new value; never {@code null} but may return {@code null}
 		 * @param requiredType the required type of the value; never {@code null}
 		 * @param <K> the key type
 		 * @param <V> the value type
@@ -582,8 +680,10 @@ public interface ExtensionContext {
 		 * @see #getOrComputeIfAbsent(Class)
 		 * @see #getOrComputeIfAbsent(Object, Function)
 		 * @see CloseableResource
+		 * @see AutoCloseable
 		 */
-		<K, V> V getOrComputeIfAbsent(K key, Function<K, V> defaultCreator, Class<V> requiredType);
+		<K, V extends @Nullable Object> @Nullable V getOrComputeIfAbsent(K key,
+				Function<? super K, ? extends V> defaultCreator, Class<V> requiredType);
 
 		/**
 		 * Store a {@code value} for later retrieval under the supplied {@code key}.
@@ -592,23 +692,26 @@ public interface ExtensionContext {
 		 * ExtensionContexts} for the store's {@code Namespace} unless they
 		 * overwrite it.
 		 *
-		 * <p>If the {@code value} is an instance of {@link ExtensionContext.Store.CloseableResource}
-		 * the {@code close()} method will be invoked on the stored object when
-		 * the store is closed.
+		 * <p>If the {@code value} is an instance of {@link CloseableResource} or
+		 * {@link AutoCloseable} (unless the
+		 * {@code junit.jupiter.extensions.store.close.autocloseable.enabled}
+		 * configuration parameter is set to {@code false}), then the {@code close()}
+		 * method will be invoked on the stored object when the store is closed.
 		 *
 		 * @param key the key under which the value should be stored; never
 		 * {@code null}
 		 * @param value the value to store; may be {@code null}
 		 * @see CloseableResource
+		 * @see AutoCloseable
 		 */
-		void put(Object key, Object value);
+		void put(Object key, @Nullable Object value);
 
 		/**
 		 * Remove the value that was previously stored under the supplied {@code key}.
 		 *
 		 * <p>The value will only be removed in the current {@link ExtensionContext},
-		 * not in ancestors. In addition, the {@link CloseableResource} API will not
-		 * be honored for values that are manually removed via this method.
+		 * not in ancestors. In addition, the {@link CloseableResource} and {@link AutoCloseable}
+		 * API will not be honored for values that are manually removed via this method.
 		 *
 		 * <p>For greater type safety, consider using {@link #remove(Object, Class)}
 		 * instead.
@@ -618,6 +721,7 @@ public interface ExtensionContext {
 		 * for the specified key
 		 * @see #remove(Object, Class)
 		 */
+		@Nullable
 		Object remove(Object key);
 
 		/**
@@ -625,8 +729,8 @@ public interface ExtensionContext {
 		 * under the supplied {@code key}.
 		 *
 		 * <p>The value will only be removed in the current {@link ExtensionContext},
-		 * not in ancestors. In addition, the {@link CloseableResource} API will not
-		 * be honored for values that are manually removed via this method.
+		 * not in ancestors. In addition, the {@link CloseableResource} and {@link AutoCloseable}
+		 * API will not be honored for values that are manually removed via this method.
 		 *
 		 * @param key the key; never {@code null}
 		 * @param requiredType the required type of the value; never {@code null}
@@ -635,7 +739,7 @@ public interface ExtensionContext {
 		 * for the specified key
 		 * @see #remove(Object)
 		 */
-		<V> V remove(Object key, Class<V> requiredType);
+		<V> @Nullable V remove(Object key, Class<V> requiredType);
 
 	}
 
@@ -666,13 +770,13 @@ public interface ExtensionContext {
 		public static Namespace create(Object... parts) {
 			Preconditions.notEmpty(parts, "parts array must not be null or empty");
 			Preconditions.containsNoNullElements(parts, "individual parts must not be null");
-			return new Namespace(new ArrayList<>(Arrays.asList(parts)));
+			return new Namespace(List.of(parts));
 		}
 
 		private final List<Object> parts;
 
 		private Namespace(List<Object> parts) {
-			this.parts = parts;
+			this.parts = List.copyOf(parts);
 		}
 
 		@Override
@@ -699,7 +803,7 @@ public interface ExtensionContext {
 		 * @return new namespace; never {@code null}
 		 * @since 5.8
 		 */
-		@API(status = EXPERIMENTAL, since = "5.8")
+		@API(status = STABLE, since = "5.10")
 		public Namespace append(Object... parts) {
 			Preconditions.notEmpty(parts, "parts array must not be null or empty");
 			Preconditions.containsNoNullElements(parts, "individual parts must not be null");
@@ -708,6 +812,57 @@ public interface ExtensionContext {
 			Collections.addAll(newParts, parts);
 			return new Namespace(newParts);
 		}
+
+		@API(status = INTERNAL, since = "5.13")
+		public List<Object> getParts() {
+			return parts;
+		}
+	}
+
+	/**
+	 * {@code StoreScope} is an enumeration of the different scopes for
+	 * {@link Store} instances.
+	 *
+	 * @since 5.13
+	 * @see #getStore(StoreScope, Namespace)
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	enum StoreScope {
+
+		/**
+		 * The store is scoped to the current {@code LauncherSession}.
+		 *
+		 * <p>Any data that is stored in a {@code Store} with this scope will be
+		 * available throughout the entire launcher session. Therefore, it may
+		 * be used to inject values from registered
+		 * {@code LauncherSessionListener} implementations, to share data across
+		 * multiple executions of the Jupiter engine within the same session, or
+		 * even to share data across multiple engines.
+		 *
+		 * @see org.junit.platform.launcher.LauncherSession#getStore()
+		 * @see org.junit.platform.launcher.LauncherSessionListener
+		 */
+		LAUNCHER_SESSION,
+
+		/**
+		 * The store is scoped to the current {@code ExecutionRequest} of the
+		 * JUnit Platform {@code Launcher}.
+		 *
+		 * <p>Any data that is stored in a {@code Store} with this scope will be
+		 * available for the duration of the current execution request.
+		 * Therefore, it may be used to share data across multiple engines.
+		 *
+		 * @see org.junit.platform.engine.ExecutionRequest#getStore()
+		 */
+		EXECUTION_REQUEST,
+
+		/**
+		 * The store is scoped to the current {@code ExtensionContext}.
+		 *
+		 * <p>Any data that is stored in a {@code Store} with this scope will be
+		 * bound to the current extension context lifecycle.
+		 */
+		EXTENSION_CONTEXT
 	}
 
 }

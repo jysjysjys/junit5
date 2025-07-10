@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.platform.engine.support.hierarchical;
 
 import static org.junit.platform.engine.support.hierarchical.Node.SkipResult.doNotSkip;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
@@ -22,10 +23,10 @@ import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 public class DemoHierarchicalContainerDescriptor extends AbstractTestDescriptor
 		implements Node<DemoEngineExecutionContext> {
 
-	private final Runnable beforeBlock;
+	private final @Nullable Runnable beforeBlock;
 
-	public DemoHierarchicalContainerDescriptor(UniqueId uniqueId, String displayName, TestSource source,
-			Runnable beforeBlock) {
+	public DemoHierarchicalContainerDescriptor(UniqueId uniqueId, String displayName, @Nullable TestSource source,
+			@Nullable Runnable beforeBlock) {
 		super(uniqueId, displayName, source);
 		this.beforeBlock = beforeBlock;
 	}

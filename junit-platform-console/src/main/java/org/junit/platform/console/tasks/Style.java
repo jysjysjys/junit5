@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,16 +21,11 @@ enum Style {
 	NONE, SUCCESSFUL, ABORTED, FAILED, SKIPPED, CONTAINER, TEST, DYNAMIC, REPORTED;
 
 	static Style valueOf(TestExecutionResult result) {
-		switch (result.getStatus()) {
-			case SUCCESSFUL:
-				return Style.SUCCESSFUL;
-			case ABORTED:
-				return Style.ABORTED;
-			case FAILED:
-				return Style.FAILED;
-			default:
-				return Style.NONE;
-		}
+		return switch (result.getStatus()) {
+			case SUCCESSFUL -> Style.SUCCESSFUL;
+			case ABORTED -> Style.ABORTED;
+			case FAILED -> Style.FAILED;
+		};
 	}
 
 	static Style valueOf(TestIdentifier testIdentifier) {

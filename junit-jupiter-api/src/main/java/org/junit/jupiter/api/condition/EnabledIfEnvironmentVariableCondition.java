@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,10 @@
 
 package org.junit.jupiter.api.condition;
 
-import static java.lang.String.format;
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.disabled;
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.enabled;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.platform.commons.util.Preconditions;
@@ -42,7 +42,7 @@ class EnabledIfEnvironmentVariableCondition
 	@Override
 	protected ConditionEvaluationResult evaluate(EnabledIfEnvironmentVariable annotation) {
 
-		String name = annotation.named().trim();
+		String name = annotation.named().strip();
 		String regex = annotation.matches();
 		Preconditions.notBlank(name, () -> "The 'named' attribute must not be blank in " + annotation);
 		Preconditions.notBlank(regex, () -> "The 'matches' attribute must not be blank in " + annotation);
@@ -50,14 +50,14 @@ class EnabledIfEnvironmentVariableCondition
 
 		// Nothing to match against?
 		if (actual == null) {
-			return disabled(format("Environment variable [%s] does not exist", name), annotation.disabledReason());
+			return disabled("Environment variable [%s] does not exist".formatted(name), annotation.disabledReason());
 		}
 		if (actual.matches(regex)) {
-			return enabled(format("Environment variable [%s] with value [%s] matches regular expression [%s]", name,
+			return enabled("Environment variable [%s] with value [%s] matches regular expression [%s]".formatted(name,
 				actual, regex));
 		}
-		return disabled(format("Environment variable [%s] with value [%s] does not match regular expression [%s]", name,
-			actual, regex), annotation.disabledReason());
+		return disabled("Environment variable [%s] with value [%s] does not match regular expression [%s]".formatted(
+			name, actual, regex), annotation.disabledReason());
 	}
 
 	/**
@@ -67,7 +67,7 @@ class EnabledIfEnvironmentVariableCondition
 	 * {@link System#getenv(String)}. Can be overridden in a subclass for
 	 * testing purposes.
 	 */
-	protected String getEnvironmentVariable(String name) {
+	protected @Nullable String getEnvironmentVariable(String name) {
 		return System.getenv(name);
 	}
 

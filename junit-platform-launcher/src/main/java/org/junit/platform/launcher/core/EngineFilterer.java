@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,11 +12,14 @@ package org.junit.platform.launcher.core;
 
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toCollection;
+import static java.util.stream.Collectors.toSet;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -69,12 +72,14 @@ class EngineFilterer {
 	}
 
 	private SortedSet<String> getUnmatchedEngineIdsOfIncludeFilters() {
+		Set<String> checkedTestEngineIds = checkedTestEngines.keySet().stream() //
+				.map(TestEngine::getId) //
+				.collect(toSet());
 		return engineFilters.stream() //
 				.filter(EngineFilter::isIncludeFilter) //
-				.filter(engineFilter -> checkedTestEngines.keySet().stream() //
-						.map(engineFilter::apply) //
-						.noneMatch(FilterResult::included)) //
-				.flatMap(engineFilter -> engineFilter.getEngineIds().stream()) //
+				.map(EngineFilter::getEngineIds) //
+				.flatMap(Collection::stream) //
+				.filter(id -> !checkedTestEngineIds.contains(id)) //
 				.collect(toCollection(TreeSet::new));
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,14 +12,16 @@ package org.junit.platform.engine.support.descriptor;
 
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.io.Serial;
 import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.commons.util.Preconditions;
-import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestSource;
 
@@ -43,6 +45,7 @@ import org.junit.platform.engine.TestSource;
 @API(status = STABLE, since = "1.0")
 public class ClassSource implements TestSource {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	/**
@@ -69,7 +72,7 @@ public class ClassSource implements TestSource {
 	 * @param className the class name; must not be {@code null} or blank
 	 * @param filePosition the position in the source file; may be {@code null}
 	 */
-	public static ClassSource from(String className, FilePosition filePosition) {
+	public static ClassSource from(String className, @Nullable FilePosition filePosition) {
 		return new ClassSource(className, filePosition);
 	}
 
@@ -130,14 +133,16 @@ public class ClassSource implements TestSource {
 	}
 
 	private final String className;
-	private final FilePosition filePosition;
-	private Class<?> javaClass;
+
+	private final @Nullable FilePosition filePosition;
+
+	private @Nullable Class<?> javaClass;
 
 	private ClassSource(String className) {
 		this(className, null);
 	}
 
-	private ClassSource(String className, FilePosition filePosition) {
+	private ClassSource(String className, @Nullable FilePosition filePosition) {
 		this.className = Preconditions.notBlank(className, "Class name must not be null or blank");
 		this.filePosition = filePosition;
 	}
@@ -146,7 +151,7 @@ public class ClassSource implements TestSource {
 		this(javaClass, null);
 	}
 
-	private ClassSource(Class<?> javaClass, FilePosition filePosition) {
+	private ClassSource(Class<?> javaClass, @Nullable FilePosition filePosition) {
 		this.javaClass = Preconditions.notNull(javaClass, "Class must not be null");
 		this.className = this.javaClass.getName();
 		this.filePosition = filePosition;
@@ -175,7 +180,7 @@ public class ClassSource implements TestSource {
 	public final Class<?> getJavaClass() {
 		if (this.javaClass == null) {
 			// @formatter:off
-			this.javaClass = ReflectionUtils.tryToLoadClass(this.className).getOrThrow(
+			this.javaClass = ReflectionSupport.tryToLoadClass(this.className).getNonNullOrThrow(
 				cause -> new PreconditionViolationException("Could not load class with name: " + this.className, cause));
 			// @formatter:on
 		}

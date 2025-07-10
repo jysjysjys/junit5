@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,8 @@
 
 package org.junit.jupiter.migrationsupport.rules.member;
 
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.commons.util.Preconditions;
 import org.junit.rules.TestRule;
 
 /**
@@ -19,8 +21,8 @@ abstract class AbstractTestRuleAnnotatedMember implements TestRuleAnnotatedMembe
 
 	private final TestRule testRule;
 
-	AbstractTestRuleAnnotatedMember(TestRule testRule) {
-		this.testRule = testRule;
+	AbstractTestRuleAnnotatedMember(@Nullable TestRule testRule) {
+		this.testRule = Preconditions.notNull(testRule, "TestRule must not be null");
 	}
 
 	@Override

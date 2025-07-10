@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.fakes;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestDescriptor;
@@ -23,7 +24,7 @@ public class TestEngineSpy implements TestEngine {
 
 	private final String id;
 
-	public ExecutionRequest requestForExecution;
+	public @Nullable ExecutionRequest requestForExecution;
 
 	public TestEngineSpy() {
 		this(TestEngineSpy.class.getSimpleName());

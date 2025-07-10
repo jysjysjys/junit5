@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,14 +12,13 @@ package org.junit.platform.engine;
 
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.io.Serial;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.StringUtils;
@@ -35,6 +34,7 @@ import org.junit.platform.commons.util.StringUtils;
 @API(status = STABLE, since = "1.0")
 public final class TestTag implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final String name;
@@ -51,8 +51,7 @@ public final class TestTag implements Serializable {
 	 * <li>{@code !}: <em>exclamation point</em></li>
 	 * </ul>
 	 */
-	public static final Set<String> RESERVED_CHARACTERS = Collections.unmodifiableSet(
-		new HashSet<>(Arrays.asList(",", "(", ")", "&", "|", "!")));
+	public static final Set<String> RESERVED_CHARACTERS = Set.of(",", "(", ")", "&", "|", "!");
 
 	/**
 	 * Determine if the supplied tag name is valid with regard to the supported
@@ -62,9 +61,9 @@ public final class TestTag implements Serializable {
 	 * <ul>
 	 * <li>A tag must not be {@code null}.</li>
 	 * <li>A tag must not be blank.</li>
-	 * <li>A trimmed tag must not contain whitespace.</li>
-	 * <li>A trimmed tag must not contain ISO control characters.</li>
-	 * <li>A trimmed tag must not contain {@linkplain #RESERVED_CHARACTERS
+	 * <li>A stripped tag must not contain whitespace.</li>
+	 * <li>A stripped tag must not contain ISO control characters.</li>
+	 * <li>A stripped tag must not contain {@linkplain #RESERVED_CHARACTERS
 	 * reserved characters}.</li>
 	 * </ul>
 	 *
@@ -76,17 +75,17 @@ public final class TestTag implements Serializable {
 	 * @return {@code true} if the supplied tag name conforms to the supported
 	 * syntax for tags
 	 * @see StringUtils#isNotBlank(String)
-	 * @see String#trim()
+	 * @see String#strip()
 	 * @see StringUtils#doesNotContainWhitespace(String)
 	 * @see StringUtils#doesNotContainIsoControlCharacter(String)
 	 * @see #RESERVED_CHARACTERS
 	 * @see TestTag#create(String)
 	 */
-	public static boolean isValid(String name) {
+	public static boolean isValid(@Nullable String name) {
 		if (name == null) {
 			return false;
 		}
-		name = name.trim();
+		name = name.strip();
 
 		return !name.isEmpty() && //
 				StringUtils.doesNotContainWhitespace(name) && //
@@ -105,7 +104,7 @@ public final class TestTag implements Serializable {
 	 * is {@linkplain #isValid(String) valid} before attempting to create a
 	 * {@code TestTag} using this factory method.
 	 *
-	 * <p>Note: the supplied {@code name} will be {@linkplain String#trim() trimmed}.
+	 * <p>Note: the supplied {@code name} will be {@linkplain String#strip() stripped}.
 	 *
 	 * @param name the name of the tag; must be syntactically <em>valid</em>
 	 * @throws PreconditionViolationException if the supplied tag name is not
@@ -118,8 +117,8 @@ public final class TestTag implements Serializable {
 
 	private TestTag(String name) {
 		Preconditions.condition(TestTag.isValid(name),
-			() -> String.format("Tag name [%s] must be syntactically valid", name));
-		this.name = name.trim();
+			() -> "Tag name [%s] must be syntactically valid".formatted(name));
+		this.name = name.strip();
 	}
 
 	/**
@@ -133,11 +132,7 @@ public final class TestTag implements Serializable {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof TestTag) {
-			TestTag that = (TestTag) obj;
-			return Objects.equals(this.name, that.name);
-		}
-		return false;
+		return (obj instanceof TestTag that && Objects.equals(this.name, that.name));
 	}
 
 	@Override

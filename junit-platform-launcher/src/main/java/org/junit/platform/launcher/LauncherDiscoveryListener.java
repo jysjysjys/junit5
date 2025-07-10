@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.platform.launcher;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
 import org.junit.platform.engine.EngineDiscoveryListener;
@@ -38,7 +38,7 @@ import org.junit.platform.engine.UniqueId;
  * @see LauncherDiscoveryRequest#getDiscoveryListener()
  * @see org.junit.platform.launcher.core.LauncherConfig.Builder#addLauncherDiscoveryListeners
  */
-@API(status = EXPERIMENTAL, since = "1.6")
+@API(status = STABLE, since = "1.11")
 public interface LauncherDiscoveryListener extends EngineDiscoveryListener {
 
 	/**
@@ -53,7 +53,7 @@ public interface LauncherDiscoveryListener extends EngineDiscoveryListener {
 	 * @param request the request for which discovery is being started
 	 * @since 1.8
 	 */
-	@API(status = EXPERIMENTAL, since = "1.8")
+	@API(status = STABLE, since = "1.10")
 	default void launcherDiscoveryStarted(LauncherDiscoveryRequest request) {
 	}
 
@@ -63,7 +63,7 @@ public interface LauncherDiscoveryListener extends EngineDiscoveryListener {
 	 * @param request the request for which discovery has finished
 	 * @since 1.8
 	 */
-	@API(status = EXPERIMENTAL, since = "1.8")
+	@API(status = STABLE, since = "1.10")
 	default void launcherDiscoveryFinished(LauncherDiscoveryRequest request) {
 	}
 

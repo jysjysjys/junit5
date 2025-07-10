@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,11 +24,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 class ParserErrorTests {
 
 	private final Parser parser = new Parser();
-
-	@Test
-	void cantParseExpressionFromNull() {
-		assertThat(parseErrorFromParsing(null)).contains("empty tag expression");
-	}
 
 	@Test
 	void emptyExpression() {
@@ -94,7 +90,7 @@ class ParserErrorTests {
 		// @formatter:on
 	}
 
-	private String parseErrorFromParsing(String tagExpression) {
+	private @Nullable String parseErrorFromParsing(String tagExpression) {
 		try {
 			var parseResult = parser.parse(tagExpression);
 			parseResult.tagExpressionOrThrow(RuntimeException::new);

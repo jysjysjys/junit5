@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,6 +27,10 @@ import org.apiguardian.api.API;
  * <p>Note, however, that use of the {@code @EnabledIfSystemProperties} container
  * is completely optional since {@code @EnabledIfSystemProperty} is a {@linkplain
  * java.lang.annotation.Repeatable repeatable} annotation.
+ *
+ * <p>This annotation is not {@link java.lang.annotation.Inherited @Inherited}.
+ * Consequently, if you wish to apply the same semantics to a subclass, this
+ * annotation must be redeclared on the subclass.
  *
  * @since 5.6
  * @see EnabledIfSystemProperty

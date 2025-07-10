@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -33,7 +33,10 @@ class UniqueIdFilter extends Filter {
 	private final RunnerTestDescriptor runnerTestDescriptor;
 	private final UniqueId uniqueId;
 
+	@SuppressWarnings({ "NullAway.Init", "NotNullFieldNotInitialized" })
 	private Deque<Description> path;
+
+	@SuppressWarnings({ "NullAway.Init", "NotNullFieldNotInitialized" })
 	private Set<Description> descendants;
 
 	UniqueIdFilter(RunnerTestDescriptor runnerTestDescriptor, UniqueId uniqueId) {
@@ -41,6 +44,7 @@ class UniqueIdFilter extends Filter {
 		this.uniqueId = uniqueId;
 	}
 
+	@SuppressWarnings("ConstantValue")
 	private void ensureInitialized() {
 		if (descendants == null) {
 			Optional<? extends TestDescriptor> identifiedTestDescriptor = runnerTestDescriptor.findByUniqueId(uniqueId);

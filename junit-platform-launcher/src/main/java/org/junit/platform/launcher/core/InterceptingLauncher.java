@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,10 @@
 
 package org.junit.platform.launcher.core;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.LauncherExecutionRequest;
 import org.junit.platform.launcher.LauncherInterceptor;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
@@ -35,7 +37,7 @@ class InterceptingLauncher extends DelegatingLauncher {
 
 	@Override
 	public void execute(LauncherDiscoveryRequest launcherDiscoveryRequest, TestExecutionListener... listeners) {
-		interceptor.intercept(() -> {
+		interceptor.<@Nullable Object> intercept(() -> {
 			super.execute(launcherDiscoveryRequest, listeners);
 			return null;
 		});
@@ -43,8 +45,16 @@ class InterceptingLauncher extends DelegatingLauncher {
 
 	@Override
 	public void execute(TestPlan testPlan, TestExecutionListener... listeners) {
-		interceptor.intercept(() -> {
+		interceptor.<@Nullable Object> intercept(() -> {
 			super.execute(testPlan, listeners);
+			return null;
+		});
+	}
+
+	@Override
+	public void execute(LauncherExecutionRequest launcherExecutionRequest) {
+		interceptor.<@Nullable Object> intercept(() -> {
+			super.execute(launcherExecutionRequest);
 			return null;
 		});
 	}

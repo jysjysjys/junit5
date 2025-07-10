@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,25 +10,29 @@
 
 package org.junit.jupiter.params.provider;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.params.ParameterizedInvocationConstants;
 
 /**
- * {@code @CsvFileSource} is an {@link ArgumentsSource} which is used to load
- * comma-separated value (CSV) files from one or more classpath {@link #resources}
- * or {@link #files}.
+ * {@code @CsvFileSource} is a {@linkplain Repeatable repeatable}
+ * {@link ArgumentsSource} which is used to load comma-separated value (CSV)
+ * files from one or more classpath {@link #resources} or {@link #files}.
  *
  * <p>The CSV records parsed from these resources and files will be provided as
- * arguments to the annotated {@code @ParameterizedTest} method. Note that the
- * first record may optionally be used to supply CSV headers (see
+ * arguments to the annotated
+ * {@link org.junit.jupiter.params.ParameterizedClass @ParameterizedClass} or
+ * {@link org.junit.jupiter.params.ParameterizedTest @ParameterizedTest}. Note
+ * that the first record may optionally be used to supply CSV headers (see
  * {@link #useHeadersInDisplayName}).
  *
  * <p>Any line beginning with a {@code #} symbol will be interpreted as a comment
@@ -36,6 +40,9 @@ import org.apiguardian.api.API;
  *
  * <p>The column delimiter (which defaults to a comma ({@code ,})) can be customized
  * via either {@link #delimiter} or {@link #delimiterString}.
+ *
+ * <p>The line separator is detected automatically, meaning that any of
+ * {@code "\r"}, {@code "\n"}, or {@code "\r\n"} is treated as a line separator.
  *
  * <p>In contrast to the default syntax used in {@code @CsvSource}, {@code @CsvFileSource}
  * uses a double quote ({@code "}) as its quote character by default, but this can
@@ -56,14 +63,21 @@ import org.apiguardian.api.API;
  * column is trimmed by default. This behavior can be changed by setting the
  * {@link #ignoreLeadingAndTrailingWhitespace} attribute to {@code true}.
  *
+ * <h2>Inheritance</h2>
+ *
+ * <p>This annotation is inherited to subclasses.
+ *
  * @since 5.0
  * @see CsvSource
  * @see org.junit.jupiter.params.provider.ArgumentsSource
+ * @see org.junit.jupiter.params.ParameterizedClass
  * @see org.junit.jupiter.params.ParameterizedTest
  */
-@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD })
+@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Inherited
+@Repeatable(CsvFileSources.class)
 @API(status = STABLE, since = "5.7")
 @ArgumentsSource(CsvFileArgumentsProvider.class)
 @SuppressWarnings("exports")
@@ -91,27 +105,19 @@ public @interface CsvFileSource {
 	String encoding() default "UTF-8";
 
 	/**
-	 * The line separator to use when reading the CSV files; must consist of 1
-	 * or 2 characters, typically {@code "\r"}, {@code "\n"}, or {@code "\r\n"}.
-	 *
-	 * <p>Defaults to {@code "\n"}.
-	 */
-	String lineSeparator() default "\n";
-
-	/**
 	 * Configures whether the first CSV record should be treated as header names
 	 * for columns.
 	 *
 	 * <p>When set to {@code true}, the header names will be used in the
-	 * generated display name for each {@code @ParameterizedTest} method
-	 * invocation. When using this feature, you must ensure that the display name
-	 * pattern for {@code @ParameterizedTest} includes
-	 * {@value org.junit.jupiter.params.ParameterizedTest#ARGUMENTS_PLACEHOLDER} instead of
-	 * {@value org.junit.jupiter.params.ParameterizedTest#ARGUMENTS_WITH_NAMES_PLACEHOLDER}
+	 * generated display name for each {@code @ParameterizedClass} or
+	 * {@code @ParameterizedTest} invocation. When using this feature, you must
+	 * ensure that the display name pattern for {@code @ParameterizedClass} or
+	 * {@code @ParameterizedTest} includes
+	 * {@value ParameterizedInvocationConstants#ARGUMENTS_PLACEHOLDER} instead of
+	 * {@value ParameterizedInvocationConstants#ARGUMENTS_WITH_NAMES_PLACEHOLDER}
 	 * as demonstrated in the example below.
 	 *
 	 * <p>Defaults to {@code false}.
-	 *
 	 *
 	 * <h4>Example</h4>
 	 * <pre class="code">
@@ -123,7 +129,7 @@ public @interface CsvFileSource {
 	 *
 	 * @since 5.8.2
 	 */
-	@API(status = EXPERIMENTAL, since = "5.8.2")
+	@API(status = STABLE, since = "5.10")
 	boolean useHeadersInDisplayName() default false;
 
 	/**
@@ -136,7 +142,7 @@ public @interface CsvFileSource {
 	 *
 	 * @since 5.8.2
 	 */
-	@API(status = EXPERIMENTAL, since = "5.8.2")
+	@API(status = STABLE, since = "5.10")
 	char quoteCharacter() default '"';
 
 	/**
@@ -205,24 +211,28 @@ public @interface CsvFileSource {
 	/**
 	 * The maximum number of characters allowed per CSV column.
 	 *
-	 * <p>Must be a positive number.
+	 * <p>Must be a positive number or {@code -1} to allow an unlimited number
+	 * of characters.
 	 *
 	 * <p>Defaults to {@code 4096}.
 	 *
 	 * @since 5.7
 	 */
-	@API(status = EXPERIMENTAL, since = "5.7")
+	@API(status = STABLE, since = "5.10")
 	int maxCharsPerColumn() default 4096;
 
 	/**
 	 * Controls whether leading and trailing whitespace characters of unquoted
 	 * CSV columns should be ignored.
 	 *
+	 * <p>Whitespace refers to characters with Unicode code points less than
+	 * or equal to {@code U+0020}, as defined by {@link String#trim()}.
+	 *
 	 * <p>Defaults to {@code true}.
 	 *
 	 * @since 5.8
 	 */
-	@API(status = EXPERIMENTAL, since = "5.8")
+	@API(status = STABLE, since = "5.10")
 	boolean ignoreLeadingAndTrailingWhitespace() default true;
 
 }

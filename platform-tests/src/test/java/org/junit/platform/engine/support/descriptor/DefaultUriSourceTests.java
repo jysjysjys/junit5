@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.engine.support.descriptor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 
 import java.net.URI;
 import java.util.stream.Stream;
@@ -32,6 +33,7 @@ class DefaultUriSourceTests extends AbstractTestSourceTests {
 		return Stream.of(new DefaultUriSource(URI.create("sample://instance")));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void nullSourceUriYieldsException() {
 		assertThrows(PreconditionViolationException.class, () -> new DefaultUriSource(null));

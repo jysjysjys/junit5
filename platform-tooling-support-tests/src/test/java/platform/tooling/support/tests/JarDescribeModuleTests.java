@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,56 +11,46 @@
 package platform.tooling.support.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertLinesMatch;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static platform.tooling.support.tests.Projects.getSourceDirectory;
 
 import java.lang.module.ModuleFinder;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Collectors;
 
-import de.sormuras.bartholdy.jdk.Jar;
-
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.platform.tests.process.OutputFiles;
 
 import platform.tooling.support.Helper;
 import platform.tooling.support.MavenRepo;
-import platform.tooling.support.Request;
+import platform.tooling.support.ProcessStarters;
 
 /**
  * @since 1.3
  */
+@Order(Integer.MAX_VALUE)
 class JarDescribeModuleTests {
 
 	@ParameterizedTest
 	@MethodSource("platform.tooling.support.Helper#loadModuleDirectoryNames")
-	void describeModule(String module) throws Exception {
+	void describeModule(String module, @FilePrefix("jar") OutputFiles outputFiles) throws Exception {
+		var sourceDirectory = getSourceDirectory(Projects.JAR_DESCRIBE_MODULE);
 		var modulePath = MavenRepo.jar(module);
-		var result = Request.builder() //
-				.setTool(new Jar()) //
-				.setProject("jar-describe-module") //
-				.setProjectToWorkspaceCopyFileFilter(file -> file.getName().startsWith(module)) //
-				.setWorkspace("jar-describe-module/" + module) //
-				.addArguments("--describe-module", "--file", modulePath) //
-				.build() //
-				.run();
 
-		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);
+		var result = ProcessStarters.javaCommand("jar") //
+				.workingDir(sourceDirectory) //
+				.addArguments("--describe-module", "--file", modulePath.toAbsolutePath().toString()) //
+				.redirectOutput(outputFiles) //
+				.startAndWait();
 
-		assertEquals(0, result.getExitCode());
-		assertEquals("", result.getOutput("err"), "error log isn't empty");
-		var expected = Paths.get("build", "test-workspace", "jar-describe-module", module, module + ".expected.txt");
-		if (Files.notExists(expected)) {
-			result.getOutputLines("out").forEach(System.err::println);
-			fail("No such file: " + expected);
-		}
-		var expectedLines = Files.lines(expected).map(Helper::replaceVersionPlaceholders).collect(Collectors.toList());
-		var origin = Path.of("projects", "jar-describe-module", module + ".expected.txt").toUri();
-		assertLinesMatch(expectedLines, result.getOutputLines("out"), () -> String.format("%s\nError", origin));
+		assertEquals(0, result.exitCode());
+		assertEquals("", result.stdErr(), "error log isn't empty");
+
+		var expectedLines = replaceVersionPlaceholders(
+			Files.readString(sourceDirectory.resolve(module + ".expected.txt")).strip());
+		assertLinesMatch(expectedLines.lines().toList(), result.stdOut().strip().lines().toList());
 	}
 
 	@ParameterizedTest
@@ -72,6 +62,11 @@ class JarDescribeModuleTests {
 		for (var packageName : moduleDescriptor.packages()) {
 			assertTrue(packageName.startsWith(moduleName));
 		}
+	}
+
+	private static String replaceVersionPlaceholders(String line) {
+		line = line.replace("${version}", Helper.version());
+		return line;
 	}
 
 }

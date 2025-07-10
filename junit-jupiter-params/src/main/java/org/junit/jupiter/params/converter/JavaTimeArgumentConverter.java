@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,6 +27,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * @since 5.0
  */
@@ -50,9 +52,15 @@ class JavaTimeArgumentConverter extends AnnotationBasedArgumentConverter<JavaTim
 	}
 
 	@Override
-	protected Object convert(Object input, Class<?> targetClass, JavaTimeConversionPattern annotation) {
+	protected @Nullable Object convert(@Nullable Object input, Class<?> targetClass,
+			JavaTimeConversionPattern annotation) {
+
 		if (input == null) {
-			throw new ArgumentConversionException("Cannot convert null to " + targetClass.getName());
+			if (annotation.nullable()) {
+				return null;
+			}
+			throw new ArgumentConversionException(
+				"Cannot convert null to " + targetClass.getName() + "; consider setting 'nullable = true'");
 		}
 		TemporalQuery<?> temporalQuery = TEMPORAL_QUERIES.get(targetClass);
 		if (temporalQuery == null) {

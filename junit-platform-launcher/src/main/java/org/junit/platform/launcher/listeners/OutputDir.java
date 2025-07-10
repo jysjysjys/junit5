@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,15 +11,19 @@
 package org.junit.platform.launcher.listeners;
 
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.junit.platform.launcher.LauncherConstants.OUTPUT_DIR_UNIQUE_NUMBER_PLACEHOLDER;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.SecureRandom;
 import java.util.Optional;
+import java.util.function.BiPredicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apiguardian.api.API;
 import org.junit.platform.commons.util.StringUtils;
@@ -27,9 +31,16 @@ import org.junit.platform.commons.util.StringUtils;
 @API(status = INTERNAL, since = "1.9")
 public class OutputDir {
 
+	private static final Pattern OUTPUT_DIR_UNIQUE_NUMBER_PLACEHOLDER_PATTERN = Pattern.compile(
+		Pattern.quote(OUTPUT_DIR_UNIQUE_NUMBER_PLACEHOLDER));
+
 	public static OutputDir create(Optional<String> customDir) {
+		return create(customDir, () -> Path.of("."));
+	}
+
+	static OutputDir create(Optional<String> customDir, Supplier<Path> currentWorkingDir) {
 		try {
-			return createSafely(customDir, () -> Paths.get(".").toAbsolutePath());
+			return createSafely(customDir, currentWorkingDir);
 		}
 		catch (IOException e) {
 			throw new UncheckedIOException("Failed to create output dir", e);
@@ -40,11 +51,21 @@ public class OutputDir {
 	 * Package private for testing purposes.
 	 */
 	static OutputDir createSafely(Optional<String> customDir, Supplier<Path> currentWorkingDir) throws IOException {
-		Path cwd = currentWorkingDir.get();
+		return createSafely(customDir, currentWorkingDir, new SecureRandom());
+	}
+
+	private static OutputDir createSafely(Optional<String> customDir, Supplier<Path> currentWorkingDir,
+			SecureRandom random) throws IOException {
+		Path cwd = currentWorkingDir.get().toAbsolutePath();
 		Path outputDir;
 
 		if (customDir.isPresent() && StringUtils.isNotBlank(customDir.get())) {
-			outputDir = cwd.resolve(customDir.get());
+			String customPath = customDir.get();
+			while (customPath.contains(OUTPUT_DIR_UNIQUE_NUMBER_PLACEHOLDER)) {
+				customPath = OUTPUT_DIR_UNIQUE_NUMBER_PLACEHOLDER_PATTERN.matcher(customPath) //
+						.replaceFirst(String.valueOf(Math.abs(random.nextLong())));
+			}
+			outputDir = cwd.resolve(customPath);
 		}
 		else if (Files.exists(cwd.resolve("pom.xml"))) {
 			outputDir = cwd.resolve("target");
@@ -60,13 +81,15 @@ public class OutputDir {
 			Files.createDirectories(outputDir);
 		}
 
-		return new OutputDir(outputDir);
+		return new OutputDir(outputDir.normalize(), random);
 	}
 
 	private final Path path;
+	private final SecureRandom random;
 
-	private OutputDir(Path path) {
+	private OutputDir(Path path, SecureRandom random) {
 		this.path = path;
+		this.random = random;
 	}
 
 	public Path toPath() {
@@ -74,7 +97,7 @@ public class OutputDir {
 	}
 
 	public Path createFile(String prefix, String extension) throws UncheckedIOException {
-		String filename = String.format("%s-%d.%s", prefix, Math.abs(new SecureRandom().nextLong()), extension);
+		String filename = "%s-%d.%s".formatted(prefix, Math.abs(random.nextLong()), extension);
 		Path outputFile = path.resolve(filename);
 
 		try {
@@ -93,18 +116,18 @@ public class OutputDir {
 	 * supplied extensions.
 	 */
 	private static boolean containsFilesWithExtensions(Path dir, String... extensions) throws IOException {
-		return Files.find(dir, 1, //
-			(path, basicFileAttributes) -> {
-				if (basicFileAttributes.isRegularFile()) {
-					for (String extension : extensions) {
-						if (path.getFileName().toString().endsWith(extension)) {
-							return true;
-						}
+		BiPredicate<Path, BasicFileAttributes> matcher = (path, basicFileAttributes) -> {
+			if (basicFileAttributes.isRegularFile()) {
+				for (String extension : extensions) {
+					if (path.getFileName().toString().endsWith(extension)) {
+						return true;
 					}
 				}
-				return false;
-			}) //
-				.findFirst() //
-				.isPresent();
+			}
+			return false;
+		};
+		try (Stream<Path> pathStream = Files.find(dir, 1, matcher)) {
+			return pathStream.findFirst().isPresent();
+		}
 	}
 }

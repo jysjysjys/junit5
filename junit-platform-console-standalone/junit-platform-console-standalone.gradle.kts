@@ -1,3 +1,4 @@
+import junitbuild.extensions.withArchiveOperations
 import junitbuild.java.WriteArtifactsFile
 
 plugins {
@@ -10,41 +11,55 @@ description = "JUnit Platform Console Standalone"
 dependencies {
 	shadowed(projects.junitPlatformReporting)
 	shadowed(projects.junitPlatformConsole)
-	shadowed(projects.junitPlatformSuite)
+	shadowed(projects.junitPlatformSuiteEngine)
 	shadowed(projects.junitJupiterEngine)
 	shadowed(projects.junitJupiterParams)
 	shadowed(projects.junitVintageEngine)
 	shadowed(libs.apiguardian) {
 		because("downstream projects need it to avoid compiler warnings")
 	}
-}
 
-val jupiterVersion = rootProject.version
-val vintageVersion: String by project
+	osgiVerification(libs.openTestReporting.tooling.spi)
+}
 
 tasks {
 	jar {
 		manifest {
+			attributes("Automatic-Module-Name" to "org.junit.platform.console.standalone")
 			attributes("Main-Class" to "org.junit.platform.console.ConsoleLauncher")
 		}
 	}
 	val shadowedArtifactsFile by registering(WriteArtifactsFile::class) {
-		from(configurations.shadowed)
-		outputFile.set(layout.buildDirectory.file("shadowed-artifacts"))
+		from(configurations.shadowedClasspath)
+		outputFile = layout.buildDirectory.file("shadowed-artifacts")
+	}
+	val extractThirdPartyLicenses by registering(Sync::class) {
+		from(withArchiveOperations { ops -> configurations.shadowedClasspath.flatMap { it.elements }.map { it.map(ops::zipTree) } })
+		into(layout.buildDirectory.dir("thirdPartyLicenses"))
+		include("LICENSE.txt")
+		include("LICENSE-junit.txt")
+		include("META-INF/LICENSE-*")
+		exclude("META-INF/LICENSE-notice.md")
+		eachFile {
+			val fileName = relativePath.lastName
+			relativePath = RelativePath(true, when (fileName) {
+				"LICENSE.txt" -> "LICENSE-hamcrest"
+				"LICENSE-junit.txt" -> "LICENSE-junit4"
+				else -> fileName
+			})
+		}
+		includeEmptyDirs = false
 	}
 	shadowJar {
-		// https://github.com/junit-team/junit5/issues/2557
+		// https://github.com/junit-team/junit-framework/issues/2557
 		// exclude compiled module declarations from any source (e.g. /*, /META-INF/versions/N/*)
 		exclude("**/module-info.class")
-		// https://github.com/junit-team/junit5/issues/761
+		// https://github.com/junit-team/junit-framework/issues/761
 		// prevent duplicates, add 3rd-party licenses explicitly
-		exclude("META-INF/LICENSE*.md")
-		from(project.projects.junitPlatformConsole.dependencyProject.projectDir) {
-			include("LICENSE-picocli.md")
-			into("META-INF")
-		}
-		from(project.projects.junitJupiterParams.dependencyProject.projectDir) {
-			include("LICENSE-univocity-parsers.md")
+		exclude("**/COPYRIGHT*")
+		exclude("META-INF/LICENSE*")
+		exclude("LICENSE*.txt") // JUnit 4 and Hamcrest
+		from(extractThirdPartyLicenses) {
 			into("META-INF")
 		}
 		from(shadowedArtifactsFile) {
@@ -52,11 +67,15 @@ tasks {
 		}
 
 		bundle {
+			val importAPIGuardian: String by extra
+			val importJSpecify: String by extra
 			bnd("""
 				# Customize the imports because this is an aggregate jar
 				Import-Package: \
-					${extra["importAPIGuardian"]},\
+					$importAPIGuardian,\
+					$importJSpecify,\
 					kotlin.*;resolution:="optional",\
+					kotlinx.*;resolution:="optional",\
 					*
 				# Disable the APIGuardian plugin since everything was already
 				# processed, again because this is an aggregate jar
@@ -72,8 +91,8 @@ tasks {
 					"Implementation-Title" to project.name,
 					// Generate test engine version information in single shared manifest file.
 					// Pattern of key and value: `"Engine-Version-{YourTestEngine#getId()}": "47.11"`
-					"Engine-Version-junit-jupiter" to jupiterVersion,
-					"Engine-Version-junit-vintage" to vintageVersion,
+					"Engine-Version-junit-jupiter" to project.version,
+					"Engine-Version-junit-vintage" to project.version,
 					// Version-aware binaries are already included - set Multi-Release flag here.
 					// See https://openjdk.java.net/jeps/238 for details
 					// Note: the "jar --update ... --release X" command does not work with the
@@ -81,13 +100,5 @@ tasks {
 					"Multi-Release" to true
 			))
 		}
-	}
-
-	// This jar contains some Java 9 code
-	// (org.junit.platform.console.ConsoleLauncherToolProvider which implements
-	// java.util.spi.ToolProvider which is @since 9).
-	// So in order to resolve this, it can only run on Java 9
-	osgiProperties {
-		property("-runee", "JavaSE-9")
 	}
 }

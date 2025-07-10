@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,11 +10,17 @@
 
 package example;
 
+import static java.util.Collections.singletonList;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestReporter;
+import org.junit.jupiter.api.extension.MediaType;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
@@ -41,5 +47,24 @@ class TestReporterDemo {
 		testReporter.publishEntry(values);
 	}
 
+	@Test
+	void reportFiles(TestReporter testReporter, @TempDir Path tempDir) throws Exception {
+
+		testReporter.publishFile("test1.txt", MediaType.TEXT_PLAIN_UTF_8,
+			file -> Files.write(file, singletonList("Test 1")));
+
+		Path existingFile = Files.write(tempDir.resolve("test2.txt"), singletonList("Test 2"));
+		testReporter.publishFile(existingFile, MediaType.TEXT_PLAIN_UTF_8);
+
+		testReporter.publishDirectory("test3", dir -> {
+			Files.write(dir.resolve("nested1.txt"), singletonList("Nested content 1"));
+			Files.write(dir.resolve("nested2.txt"), singletonList("Nested content 2"));
+		});
+
+		Path existingDir = Files.createDirectory(tempDir.resolve("test4"));
+		Files.write(existingDir.resolve("nested1.txt"), singletonList("Nested content 1"));
+		Files.write(existingDir.resolve("nested2.txt"), singletonList("Nested content 2"));
+		testReporter.publishDirectory(existingDir);
+	}
 }
 // end::user_guide[]

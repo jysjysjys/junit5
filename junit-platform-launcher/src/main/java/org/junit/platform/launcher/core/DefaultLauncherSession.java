@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,13 +10,19 @@
 
 package org.junit.platform.launcher.core;
 
+import static org.junit.platform.engine.support.store.NamespacedHierarchicalStore.CloseAction.closeAutoCloseables;
+
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.engine.support.store.Namespace;
+import org.junit.platform.engine.support.store.NamespacedHierarchicalStore;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.LauncherExecutionRequest;
 import org.junit.platform.launcher.LauncherInterceptor;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
@@ -40,21 +46,26 @@ class DefaultLauncherSession implements LauncherSession {
 		}
 	};
 
+	private final NamespacedHierarchicalStore<Namespace> store = new NamespacedHierarchicalStore<>(null,
+		closeAutoCloseables());
 	private final LauncherInterceptor interceptor;
 	private final LauncherSessionListener listener;
 	private final DelegatingLauncher launcher;
 
-	DefaultLauncherSession(List<LauncherInterceptor> interceptors, Supplier<LauncherSessionListener> listenerSupplier,
-			Supplier<Launcher> launcherSupplier) {
+	DefaultLauncherSession(List<LauncherInterceptor> interceptors, //
+			Supplier<LauncherSessionListener> listenerSupplier, //
+			Function<NamespacedHierarchicalStore<Namespace>, Launcher> launcherFactory //
+	) {
 		interceptor = composite(interceptors);
 		Launcher launcher;
 		if (interceptor == NOOP_INTERCEPTOR) {
 			this.listener = listenerSupplier.get();
-			launcher = launcherSupplier.get();
+			launcher = launcherFactory.apply(this.store);
 		}
 		else {
 			this.listener = interceptor.intercept(listenerSupplier::get);
-			launcher = new InterceptingLauncher(interceptor.intercept(launcherSupplier::get), interceptor);
+			launcher = new InterceptingLauncher(interceptor.intercept(() -> launcherFactory.apply(this.store)),
+				interceptor);
 		}
 		this.launcher = new DelegatingLauncher(launcher);
 		listener.launcherSessionOpened(this);
@@ -74,8 +85,14 @@ class DefaultLauncherSession implements LauncherSession {
 		if (launcher.delegate != ClosedLauncher.INSTANCE) {
 			launcher.delegate = ClosedLauncher.INSTANCE;
 			listener.launcherSessionClosed(this);
+			store.close();
 			interceptor.close();
 		}
+	}
+
+	@Override
+	public NamespacedHierarchicalStore<Namespace> getStore() {
+		return store;
 	}
 
 	private static class ClosedLauncher implements Launcher {
@@ -100,13 +117,20 @@ class DefaultLauncherSession implements LauncherSession {
 			throw new PreconditionViolationException("Launcher session has already been closed");
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public void execute(LauncherDiscoveryRequest launcherDiscoveryRequest, TestExecutionListener... listeners) {
 			throw new PreconditionViolationException("Launcher session has already been closed");
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public void execute(TestPlan testPlan, TestExecutionListener... listeners) {
+			throw new PreconditionViolationException("Launcher session has already been closed");
+		}
+
+		@Override
+		public void execute(LauncherExecutionRequest launcherExecutionRequest) {
 			throw new PreconditionViolationException("Launcher session has already been closed");
 		}
 	}

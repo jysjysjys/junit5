@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,13 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
-import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.TestDescriptor;
-import org.junit.platform.engine.TestDescriptor.Visitor;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
 
 /**
  * {@code TestPlan} describes the tree of tests and containers as discovered
@@ -62,14 +61,12 @@ import org.junit.platform.engine.UniqueId;
 public class TestPlan {
 
 	private final Set<TestIdentifier> roots = synchronizedSet(new LinkedHashSet<>(4));
-
 	private final Map<UniqueId, Set<TestIdentifier>> children = new ConcurrentHashMap<>(32);
-
 	private final Map<UniqueId, TestIdentifier> allIdentifiers = new ConcurrentHashMap<>(32);
 
 	private final boolean containsTests;
-
 	private final ConfigurationParameters configurationParameters;
+	private final OutputDirectoryProvider outputDirectoryProvider;
 
 	/**
 	 * Construct a new {@code TestPlan} from the supplied collection of
@@ -78,43 +75,32 @@ public class TestPlan {
 	 * <p>Each supplied {@code TestDescriptor} is expected to be a descriptor
 	 * for a {@link org.junit.platform.engine.TestEngine TestEngine}.
 	 *
+	 * @param containsTests whether the test plan contains tests
 	 * @param engineDescriptors the engine test descriptors from which the test
 	 * plan should be created; never {@code null}
 	 * @param configurationParameters the {@code ConfigurationParameters} for
 	 * this test plan; never {@code null}
+	 * @param outputDirectoryProvider the {@code OutputDirectoryProvider} for
+	 * this test plan; never {@code null}
 	 * @return a new test plan
 	 */
-	@API(status = INTERNAL, since = "1.0")
-	public static TestPlan from(Collection<TestDescriptor> engineDescriptors,
-			ConfigurationParameters configurationParameters) {
+	@API(status = INTERNAL, since = "1.13")
+	public static TestPlan from(boolean containsTests, Collection<TestDescriptor> engineDescriptors,
+			ConfigurationParameters configurationParameters, OutputDirectoryProvider outputDirectoryProvider) {
 		Preconditions.notNull(engineDescriptors, "Cannot create TestPlan from a null collection of TestDescriptors");
 		Preconditions.notNull(configurationParameters, "Cannot create TestPlan from null ConfigurationParameters");
-		TestPlan testPlan = new TestPlan(engineDescriptors.stream().anyMatch(TestDescriptor::containsTests),
-			configurationParameters);
-		Visitor visitor = descriptor -> testPlan.addInternal(TestIdentifier.from(descriptor));
+		TestPlan testPlan = new TestPlan(containsTests, configurationParameters, outputDirectoryProvider);
+		TestDescriptor.Visitor visitor = descriptor -> testPlan.addInternal(TestIdentifier.from(descriptor));
 		engineDescriptors.forEach(engineDescriptor -> engineDescriptor.accept(visitor));
 		return testPlan;
 	}
 
 	@API(status = INTERNAL, since = "1.4")
-	protected TestPlan(boolean containsTests, ConfigurationParameters configurationParameters) {
+	protected TestPlan(boolean containsTests, ConfigurationParameters configurationParameters,
+			OutputDirectoryProvider outputDirectoryProvider) {
 		this.containsTests = containsTests;
 		this.configurationParameters = configurationParameters;
-	}
-
-	/**
-	 * Add the supplied {@link TestIdentifier} to this test plan.
-	 *
-	 * @param testIdentifier the identifier to add; never {@code null}
-	 * @deprecated Calling this method is no longer supported and will throw an
-	 * exception.
-	 * @throws JUnitException always
-	 */
-	@Deprecated
-	@API(status = DEPRECATED, since = "1.4")
-	public void add(@SuppressWarnings("unused") TestIdentifier testIdentifier) {
-		throw new JUnitException("Unsupported attempt to modify the TestPlan was detected. "
-				+ "Please contact your IDE/tool vendor and request a fix or downgrade to JUnit 5.7.x (see https://github.com/junit-team/junit5/issues/1732 for details).");
+		this.outputDirectoryProvider = outputDirectoryProvider;
 	}
 
 	@API(status = INTERNAL, since = "1.8")
@@ -123,7 +109,7 @@ public class TestPlan {
 		allIdentifiers.put(testIdentifier.getUniqueIdObject(), testIdentifier);
 
 		// Root identifiers. Typically, a test engine.
-		if (!testIdentifier.getParentIdObject().isPresent()) {
+		if (testIdentifier.getParentIdObject().isEmpty()) {
 			roots.add(testIdentifier);
 			return;
 		}
@@ -177,22 +163,6 @@ public class TestPlan {
 	 * Get the children of the supplied unique ID.
 	 *
 	 * @param parentId the unique ID to look up the children for; never
-	 * {@code null} or blank
-	 * @return an unmodifiable set of the parent's children, potentially empty
-	 * @see #getChildren(TestIdentifier)
-	 * @deprecated Use {@link #getChildren(UniqueId)}
-	 */
-	@API(status = DEPRECATED, since = "1.10")
-	@Deprecated
-	public Set<TestIdentifier> getChildren(String parentId) {
-		Preconditions.notBlank(parentId, "parent ID must not be null or blank");
-		return getChildren(UniqueId.parse(parentId));
-	}
-
-	/**
-	 * Get the children of the supplied unique ID.
-	 *
-	 * @param parentId the unique ID to look up the children for; never
 	 * {@code null}
 	 * @return an unmodifiable set of the parent's children, potentially empty
 	 * @see #getChildren(TestIdentifier)
@@ -212,7 +182,7 @@ public class TestPlan {
 	 * with the supplied unique ID is present in this test plan
 	 * @deprecated Use {@link #getTestIdentifier(UniqueId)}
 	 */
-	@API(status = DEPRECATED, since = "1.10")
+	@API(status = DEPRECATED, since = "1.10", consumers = "Gradle")
 	@Deprecated
 	public TestIdentifier getTestIdentifier(String uniqueId) throws PreconditionViolationException {
 		Preconditions.notBlank(uniqueId, "unique ID must not be null or blank");
@@ -291,4 +261,68 @@ public class TestPlan {
 		return this.configurationParameters;
 	}
 
+	/**
+	 * Get the {@link OutputDirectoryProvider} for this test plan.
+	 *
+	 * @return the output directory provider; never {@code null}
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public OutputDirectoryProvider getOutputDirectoryProvider() {
+		return this.outputDirectoryProvider;
+	}
+
+	/**
+	 * Accept the supplied {@link Visitor} for a depth-first traversal of the
+	 * test plan.
+	 *
+	 * @param visitor the visitor to accept; never {@code null}
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public void accept(Visitor visitor) {
+		getRoots().forEach(it -> accept(visitor, it));
+	}
+
+	private void accept(Visitor visitor, TestIdentifier testIdentifier) {
+		if (testIdentifier.isContainer()) {
+			visitor.preVisitContainer(testIdentifier);
+		}
+		visitor.visit(testIdentifier);
+		getChildren(testIdentifier).forEach(it -> accept(visitor, it));
+		if (testIdentifier.isContainer()) {
+			visitor.postVisitContainer(testIdentifier);
+		}
+	}
+
+	/**
+	 * Visitor for {@link TestIdentifier TestIdentifiers} in a {@link TestPlan}.
+	 *
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public interface Visitor {
+
+		/**
+		 * Called before visiting a container.
+		 *
+		 * @see TestIdentifier#isContainer()
+		 */
+		default void preVisitContainer(TestIdentifier testIdentifier) {
+		}
+
+		/**
+		 * Called for all test identifiers regardless of their type.
+		 */
+		default void visit(TestIdentifier testIdentifier) {
+		}
+
+		/**
+		 * Called after visiting a container.
+		 *
+		 * @see TestIdentifier#isContainer()
+		 */
+		default void postVisitContainer(TestIdentifier testIdentifier) {
+		}
+	}
 }

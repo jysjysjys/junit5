@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -49,6 +49,13 @@ import org.junit.platform.commons.annotation.Testable;
  * create a custom <em>composed annotation</em> that inherits the semantics
  * of {@code @TestTemplate}.
  *
+ * <h2>Inheritance</h2>
+ *
+ * <p>{@code @TestTemplate} methods are inherited from superclasses as long as
+ * they are not <em>overridden</em> according to the visibility rules of the Java
+ * language. Similarly, {@code @TestTemplate} methods declared as <em>interface
+ * default methods</em> are inherited as long as they are not overridden.
+ *
  * <h2>Test Execution Order</h2>
  *
  * <p>By default, test methods will be ordered using an algorithm that is
@@ -72,6 +79,7 @@ import org.junit.platform.commons.annotation.Testable;
  *
  * @since 5.0
  * @see Test
+ * @see ClassTemplate
  * @see org.junit.jupiter.api.extension.TestTemplateInvocationContext
  * @see org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider
  */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,6 @@
 package org.junit.platform.reporting.legacy.xml;
 
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.toList;
 import static org.junit.platform.engine.TestExecutionResult.Status.ABORTED;
 
 import java.time.Clock;
@@ -25,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.reporting.ReportEntry;
@@ -60,7 +60,7 @@ class XmlReportData {
 		return this.clock;
 	}
 
-	void markSkipped(TestIdentifier testIdentifier, String reason) {
+	void markSkipped(TestIdentifier testIdentifier, @Nullable String reason) {
 		this.skippedTests.put(testIdentifier, reason == null ? "" : reason);
 	}
 
@@ -94,6 +94,7 @@ class XmlReportData {
 		return Duration.between(startInstant, endInstant).toMillis() / (double) MILLIS_PER_SECOND;
 	}
 
+	@Nullable
 	String getSkipReason(TestIdentifier testIdentifier) {
 		return findSkippedAncestor(testIdentifier).map(skippedTestIdentifier -> {
 			String reason = this.skippedTests.get(skippedTestIdentifier);
@@ -108,7 +109,7 @@ class XmlReportData {
 		return getAncestors(testIdentifier).stream() //
 				.map(this.finishedTests::get) //
 				.filter(Objects::nonNull) //
-				.collect(toList());
+				.toList();
 	}
 
 	List<ReportEntry> getReportEntries(TestIdentifier testIdentifier) {

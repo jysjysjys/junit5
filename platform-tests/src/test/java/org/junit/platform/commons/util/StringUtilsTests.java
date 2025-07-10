@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,6 +27,7 @@ import static org.junit.platform.commons.util.StringUtils.nullSafeToString;
 import static org.junit.platform.commons.util.StringUtils.replaceIsoControlCharacters;
 import static org.junit.platform.commons.util.StringUtils.replaceWhitespaceCharacters;
 
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.PreconditionViolationException;
 
@@ -49,6 +50,7 @@ class StringUtilsTests {
 		// @formatter:on
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void whitespace() {
 		// @formatter:off
@@ -72,6 +74,7 @@ class StringUtilsTests {
 		// @formatter:on
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void controlCharacters() {
 		// @formatter:off
@@ -95,6 +98,7 @@ class StringUtilsTests {
 		// @formatter:on
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void replaceControlCharacters() {
 		assertNull(replaceIsoControlCharacters(null, ""));
@@ -108,6 +112,7 @@ class StringUtilsTests {
 		assertThrows(PreconditionViolationException.class, () -> replaceIsoControlCharacters("", null));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void replaceWhitespaces() {
 		assertNull(replaceWhitespaceCharacters(null, ""));
@@ -150,29 +155,29 @@ class StringUtilsTests {
 	}
 
 	private void shouldContainWhitespace(String str) {
-		assertTrue(containsWhitespace(str), () -> String.format("'%s' should contain whitespace", str));
-		assertFalse(doesNotContainWhitespace(str), () -> String.format("'%s' should contain whitespace", str));
+		assertTrue(containsWhitespace(str), () -> "'%s' should contain whitespace".formatted(str));
+		assertFalse(doesNotContainWhitespace(str), () -> "'%s' should contain whitespace".formatted(str));
 	}
 
 	private void shouldNotContainWhitespace(String str) {
-		assertTrue(doesNotContainWhitespace(str), () -> String.format("'%s' should not contain whitespace", str));
-		assertFalse(containsWhitespace(str), () -> String.format("'%s' should not contain whitespace", str));
+		assertTrue(doesNotContainWhitespace(str), () -> "'%s' should not contain whitespace".formatted(str));
+		assertFalse(containsWhitespace(str), () -> "'%s' should not contain whitespace".formatted(str));
 	}
 
 	private void shouldContainIsoControlCharacter(String str) {
-		assertTrue(containsIsoControlCharacter(str),
-			() -> String.format("'%s' should contain ISO control character", str));
+		assertTrue(containsIsoControlCharacter(str), () -> "'%s' should contain ISO control character".formatted(str));
 		assertFalse(doesNotContainIsoControlCharacter(str),
-			() -> String.format("'%s' should contain ISO control character", str));
+			() -> "'%s' should contain ISO control character".formatted(str));
 	}
 
 	private void shouldNotContainIsoControlCharacter(String str) {
 		assertTrue(doesNotContainIsoControlCharacter(str),
-			() -> String.format("'%s' should not contain ISO control character", str));
+			() -> "'%s' should not contain ISO control character".formatted(str));
 		assertFalse(containsIsoControlCharacter(str),
-			() -> String.format("'%s' should not contain ISO control character", str));
+			() -> "'%s' should not contain ISO control character".formatted(str));
 	}
 
+	@NullUnmarked
 	private static class ToStringReturnsNull {
 
 		@Override

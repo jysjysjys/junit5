@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,16 @@
 
 package org.junit.platform.console.tasks;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestIdentifier;
 
@@ -27,10 +31,15 @@ class TreeNode {
 	private final String caption;
 	private final long creation;
 	long duration;
-	private String reason;
-	private TestIdentifier identifier;
-	private TestExecutionResult result;
+
+	private @Nullable String reason;
+
+	private @Nullable TestIdentifier identifier;
+
+	private @Nullable TestExecutionResult result;
+
 	final Queue<ReportEntry> reports = new ConcurrentLinkedQueue<>();
+	final Queue<FileEntry> files = new ConcurrentLinkedQueue<>();
 	final Queue<TreeNode> children = new ConcurrentLinkedQueue<>();
 	boolean visible;
 
@@ -61,6 +70,11 @@ class TreeNode {
 		return this;
 	}
 
+	TreeNode addFileEntry(FileEntry file) {
+		files.add(file);
+		return this;
+	}
+
 	TreeNode setResult(TestExecutionResult result) {
 		this.result = result;
 		this.duration = System.currentTimeMillis() - creation;
@@ -87,6 +101,6 @@ class TreeNode {
 		boolean normal = displayName.length() <= 80;
 		String caption = normal ? displayName : displayName.substring(0, 80) + "...";
 		String whites = StringUtils.replaceWhitespaceCharacters(caption, " ");
-		return StringUtils.replaceIsoControlCharacters(whites, ".");
+		return requireNonNull(StringUtils.replaceIsoControlCharacters(whites, "."));
 	}
 }

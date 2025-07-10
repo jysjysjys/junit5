@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,9 +14,13 @@ import static java.util.regex.Pattern.UNICODE_CHARACTER_CLASS;
 import static org.apiguardian.api.API.Status.INTERNAL;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Collection of utilities for working with {@link String Strings},
@@ -38,7 +42,7 @@ public final class StringUtils {
 
 	/**
 	 * Guard against "IllegalArgumentException: Unsupported flags: 256" errors.
-	 * @see <a href="https://github.com/junit-team/junit5/issues/1800">#1800</a>
+	 * @see <a href="https://github.com/junit-team/junit-framework/issues/1800">#1800</a>
 	 */
 	static Pattern compileIsoControlPattern() {
 		// https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#posix
@@ -62,10 +66,11 @@ public final class StringUtils {
 	 *
 	 * @param str the string to check; may be {@code null}
 	 * @return {@code true} if the string is blank
+	 * @see String#isBlank()
 	 * @see #isNotBlank(String)
 	 */
-	public static boolean isBlank(String str) {
-		return (str == null || str.trim().isEmpty());
+	public static boolean isBlank(@Nullable String str) {
+		return (str == null || str.isBlank());
 	}
 
 	/**
@@ -76,7 +81,7 @@ public final class StringUtils {
 	 * @return {@code true} if the string is not blank
 	 * @see #isBlank(String)
 	 */
-	public static boolean isNotBlank(String str) {
+	public static boolean isNotBlank(@Nullable String str) {
 		return !isBlank(str);
 	}
 
@@ -88,7 +93,7 @@ public final class StringUtils {
 	 * @see #containsIsoControlCharacter(String)
 	 * @see Character#isWhitespace(int)
 	 */
-	public static boolean containsWhitespace(String str) {
+	public static boolean containsWhitespace(@Nullable String str) {
 		return str != null && str.codePoints().anyMatch(Character::isWhitespace);
 	}
 
@@ -102,7 +107,7 @@ public final class StringUtils {
 	 * @see #containsIsoControlCharacter(String)
 	 * @see Character#isWhitespace(int)
 	 */
-	public static boolean doesNotContainWhitespace(String str) {
+	public static boolean doesNotContainWhitespace(@Nullable String str) {
 		return !containsWhitespace(str);
 	}
 
@@ -114,7 +119,7 @@ public final class StringUtils {
 	 * @see #containsWhitespace(String)
 	 * @see Character#isISOControl(int)
 	 */
-	public static boolean containsIsoControlCharacter(String str) {
+	public static boolean containsIsoControlCharacter(@Nullable String str) {
 		return str != null && str.codePoints().anyMatch(Character::isISOControl);
 	}
 
@@ -128,7 +133,7 @@ public final class StringUtils {
 	 * @see #containsWhitespace(String)
 	 * @see Character#isISOControl(int)
 	 */
-	public static boolean doesNotContainIsoControlCharacter(String str) {
+	public static boolean doesNotContainIsoControlCharacter(@Nullable String str) {
 		return !containsIsoControlCharacter(str);
 	}
 
@@ -154,7 +159,7 @@ public final class StringUtils {
 	 * @see Arrays#deepToString(Object[])
 	 * @see ClassUtils#nullSafeToString(Class...)
 	 */
-	public static String nullSafeToString(Object obj) {
+	public static String nullSafeToString(@Nullable Object obj) {
 		if (obj == null) {
 			return "null";
 		}
@@ -162,29 +167,29 @@ public final class StringUtils {
 		try {
 			if (obj.getClass().isArray()) {
 				if (obj.getClass().getComponentType().isPrimitive()) {
-					if (obj instanceof boolean[]) {
-						return Arrays.toString((boolean[]) obj);
+					if (obj instanceof boolean[] booleans) {
+						return Arrays.toString(booleans);
 					}
-					if (obj instanceof char[]) {
-						return Arrays.toString((char[]) obj);
+					if (obj instanceof char[] chars) {
+						return Arrays.toString(chars);
 					}
-					if (obj instanceof short[]) {
-						return Arrays.toString((short[]) obj);
+					if (obj instanceof short[] shorts) {
+						return Arrays.toString(shorts);
 					}
-					if (obj instanceof byte[]) {
-						return Arrays.toString((byte[]) obj);
+					if (obj instanceof byte[] bytes) {
+						return Arrays.toString(bytes);
 					}
-					if (obj instanceof int[]) {
-						return Arrays.toString((int[]) obj);
+					if (obj instanceof int[] ints) {
+						return Arrays.toString(ints);
 					}
-					if (obj instanceof long[]) {
-						return Arrays.toString((long[]) obj);
+					if (obj instanceof long[] longs) {
+						return Arrays.toString(longs);
 					}
-					if (obj instanceof float[]) {
-						return Arrays.toString((float[]) obj);
+					if (obj instanceof float[] floats) {
+						return Arrays.toString(floats);
 					}
-					if (obj instanceof double[]) {
-						return Arrays.toString((double[]) obj);
+					if (obj instanceof double[] doubles) {
+						return Arrays.toString(doubles);
 					}
 				}
 				return Arrays.deepToString((Object[]) obj);
@@ -218,7 +223,7 @@ public final class StringUtils {
 	 * @see #nullSafeToString(Object)
 	 * @see ClassUtils#nullSafeToString(Class...)
 	 */
-	public static String defaultToString(Object obj) {
+	public static String defaultToString(@Nullable Object obj) {
 		if (obj == null) {
 			return "null";
 		}
@@ -236,7 +241,7 @@ public final class StringUtils {
 	 * @since 1.4
 	 */
 	@API(status = INTERNAL, since = "1.4")
-	public static String replaceIsoControlCharacters(String str, String replacement) {
+	public static @Nullable String replaceIsoControlCharacters(@Nullable String str, String replacement) {
 		Preconditions.notNull(replacement, "replacement must not be null");
 		return str == null ? null : ISO_CONTROL_PATTERN.matcher(str).replaceAll(replacement);
 	}
@@ -251,9 +256,98 @@ public final class StringUtils {
 	 * @since 1.4
 	 */
 	@API(status = INTERNAL, since = "1.4")
-	public static String replaceWhitespaceCharacters(String str, String replacement) {
+	public static @Nullable String replaceWhitespaceCharacters(@Nullable String str, String replacement) {
 		Preconditions.notNull(replacement, "replacement must not be null");
 		return str == null ? null : WHITESPACE_PATTERN.matcher(str).replaceAll(replacement);
+	}
+
+	/**
+	 * Split the supplied {@link String} into up to two parts using the supplied
+	 * separator character.
+	 *
+	 * @param separator the separator character
+	 * @param value the value to split; never {@code null}
+	 * @since 1.11
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static TwoPartSplitResult splitIntoTwo(char separator, String value) {
+		Preconditions.notNull(value, "value must not be null");
+		return splitIntoTwo(value, value.indexOf(separator), 1);
+	}
+
+	/**
+	 * Split the supplied {@link String} into up to two parts using the supplied
+	 * separator string.
+	 *
+	 * @param separator the separator string; never {@code null}
+	 * @param value the value to split; never {@code null}
+	 * @since 1.11
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static TwoPartSplitResult splitIntoTwo(String separator, String value) {
+		Preconditions.notNull(separator, "separator must not be null");
+		Preconditions.notNull(value, "value must not be null");
+		return splitIntoTwo(value, value.indexOf(separator), separator.length());
+	}
+
+	private static TwoPartSplitResult splitIntoTwo(String value, int index, int length) {
+		if (index == -1) {
+			return new OnePart(value);
+		}
+		return new TwoParts(value.substring(0, index), value.substring(index + length));
+	}
+
+	/**
+	 * The result of splitting a string into up to two parts.
+	 *
+	 * @since 1.11
+	 * @see StringUtils#splitIntoTwo(char, String)
+	 * @see StringUtils#splitIntoTwo(String, String)
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public sealed interface TwoPartSplitResult {
+
+		/**
+		 * Map the result of splitting a string into two parts or throw an exception.
+		 *
+		 * @param onePartExceptionCreator the exception creator to use if the string
+		 * was split into a single part
+		 * @param twoPartsMapper the mapper to use if the string was split into two parts
+		 */
+		default <T> T mapTwo(Supplier<? extends RuntimeException> onePartExceptionCreator,
+				BiFunction<String, String, ? extends T> twoPartsMapper) {
+			Function<String, ? extends T> onePartMapper = __ -> {
+				throw onePartExceptionCreator.get();
+			};
+			return map(onePartMapper, twoPartsMapper);
+		}
+
+		/**
+		 * Map the result of splitting a string into up to two parts.
+		 *
+		 * @param onePartMapper the mapper to use if the string was split into a single part
+		 * @param twoPartsMapper the mapper to use if the string was split into two parts
+		 */
+		<T> T map(Function<String, ? extends T> onePartMapper, BiFunction<String, String, ? extends T> twoPartsMapper);
+
+	}
+
+	private record OnePart(String value) implements TwoPartSplitResult {
+
+		@Override
+		public <T> T map(Function<String, ? extends T> onePartMapper,
+				BiFunction<String, String, ? extends T> twoPartsMapper) {
+			return onePartMapper.apply(this.value);
+		}
+	}
+
+	private record TwoParts(String first, String second) implements TwoPartSplitResult {
+
+		@Override
+		public <T> T map(Function<String, ? extends T> onePartMapper,
+				BiFunction<String, String, ? extends T> twoPartsMapper) {
+			return twoPartsMapper.apply(this.first, this.second);
+		}
 	}
 
 }

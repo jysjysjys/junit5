@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,11 +11,13 @@
 package org.junit.jupiter.params.provider;
 
 import static java.util.stream.Collectors.toSet;
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -29,26 +31,33 @@ import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
- * {@code @EnumSource} is an {@link ArgumentsSource} for constants of
- * an {@link Enum}.
+ * {@code @EnumSource} is a {@linkplain Repeatable repeatable}
+ * {@link ArgumentsSource} for constants of an {@link Enum}.
  *
  * <p>The enum constants will be provided as arguments to the annotated
- * {@code @ParameterizedTest} method.
+ * {@code @ParameterizedClass} or {@code @ParameterizedTest}.
  *
  * <p>The enum type can be specified explicitly using the {@link #value}
  * attribute. Otherwise, the declared type of the first parameter of the
- * {@code @ParameterizedTest} method is used.
+ * {@code @ParameterizedClass} or {@code @ParameterizedTest} is used.
  *
- * <p>The set of enum constants can be restricted via the {@link #names} and
- * {@link #mode} attributes.
+ * <p>The set of enum constants can be restricted via the {@link #names},
+ * {@link #from}, {@link #to} and {@link #mode} attributes.
+ *
+ * <h2>Inheritance</h2>
+ *
+ * <p>This annotation is inherited to subclasses.
  *
  * @since 5.0
  * @see org.junit.jupiter.params.provider.ArgumentsSource
+ * @see org.junit.jupiter.params.ParameterizedClass
  * @see org.junit.jupiter.params.ParameterizedTest
  */
-@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD })
+@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Inherited
+@Repeatable(EnumSources.class)
 @API(status = STABLE, since = "5.7")
 @ArgumentsSource(EnumArgumentsProvider.class)
 @SuppressWarnings("exports")
@@ -61,6 +70,8 @@ public @interface EnumSource {
 	 * first parameter of the {@code @ParameterizedTest} method is used.
 	 *
 	 * @see #names
+	 * @see #from
+	 * @see #to
 	 * @see #mode
 	 */
 	Class<? extends Enum<?>> value() default NullEnum.class;
@@ -69,18 +80,60 @@ public @interface EnumSource {
 	 * The names of enum constants to provide, or regular expressions to select
 	 * the names of enum constants to provide.
 	 *
-	 * <p>If no names or regular expressions are specified, all enum constants
-	 * declared in the specified {@linkplain #value enum type} will be provided.
+	 * <p>If no names or regular expressions are specified, and neither {@link #from}
+	 * nor {@link #to} are specified, all enum constants declared in the specified
+	 * {@linkplain #value enum type} will be provided.
+	 *
+	 * <p>If {@link #from} or {@link #to} are specified, the elements in names must
+	 * fall within the range defined by {@link #from} and {@link #to}.
 	 *
 	 * <p>The {@link #mode} determines how the names are interpreted.
 	 *
 	 * @see #value
+	 * @see #from
+	 * @see #to
 	 * @see #mode
 	 */
 	String[] names() default {};
 
 	/**
+	 * The starting enum constant of the range to be included.
+	 *
+	 * <p>Defaults to an empty string, where the range starts from the first enum
+	 * constant of the specified {@linkplain #value enum type}.
+	 *
+	 * @see #value
+	 * @see #names
+	 * @see #to
+	 * @see #mode
+	 *
+	 * @since 5.12
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	String from() default "";
+
+	/**
+	 * The ending enum constant of the range to be included.
+	 *
+	 * <p>Defaults to an empty string, where the range ends at the last enum
+	 * constant of the specified {@linkplain #value enum type}.
+	 *
+	 * @see #value
+	 * @see #names
+	 * @see #from
+	 * @see #mode
+	 *
+	 * @since 5.12
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	String to() default "";
+
+	/**
 	 * The enum constant selection mode.
+	 *
+	 * <p>The mode only applies to the {@link #names} attribute and does not change
+	 * the behavior of {@link #from} and {@link #to}, which always define a range
+	 * based on the natural order of the enum constants.
 	 *
 	 * <p>Defaults to {@link Mode#INCLUDE INCLUDE}.
 	 *
@@ -90,6 +143,8 @@ public @interface EnumSource {
 	 * @see Mode#MATCH_ANY
 	 * @see Mode#MATCH_NONE
 	 * @see #names
+	 * @see #from
+	 * @see #to
 	 */
 	Mode mode() default Mode.INCLUDE;
 
@@ -133,7 +188,7 @@ public @interface EnumSource {
 		 * @since 5.9
 		 * @see java.util.stream.Stream#noneMatch(java.util.function.Predicate)
 		 */
-		@API(status = EXPERIMENTAL, since = "5.9")
+		@API(status = MAINTAINED, since = "5.13.3")
 		MATCH_NONE(Mode::validatePatterns, (name, patterns) -> patterns.stream().noneMatch(name::matches));
 
 		private final Validator validator;

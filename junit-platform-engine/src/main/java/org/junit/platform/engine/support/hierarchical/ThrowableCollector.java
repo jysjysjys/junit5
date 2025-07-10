@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,7 @@ import static org.junit.platform.engine.TestExecutionResult.successful;
 import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
@@ -42,7 +43,7 @@ public class ThrowableCollector {
 
 	private final Predicate<? super Throwable> abortedExecutionPredicate;
 
-	private Throwable throwable;
+	private @Nullable Throwable throwable;
 
 	/**
 	 * Create a new {@code ThrowableCollector} that uses the supplied
@@ -121,7 +122,7 @@ public class ThrowableCollector {
 	 * @see #isEmpty()
 	 * @see #assertEmpty()
 	 */
-	public Throwable getThrowable() {
+	public @Nullable Throwable getThrowable() {
 		return this.throwable;
 	}
 
@@ -157,8 +158,8 @@ public class ThrowableCollector {
 	 * @see ExceptionUtils#throwAsUncheckedException(Throwable)
 	 */
 	public void assertEmpty() {
-		if (!isEmpty()) {
-			ExceptionUtils.throwAsUncheckedException(this.throwable);
+		if (this.throwable != null) {
+			throw ExceptionUtils.throwAsUncheckedException(this.throwable);
 		}
 	}
 
@@ -174,13 +175,13 @@ public class ThrowableCollector {
 	 */
 	@API(status = MAINTAINED, since = "1.6")
 	public TestExecutionResult toTestExecutionResult() {
-		if (isEmpty()) {
+		if (this.throwable == null) {
 			return successful();
 		}
-		if (hasAbortedExecution(throwable)) {
-			return aborted(throwable);
+		if (hasAbortedExecution(this.throwable)) {
+			return aborted(this.throwable);
 		}
-		return failed(throwable);
+		return failed(this.throwable);
 	}
 
 	private boolean hasAbortedExecution(Throwable t) {

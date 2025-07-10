@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -32,7 +32,7 @@ import org.junit.platform.engine.support.hierarchical.ExclusiveResource.LockMode
  */
 class LockManagerTests {
 
-	private LockManager lockManager = new LockManager();
+	private final LockManager lockManager = new LockManager();
 
 	@Test
 	void returnsNopLockWithoutExclusiveResources() {
@@ -50,7 +50,7 @@ class LockManagerTests {
 		var locks = getLocks(resources, SingleLock.class);
 
 		assertThat(locks).hasSize(1);
-		assertThat(locks.get(0)).isInstanceOf(ReadLock.class);
+		assertThat(locks.getFirst()).isInstanceOf(ReadLock.class);
 	}
 
 	@Test
@@ -75,7 +75,7 @@ class LockManagerTests {
 
 		assertThat(locks1).hasSize(1);
 		assertThat(locks2).hasSize(1);
-		assertThat(locks1.get(0)).isSameAs(locks2.get(0));
+		assertThat(locks1.getFirst()).isSameAs(locks2.getFirst());
 	}
 
 	@Test
@@ -111,8 +111,26 @@ class LockManagerTests {
 		assertThat(locks.get(3)).isEqualTo(getSingleLock("foo", READ_WRITE));
 	}
 
-	private Lock getSingleLock(String globalResourceLockKey, LockMode read) {
-		return getLocks(Set.of(new ExclusiveResource(globalResourceLockKey, read)), SingleLock.class).get(0);
+	@Test
+	void usesSingleInstanceForGlobalReadLock() {
+		var lock = lockManager.getLockForResources(List.of(ExclusiveResource.GLOBAL_READ));
+
+		assertThat(lock) //
+				.isInstanceOf(SingleLock.class) //
+				.isSameAs(lockManager.getLockForResource(ExclusiveResource.GLOBAL_READ));
+	}
+
+	@Test
+	void usesSingleInstanceForGlobalReadWriteLock() {
+		var lock = lockManager.getLockForResources(List.of(ExclusiveResource.GLOBAL_READ_WRITE));
+
+		assertThat(lock) //
+				.isInstanceOf(SingleLock.class) //
+				.isSameAs(lockManager.getLockForResource(ExclusiveResource.GLOBAL_READ_WRITE));
+	}
+
+	private Lock getSingleLock(String key, LockMode lockMode) {
+		return getLocks(Set.of(new ExclusiveResource(key, lockMode)), SingleLock.class).getFirst();
 	}
 
 	private List<Lock> getLocks(Collection<ExclusiveResource> resources, Class<? extends ResourceLock> type) {

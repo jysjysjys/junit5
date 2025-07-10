@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -19,15 +19,16 @@ import static org.junit.platform.engine.TestExecutionResult.successful;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.platform.console.options.Theme;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.fakes.TestDescriptorStub;
 import org.junit.platform.launcher.TestIdentifier;
@@ -39,13 +40,8 @@ class TreePrinterTests {
 	private final PrintWriter out = new PrintWriter(new OutputStreamWriter(stream, charset));
 
 	private List<String> actual() {
-		try {
-			out.flush();
-			return List.of(stream.toString(charset.name()).split("\\R"));
-		}
-		catch (UnsupportedEncodingException e) {
-			throw new AssertionError(charset.name() + " is an unsupported encoding?!", e);
-		}
+		out.flush();
+		return List.of(stream.toString(charset).split("\\R"));
 	}
 
 	@Test
@@ -73,7 +69,7 @@ class TreePrinterTests {
 	}
 
 	@Test
-	// https://github.com/junit-team/junit5/issues/786
+	// https://github.com/junit-team/junit-framework/issues/786
 	void printNodeHandlesNullMessageThrowableGracefully() {
 		var result = TestExecutionResult.failed(new NullPointerException());
 		var node = new TreeNode(identifier("NPE", "test()")).setResult(result);
@@ -82,7 +78,7 @@ class TreePrinterTests {
 	}
 
 	@Test
-	// https://github.com/junit-team/junit5/issues/1531
+	// https://github.com/junit-team/junit-framework/issues/1531
 	void reportsAreTabbedCorrectly() {
 		var root = new TreeNode("<root>");
 		var e1 = new TreeNode(identifier("e-1", "engine one")).setResult(successful());
@@ -98,7 +94,7 @@ class TreePrinterTests {
 		c1.addChild(m1);
 
 		var m2 = new TreeNode(identifier("m-2", "method two")).setResult(successful());
-		m2.addReportEntry(ReportEntry.from("key", "m-2"));
+		m2.addFileEntry(FileEntry.from(Path.of("test.txt"), "text/plain"));
 		c1.addChild(m2);
 
 		new TreePrinter(out, Theme.UNICODE, ColorPalette.NONE).print(root);
@@ -111,7 +107,7 @@ class TreePrinterTests {
 			"      ├─ method one ✔", //
 			"      │     ....-..-..T..:...* key = `m-1`", //
 			"      └─ method two ✔", //
-			"            ....-..-..T..:...* key = `m-2`" //
+			"            ....-..-..T..:...* file:.*" //
 		), //
 			actual());
 	}

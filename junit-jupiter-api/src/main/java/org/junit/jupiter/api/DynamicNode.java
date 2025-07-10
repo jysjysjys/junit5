@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import java.net.URI;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 
@@ -33,9 +34,9 @@ public abstract class DynamicNode {
 	private final String displayName;
 
 	/** Custom test source {@link URI} associated with this node; potentially {@code null}. */
-	private final URI testSourceUri;
+	private final @Nullable URI testSourceUri;
 
-	DynamicNode(String displayName, URI testSourceUri) {
+	DynamicNode(String displayName, @Nullable URI testSourceUri) {
 		this.displayName = Preconditions.notBlank(displayName, "displayName must not be null or blank");
 		this.testSourceUri = testSourceUri;
 	}

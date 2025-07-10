@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,7 @@ import static org.junit.platform.engine.TestExecutionResult.Status.SUCCESSFUL;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 
@@ -53,7 +54,7 @@ public class TestExecutionResult {
 		/**
 		 * Indicates that the execution of a test or container <em>failed</em>.
 		 */
-		FAILED;
+		FAILED
 
 	}
 
@@ -62,6 +63,7 @@ public class TestExecutionResult {
 	/**
 	 * Create a {@code TestExecutionResult} for a <em>successful</em> execution
 	 * of a test or container.
+	 *
 	 * @return the {@code TestExecutionResult}; never {@code null}
 	 */
 	public static TestExecutionResult successful() {
@@ -76,7 +78,7 @@ public class TestExecutionResult {
 	 * {@code null}
 	 * @return the {@code TestExecutionResult}; never {@code null}
 	 */
-	public static TestExecutionResult aborted(Throwable throwable) {
+	public static TestExecutionResult aborted(@Nullable Throwable throwable) {
 		return new TestExecutionResult(ABORTED, throwable);
 	}
 
@@ -88,14 +90,15 @@ public class TestExecutionResult {
 	 * {@code null}
 	 * @return the {@code TestExecutionResult}; never {@code null}
 	 */
-	public static TestExecutionResult failed(Throwable throwable) {
+	public static TestExecutionResult failed(@Nullable Throwable throwable) {
 		return new TestExecutionResult(FAILED, throwable);
 	}
 
 	private final Status status;
-	private final Throwable throwable;
 
-	private TestExecutionResult(Status status, Throwable throwable) {
+	private final @Nullable Throwable throwable;
+
+	private TestExecutionResult(Status status, @Nullable Throwable throwable) {
 		this.status = Preconditions.notNull(status, "Status must not be null");
 		this.throwable = throwable;
 	}

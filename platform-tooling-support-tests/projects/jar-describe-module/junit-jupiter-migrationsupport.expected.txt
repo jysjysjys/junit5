@@ -1,4 +1,4 @@
-org.junit.jupiter.migrationsupport@${jupiterVersion} jar:file:.+/junit-jupiter-migrationsupport-\d.+\.jar..module-info\.class
+org.junit.jupiter.migrationsupport@${version} jar:file:.+/junit-jupiter-migrationsupport-\d.+\.jar..module-info\.class
 exports org.junit.jupiter.migrationsupport
 exports org.junit.jupiter.migrationsupport.conditions
 exports org.junit.jupiter.migrationsupport.rules
@@ -7,5 +7,6 @@ exports org.junit.jupiter.migrationsupport.rules.member
 requires java.base mandated
 requires junit transitive
 requires org.apiguardian.api static transitive
+requires org.jspecify static transitive
 requires org.junit.jupiter.api transitive
 requires org.junit.platform.commons

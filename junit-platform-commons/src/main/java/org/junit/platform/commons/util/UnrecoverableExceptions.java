@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.commons.util;
 import static org.apiguardian.api.API.Status.INTERNAL;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Internal utilities for working with <em>unrecoverable</em> exceptions.
@@ -47,9 +48,9 @@ public final class UnrecoverableExceptions {
 	 * <p>If the supplied {@code exception} is not <em>unrecoverable</em>, this
 	 * method does nothing.
 	 */
-	public static void rethrowIfUnrecoverable(Throwable exception) {
+	public static void rethrowIfUnrecoverable(@Nullable Throwable exception) {
 		if (exception instanceof OutOfMemoryError) {
-			ExceptionUtils.throwAsUncheckedException(exception);
+			throw ExceptionUtils.throwAsUncheckedException(exception);
 		}
 	}
 

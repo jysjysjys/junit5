@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,9 +14,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
@@ -38,7 +38,7 @@ class AssertAll {
 		assertAll(null, executables);
 	}
 
-	static void assertAll(String heading, Executable... executables) {
+	static void assertAll(@Nullable String heading, Executable... executables) {
 		Preconditions.notEmpty(executables, "executables array must not be null or empty");
 		Preconditions.containsNoNullElements(executables, "individual executables must not be null");
 		assertAll(heading, Arrays.stream(executables));
@@ -48,7 +48,7 @@ class AssertAll {
 		assertAll(null, executables);
 	}
 
-	static void assertAll(String heading, Collection<Executable> executables) {
+	static void assertAll(@Nullable String heading, Collection<Executable> executables) {
 		Preconditions.notNull(executables, "executables collection must not be null");
 		Preconditions.containsNoNullElements(executables, "individual executables must not be null");
 		assertAll(heading, executables.stream());
@@ -58,7 +58,7 @@ class AssertAll {
 		assertAll(null, executables);
 	}
 
-	static void assertAll(String heading, Stream<Executable> executables) {
+	static void assertAll(@Nullable String heading, Stream<Executable> executables) {
 		Preconditions.notNull(executables, "executables stream must not be null");
 
 		List<Throwable> failures = executables //
@@ -74,7 +74,7 @@ class AssertAll {
 					}
 				}) //
 				.filter(Objects::nonNull) //
-				.collect(Collectors.toList());
+				.toList();
 
 		if (!failures.isEmpty()) {
 			MultipleFailuresError multipleFailuresError = new MultipleFailuresError(heading, failures);

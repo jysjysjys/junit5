@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,8 @@ import static org.junit.platform.engine.discovery.PackageNameFilter.excludePacka
 import static org.junit.platform.engine.discovery.PackageNameFilter.includePackageNames;
 import static org.junit.platform.launcher.EngineFilter.excludeEngines;
 import static org.junit.platform.launcher.EngineFilter.includeEngines;
+import static org.junit.platform.launcher.MethodFilter.excludeMethodNamePatterns;
+import static org.junit.platform.launcher.MethodFilter.includeMethodNamePatterns;
 import static org.junit.platform.launcher.TagFilter.excludeTags;
 import static org.junit.platform.launcher.TagFilter.includeTags;
 import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
@@ -33,14 +35,13 @@ import java.util.stream.Stream;
 import org.junit.platform.commons.util.ModuleUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.junit.platform.console.options.CommandLineOptions;
+import org.junit.platform.console.options.TestDiscoveryOptions;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.discovery.ClassNameFilter;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.ClasspathRootSelector;
 import org.junit.platform.engine.discovery.IterationSelector;
 import org.junit.platform.engine.discovery.MethodSelector;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 
 /**
@@ -48,16 +49,18 @@ import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
  */
 class DiscoveryRequestCreator {
 
-	LauncherDiscoveryRequest toDiscoveryRequest(CommandLineOptions options) {
+	static LauncherDiscoveryRequestBuilder toDiscoveryRequestBuilder(TestDiscoveryOptions options) {
 		LauncherDiscoveryRequestBuilder requestBuilder = request();
 		List<? extends DiscoverySelector> selectors = createDiscoverySelectors(options);
 		requestBuilder.selectors(selectors);
 		addFilters(requestBuilder, options, selectors);
 		requestBuilder.configurationParameters(options.getConfigurationParameters());
-		return requestBuilder.build();
+		requestBuilder.configurationParametersResources(
+			options.getConfigurationParametersResources().toArray(new String[0]));
+		return requestBuilder;
 	}
 
-	private List<? extends DiscoverySelector> createDiscoverySelectors(CommandLineOptions options) {
+	private static List<? extends DiscoverySelector> createDiscoverySelectors(TestDiscoveryOptions options) {
 		List<DiscoverySelector> explicitSelectors = options.getExplicitSelectors();
 		if (options.isScanClasspath()) {
 			Preconditions.condition(explicitSelectors.isEmpty(),
@@ -69,24 +72,27 @@ class DiscoveryRequestCreator {
 				"Scanning the module-path and using explicit selectors at the same time is not supported");
 			return selectModules(ModuleUtils.findAllNonSystemBootModuleNames());
 		}
-		return Preconditions.notEmpty(explicitSelectors, "No arguments were supplied to the ConsoleLauncher");
+		return Preconditions.notEmpty(explicitSelectors,
+			"Please specify an explicit selector option or use --scan-class-path or --scan-modules");
 	}
 
-	private List<ClasspathRootSelector> createClasspathRootSelectors(CommandLineOptions options) {
+	private static List<ClasspathRootSelector> createClasspathRootSelectors(TestDiscoveryOptions options) {
 		Set<Path> classpathRoots = determineClasspathRoots(options);
 		return selectClasspathRoots(classpathRoots);
 	}
 
-	private Set<Path> determineClasspathRoots(CommandLineOptions options) {
-		if (options.getSelectedClasspathEntries().isEmpty()) {
+	private static Set<Path> determineClasspathRoots(TestDiscoveryOptions options) {
+		var selectedClasspathEntries = Preconditions.notNull(options.getSelectedClasspathEntries(),
+			() -> "No classpath entries selected");
+		if (selectedClasspathEntries.isEmpty()) {
 			Set<Path> rootDirs = new LinkedHashSet<>(ReflectionUtils.getAllClasspathRootDirectories());
 			rootDirs.addAll(options.getExistingAdditionalClasspathEntries());
 			return rootDirs;
 		}
-		return new LinkedHashSet<>(options.getSelectedClasspathEntries());
+		return new LinkedHashSet<>(selectedClasspathEntries);
 	}
 
-	private void addFilters(LauncherDiscoveryRequestBuilder requestBuilder, CommandLineOptions options,
+	private static void addFilters(LauncherDiscoveryRequestBuilder requestBuilder, TestDiscoveryOptions options,
 			List<? extends DiscoverySelector> selectors) {
 		requestBuilder.filters(includedClassNamePatterns(options, selectors));
 
@@ -101,6 +107,14 @@ class DiscoveryRequestCreator {
 
 		if (!options.getExcludedPackages().isEmpty()) {
 			requestBuilder.filters(excludePackageNames(options.getExcludedPackages()));
+		}
+
+		if (!options.getIncludedMethodNamePatterns().isEmpty()) {
+			requestBuilder.filters(includeMethodNamePatterns(options.getIncludedMethodNamePatterns()));
+		}
+
+		if (!options.getExcludedMethodNamePatterns().isEmpty()) {
+			requestBuilder.filters(excludeMethodNamePatterns(options.getExcludedMethodNamePatterns()));
 		}
 
 		if (!options.getIncludedTagExpressions().isEmpty()) {
@@ -120,20 +134,20 @@ class DiscoveryRequestCreator {
 		}
 	}
 
-	private ClassNameFilter includedClassNamePatterns(CommandLineOptions options,
+	private static ClassNameFilter includedClassNamePatterns(TestDiscoveryOptions options,
 			List<? extends DiscoverySelector> selectors) {
 		Stream<String> patternStreams = Stream.concat( //
 			options.getIncludedClassNamePatterns().stream(), //
 			selectors.stream() //
-					.map(selector -> selector instanceof IterationSelector
-							? ((IterationSelector) selector).getParentSelector()
+					.map(selector -> selector instanceof IterationSelector iterationSelector
+							? iterationSelector.getParentSelector()
 							: selector) //
 					.map(selector -> {
-						if (selector instanceof ClassSelector) {
-							return ((ClassSelector) selector).getClassName();
+						if (selector instanceof ClassSelector classSelector) {
+							return classSelector.getClassName();
 						}
-						if (selector instanceof MethodSelector) {
-							return ((MethodSelector) selector).getClassName();
+						if (selector instanceof MethodSelector methodSelector) {
+							return methodSelector.getClassName();
 						}
 						return null;
 					}) //

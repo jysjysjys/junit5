@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,10 @@
 
 package org.junit.platform.launcher;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interceptor for test discovery and execution by a {@link Launcher} in the
@@ -31,8 +32,9 @@ import org.apiguardian.api.API;
  *     </li>
  *     <li>
  *         calls to {@link Launcher#discover(LauncherDiscoveryRequest)},
- *         {@link Launcher#execute(TestPlan, TestExecutionListener...)}, and
- *         {@link Launcher#execute(LauncherDiscoveryRequest, TestExecutionListener...)}
+ *         {@link Launcher#execute(TestPlan, TestExecutionListener...)},
+ *         {@link Launcher#execute(LauncherDiscoveryRequest, TestExecutionListener...)},
+ *         and {@link Launcher#execute(LauncherExecutionRequest)},
  *     </li>
  * </ul>
  *
@@ -52,7 +54,7 @@ import org.apiguardian.api.API;
  * @see LauncherSession
  * @see LauncherConstants#ENABLE_LAUNCHER_INTERCEPTORS
  */
-@API(status = EXPERIMENTAL, since = "1.10")
+@API(status = MAINTAINED, since = "1.13.3")
 public interface LauncherInterceptor {
 
 	/**
@@ -63,7 +65,7 @@ public interface LauncherInterceptor {
 	 * @param invocation the intercepted invocation; never {@code null}
 	 * @return the result of the invocation
 	 */
-	<T> T intercept(Invocation<T> invocation);
+	<T extends @Nullable Object> T intercept(Invocation<T> invocation);
 
 	/**
 	 * Closes this interceptor.
@@ -78,7 +80,7 @@ public interface LauncherInterceptor {
 	 *
 	 * <p>This interface is not intended to be implemented by clients.
 	 */
-	interface Invocation<T> {
+	interface Invocation<T extends @Nullable Object> {
 		T proceed();
 	}
 

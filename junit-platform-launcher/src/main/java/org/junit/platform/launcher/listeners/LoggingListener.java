@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.TestExecutionListener;
@@ -78,14 +79,15 @@ public class LoggingListener implements TestExecutionListener {
 	 * @see #forJavaUtilLogging()
 	 * @see #forJavaUtilLogging(Level)
 	 */
-	public static LoggingListener forBiConsumer(BiConsumer<Throwable, Supplier<String>> logger) {
+	public static LoggingListener forBiConsumer(BiConsumer<@Nullable Throwable, Supplier<String>> logger) {
 		return new LoggingListener(logger);
 	}
 
-	private final BiConsumer<Throwable, Supplier<String>> logger;
+	private final BiConsumer<@Nullable Throwable, Supplier<String>> logger;
 
-	private LoggingListener(BiConsumer<Throwable, Supplier<String>> logger) {
-		this.logger = Preconditions.notNull(logger, "logger must not be null");
+	private LoggingListener(BiConsumer<@Nullable Throwable, Supplier<String>> logger) {
+		Preconditions.notNull(logger, "logger must not be null");
+		this.logger = logger;
 	}
 
 	@Override
@@ -123,8 +125,8 @@ public class LoggingListener implements TestExecutionListener {
 		logWithThrowable(message, null, args);
 	}
 
-	private void logWithThrowable(String message, Throwable t, Object... args) {
-		this.logger.accept(t, () -> String.format(message, args));
+	private void logWithThrowable(String message, @Nullable Throwable t, Object... args) {
+		this.logger.accept(t, () -> message.formatted(args));
 	}
 
 }

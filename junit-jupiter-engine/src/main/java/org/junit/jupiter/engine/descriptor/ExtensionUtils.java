@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,9 +11,9 @@
 package org.junit.jupiter.engine.descriptor;
 
 import static java.util.stream.Collectors.toList;
-import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
+import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
+import static org.junit.platform.commons.support.AnnotationSupport.isAnnotated;
 import static org.junit.platform.commons.util.AnnotationUtils.findRepeatableAnnotations;
-import static org.junit.platform.commons.util.AnnotationUtils.isAnnotated;
 import static org.junit.platform.commons.util.ReflectionUtils.HierarchyTraversalMode.TOP_DOWN;
 import static org.junit.platform.commons.util.ReflectionUtils.getDeclaredConstructor;
 import static org.junit.platform.commons.util.ReflectionUtils.streamFields;
@@ -29,12 +29,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.engine.extension.ExtensionRegistrar;
 import org.junit.jupiter.engine.extension.MutableExtensionRegistry;
+import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.support.ModifierSupport;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ReflectionUtils;
 
@@ -71,58 +74,93 @@ final class ExtensionUtils {
 		Preconditions.notNull(parentRegistry, "Parent ExtensionRegistry must not be null");
 		Preconditions.notNull(annotatedElement, "AnnotatedElement must not be null");
 
-		return MutableExtensionRegistry.createRegistryFrom(parentRegistry, streamExtensionTypes(annotatedElement));
+		return MutableExtensionRegistry.createRegistryFrom(parentRegistry,
+			streamDeclarativeExtensionTypes(annotatedElement));
 	}
 
 	/**
-	 * Register extensions using the supplied registrar from fields in the supplied
-	 * class that are annotated with {@link ExtendWith @ExtendWith} or
-	 * {@link RegisterExtension @RegisterExtension}.
+	 * Register extensions using the supplied registrar from static fields in
+	 * the supplied class that are annotated with {@link ExtendWith @ExtendWith}
+	 * or {@link RegisterExtension @RegisterExtension}.
 	 *
 	 * <p>The extensions will be sorted according to {@link Order @Order} semantics
 	 * prior to registration.
 	 *
 	 * @param registrar the registrar with which to register the extensions; never {@code null}
 	 * @param clazz the class or interface in which to find the fields; never {@code null}
-	 * @param instance the instance of the supplied class; may be {@code null}
-	 * when searching for {@code static} fields in the class
+	 * @since 5.11
 	 */
-	static void registerExtensionsFromFields(ExtensionRegistrar registrar, Class<?> clazz, Object instance) {
-		Preconditions.notNull(registrar, "ExtensionRegistrar must not be null");
-		Preconditions.notNull(clazz, "Class must not be null");
-
-		Predicate<Field> predicate = (instance == null ? ReflectionUtils::isStatic : ReflectionUtils::isNotStatic);
-
-		streamFields(clazz, predicate, TOP_DOWN)//
-				.sorted(orderComparator)//
+	static void registerExtensionsFromStaticFields(ExtensionRegistrar registrar, Class<?> clazz) {
+		streamExtensionRegisteringFields(clazz, ModifierSupport::isStatic) //
 				.forEach(field -> {
-					List<Class<? extends Extension>> extensionTypes = streamExtensionTypes(field).collect(toList());
+					List<Class<? extends Extension>> extensionTypes = streamDeclarativeExtensionTypes(field).collect(
+						toList());
 					boolean isExtendWithPresent = !extensionTypes.isEmpty();
-					boolean isRegisterExtensionPresent = isAnnotated(field, RegisterExtension.class);
+
 					if (isExtendWithPresent) {
 						extensionTypes.forEach(registrar::registerExtension);
 					}
-					if (isRegisterExtensionPresent) {
-						tryToReadFieldValue(field, instance).ifSuccess(value -> {
-							Preconditions.condition(value instanceof Extension, () -> String.format(
-								"Failed to register extension via @RegisterExtension field [%s]: field value's type [%s] must implement an [%s] API.",
-								field, (value != null ? value.getClass().getName() : null), Extension.class.getName()));
-
-							if (isExtendWithPresent) {
-								Class<?> valueType = value.getClass();
-								extensionTypes.forEach(extensionType -> {
-									Preconditions.condition(!extensionType.equals(valueType),
-										() -> String.format("Failed to register extension via field [%s]. "
-												+ "The field registers an extension of type [%s] via @RegisterExtension and @ExtendWith, "
-												+ "but only one registration of a given extension type is permitted.",
-											field, valueType.getName()));
-								});
-							}
-
-							registrar.registerExtension((Extension) value, field);
-						});
+					if (isAnnotated(field, RegisterExtension.class)) {
+						Extension extension = readAndValidateExtensionFromField(field, null, extensionTypes);
+						registrar.registerExtension(extension, field);
 					}
 				});
+	}
+
+	/**
+	 * Register extensions using the supplied registrar from instance fields in
+	 * the supplied class that are annotated with {@link ExtendWith @ExtendWith}
+	 * or {@link RegisterExtension @RegisterExtension}.
+	 *
+	 * <p>The extensions will be sorted according to {@link Order @Order} semantics
+	 * prior to registration.
+	 *
+	 * @param registrar the registrar with which to register the extensions; never {@code null}
+	 * @param clazz the class or interface in which to find the fields; never {@code null}
+	 * @since 5.11
+	 */
+	static void registerExtensionsFromInstanceFields(ExtensionRegistrar registrar, Class<?> clazz) {
+		streamExtensionRegisteringFields(clazz, ReflectionUtils::isNotStatic) //
+				.forEach(field -> {
+					List<Class<? extends Extension>> extensionTypes = streamDeclarativeExtensionTypes(field).collect(
+						toList());
+					boolean isExtendWithPresent = !extensionTypes.isEmpty();
+
+					if (isExtendWithPresent) {
+						extensionTypes.forEach(registrar::registerExtension);
+					}
+					if (isAnnotated(field, RegisterExtension.class)) {
+						registrar.registerUninitializedExtension(clazz, field,
+							instance -> readAndValidateExtensionFromField(field, instance, extensionTypes));
+					}
+				});
+	}
+
+	/**
+	 * @since 5.11
+	 */
+	@SuppressWarnings("NullAway")
+	private static Extension readAndValidateExtensionFromField(Field field, @Nullable Object instance,
+			List<Class<? extends Extension>> declarativeExtensionTypes) {
+		Object value = tryToReadFieldValue(field, instance) //
+				.getOrThrow(e -> new PreconditionViolationException(
+					"Failed to read @RegisterExtension field [%s]".formatted(field), e));
+
+		Preconditions.condition(value instanceof Extension,
+			() -> "Failed to register extension via @RegisterExtension field [%s]: field value's type [%s] must implement an [%s] API.".formatted(
+				field, (value != null ? value.getClass().getName() : null), Extension.class.getName()));
+
+		declarativeExtensionTypes.forEach(extensionType -> {
+			Class<?> valueType = value.getClass();
+			Preconditions.condition(!extensionType.equals(valueType),
+				() -> String.format(
+					"Failed to register extension via field [%s]. "
+							+ "The field registers an extension of type [%s] via @RegisterExtension and @ExtendWith, "
+							+ "but only one registration of a given extension type is permitted.",
+					field, valueType.getName()));
+		});
+
+		return (Extension) value;
 	}
 
 	/**
@@ -157,22 +195,32 @@ final class ExtensionUtils {
 		// @formatter:off
 		Arrays.stream(executable.getParameters())
 				.map(parameter -> findRepeatableAnnotations(parameter, index.getAndIncrement(), ExtendWith.class))
-				.flatMap(ExtensionUtils::streamExtensionTypes)
+				.flatMap(ExtensionUtils::streamDeclarativeExtensionTypes)
 				.forEach(registrar::registerExtension);
 		// @formatter:on
 	}
 
 	/**
-	 * @since 5.8
+	 * @since 5.11
 	 */
-	private static Stream<Class<? extends Extension>> streamExtensionTypes(AnnotatedElement annotatedElement) {
-		return streamExtensionTypes(findRepeatableAnnotations(annotatedElement, ExtendWith.class));
+	private static Stream<Field> streamExtensionRegisteringFields(Class<?> clazz, Predicate<Field> predicate) {
+		return streamFields(clazz, predicate.and(registersExtension), TOP_DOWN)//
+				.sorted(orderComparator);
 	}
 
 	/**
-	 * @since 5.8
+	 * @since 5.11
 	 */
-	private static Stream<Class<? extends Extension>> streamExtensionTypes(List<ExtendWith> extendWithAnnotations) {
+	private static Stream<Class<? extends Extension>> streamDeclarativeExtensionTypes(
+			AnnotatedElement annotatedElement) {
+		return streamDeclarativeExtensionTypes(findRepeatableAnnotations(annotatedElement, ExtendWith.class));
+	}
+
+	/**
+	 * @since 5.11
+	 */
+	private static Stream<Class<? extends Extension>> streamDeclarativeExtensionTypes(
+			List<ExtendWith> extendWithAnnotations) {
 		return extendWithAnnotations.stream().map(ExtendWith::value).flatMap(Arrays::stream);
 	}
 
@@ -188,5 +236,15 @@ final class ExtensionUtils {
 	private static int getOrder(Field field) {
 		return findAnnotation(field, Order.class).map(Order::value).orElse(Order.DEFAULT);
 	}
+
+	/**
+	 * {@link Predicate} which determines if a {@link Field} registers an extension via
+	 * {@link RegisterExtension @RegisterExtension} or {@link ExtendWith @ExtendWith}.
+	 *
+	 * @since 5.11.3
+	 */
+	private static final Predicate<Field> registersExtension = //
+		field -> isAnnotated(field, RegisterExtension.class)
+				|| !findRepeatableAnnotations(field, ExtendWith.class).isEmpty();
 
 }

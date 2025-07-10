@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,6 +16,7 @@ import static org.junit.platform.commons.util.ExceptionUtils.throwAsUncheckedExc
 import java.time.Duration;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 
@@ -35,41 +36,44 @@ class AssertTimeout {
 		assertTimeout(timeout, executable, (String) null);
 	}
 
-	static void assertTimeout(Duration timeout, Executable executable, String message) {
-		assertTimeout(timeout, () -> {
+	static void assertTimeout(Duration timeout, Executable executable, @Nullable String message) {
+		AssertTimeout.<@Nullable Object> assertTimeout(timeout, () -> {
 			executable.execute();
 			return null;
 		}, message);
 	}
 
-	static void assertTimeout(Duration timeout, Executable executable, Supplier<String> messageSupplier) {
-		assertTimeout(timeout, () -> {
+	static void assertTimeout(Duration timeout, Executable executable, Supplier<@Nullable String> messageSupplier) {
+		AssertTimeout.<@Nullable Object> assertTimeout(timeout, () -> {
 			executable.execute();
 			return null;
 		}, messageSupplier);
 	}
 
-	static <T> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier) {
+	static <T extends @Nullable Object> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier) {
 		return assertTimeout(timeout, supplier, (Object) null);
 	}
 
-	static <T> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier, String message) {
+	static <T extends @Nullable Object> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier,
+			@Nullable String message) {
 		return assertTimeout(timeout, supplier, (Object) message);
 	}
 
-	static <T> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier, Supplier<String> messageSupplier) {
+	static <T extends @Nullable Object> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier,
+			Supplier<@Nullable String> messageSupplier) {
 		return assertTimeout(timeout, supplier, (Object) messageSupplier);
 	}
 
-	private static <T> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier, Object messageOrSupplier) {
+	private static <T extends @Nullable Object> T assertTimeout(Duration timeout, ThrowingSupplier<T> supplier,
+			@Nullable Object messageOrSupplier) {
 		long timeoutInMillis = timeout.toMillis();
 		long start = System.currentTimeMillis();
-		T result = null;
+		T result;
 		try {
 			result = supplier.get();
 		}
 		catch (Throwable ex) {
-			throwAsUncheckedException(ex);
+			throw throwAsUncheckedException(ex);
 		}
 
 		long timeElapsed = System.currentTimeMillis() - start;

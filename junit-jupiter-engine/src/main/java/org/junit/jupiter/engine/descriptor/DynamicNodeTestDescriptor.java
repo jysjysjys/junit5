@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,10 @@
 
 package org.junit.jupiter.engine.descriptor;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicNode;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
-import org.junit.jupiter.engine.execution.DefaultExecutableInvoker;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
@@ -25,9 +26,9 @@ import org.junit.platform.engine.UniqueId;
  */
 abstract class DynamicNodeTestDescriptor extends JupiterTestDescriptor {
 
-	private final int index;
+	protected final int index;
 
-	DynamicNodeTestDescriptor(UniqueId uniqueId, int index, DynamicNode dynamicNode, TestSource testSource,
+	DynamicNodeTestDescriptor(UniqueId uniqueId, int index, DynamicNode dynamicNode, @Nullable TestSource testSource,
 			JupiterConfiguration configuration) {
 		super(uniqueId, dynamicNode.getDisplayName(), testSource, configuration);
 		this.index = index;
@@ -45,8 +46,9 @@ abstract class DynamicNodeTestDescriptor extends JupiterTestDescriptor {
 
 	@Override
 	public JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) {
-		DynamicExtensionContext extensionContext = new DynamicExtensionContext(context.getExtensionContext(),
-			context.getExecutionListener(), this, context.getConfiguration(), new DefaultExecutableInvoker(context));
+		ExtensionContext extensionContext = new DynamicExtensionContext(context.getExtensionContext(),
+			context.getExecutionListener(), this, context.getConfiguration(), context.getExtensionRegistry(),
+			context.getLauncherStoreFacade());
 		// @formatter:off
 		return context.extend()
 				.withExtensionContext(extensionContext)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,8 @@ import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -21,8 +23,8 @@ import java.lang.annotation.Target;
 import org.apiguardian.api.API;
 
 /**
- * {@code @ValueSource} is an {@link ArgumentsSource} which provides access to
- * an array of literal values.
+ * {@code @ValueSource} is a {@linkplain Repeatable repeatable}
+ * {@link ArgumentsSource} which provides access to an array of literal values.
  *
  * <p>Supported types include {@link #shorts}, {@link #bytes}, {@link #ints},
  * {@link #longs}, {@link #floats}, {@link #doubles}, {@link #chars},
@@ -31,15 +33,22 @@ import org.apiguardian.api.API;
  * {@code @ValueSource} declaration.
  *
  * <p>The supplied literal values will be provided as arguments to the
- * annotated {@code @ParameterizedTest} method.
+ * annotated {@code @ParameterizedClass} or {@code @ParameterizedTest}.
+ *
+ * <h2>Inheritance</h2>
+ *
+ * <p>This annotation is inherited to subclasses.
  *
  * @since 5.0
  * @see org.junit.jupiter.params.provider.ArgumentsSource
+ * @see org.junit.jupiter.params.ParameterizedClass
  * @see org.junit.jupiter.params.ParameterizedTest
  */
-@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD })
+@Target({ ElementType.ANNOTATION_TYPE, ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Inherited
+@Repeatable(ValueSources.class)
 @API(status = STABLE, since = "5.7")
 @ArgumentsSource(ValueArgumentsProvider.class)
 @SuppressWarnings("exports")

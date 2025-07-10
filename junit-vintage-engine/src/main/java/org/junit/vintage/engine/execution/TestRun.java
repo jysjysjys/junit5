@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,8 +11,8 @@
 package org.junit.vintage.engine.execution;
 
 import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Stream.concat;
 import static org.junit.platform.engine.TestExecutionResult.failed;
@@ -87,6 +87,12 @@ class TestRun {
 		return result;
 	}
 
+	Collection<TestDescriptor> getInProgressTestDescriptors() {
+		List<TestDescriptor> result = new ArrayList<>(inProgressDescriptors.keySet());
+		Collections.reverse(result);
+		return result;
+	}
+
 	boolean isDescendantOfRunnerTestDescriptor(TestDescriptor testDescriptor) {
 		return runnerDescendants.contains(testDescriptor);
 	}
@@ -114,7 +120,7 @@ class TestRun {
 		VintageDescriptors vintageDescriptors = descriptionToDescriptors.getOrDefault(description,
 			VintageDescriptors.NONE);
 		Optional<VintageTestDescriptor> result = vintageDescriptors.getUnambiguously(description);
-		if (!result.isPresent()) {
+		if (result.isEmpty()) {
 			result = fallback.apply(vintageDescriptors);
 		}
 		return result;
@@ -122,9 +128,8 @@ class TestRun {
 
 	void markSkipped(TestDescriptor testDescriptor) {
 		skippedDescriptors.add(testDescriptor);
-		if (testDescriptor instanceof VintageTestDescriptor) {
-			VintageTestDescriptor vintageDescriptor = (VintageTestDescriptor) testDescriptor;
-			descriptionToDescriptors.get(vintageDescriptor.getDescription()).incrementSkippedOrStarted();
+		if (testDescriptor instanceof VintageTestDescriptor vintageDescriptor) {
+			getVintageDescriptors(vintageDescriptor).incrementSkippedOrStarted();
 		}
 	}
 
@@ -139,11 +144,15 @@ class TestRun {
 	void markStarted(TestDescriptor testDescriptor, EventType eventType) {
 		inProgressDescriptors.put(testDescriptor, eventType);
 		startedDescriptors.add(testDescriptor);
-		if (testDescriptor instanceof VintageTestDescriptor) {
-			VintageTestDescriptor vintageDescriptor = (VintageTestDescriptor) testDescriptor;
+		if (testDescriptor instanceof VintageTestDescriptor vintageDescriptor) {
 			inProgressDescriptorsByStartingThread.get().addLast(vintageDescriptor);
-			descriptionToDescriptors.get(vintageDescriptor.getDescription()).incrementSkippedOrStarted();
+			getVintageDescriptors(vintageDescriptor).incrementSkippedOrStarted();
 		}
+	}
+
+	private VintageDescriptors getVintageDescriptors(VintageTestDescriptor vintageDescriptor) {
+		return requireNonNull(descriptionToDescriptors.get(vintageDescriptor.getDescription()),
+			() -> "No descriptors for " + vintageDescriptor);
 	}
 
 	boolean isNotStarted(TestDescriptor testDescriptor) {
@@ -153,8 +162,7 @@ class TestRun {
 	void markFinished(TestDescriptor testDescriptor) {
 		inProgressDescriptors.remove(testDescriptor);
 		finishedDescriptors.add(testDescriptor);
-		if (testDescriptor instanceof VintageTestDescriptor) {
-			VintageTestDescriptor descriptor = (VintageTestDescriptor) testDescriptor;
+		if (testDescriptor instanceof VintageTestDescriptor descriptor) {
 			inProgressDescriptorsByStartingThread.get().removeLastOccurrence(descriptor);
 		}
 	}
@@ -194,8 +202,8 @@ class TestRun {
 		List<Throwable> failures = testExecutionResults
 				.stream()
 				.map(TestExecutionResult::getThrowable)
-				.map(Optional::get)
-				.collect(toList());
+				.map(Optional::orElseThrow)
+				.toList();
 		// @formatter:on
 		MultipleFailuresError multipleFailuresError = new MultipleFailuresError("", failures);
 		failures.forEach(multipleFailuresError::addSuppressed);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,9 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.platform.commons.support.PreconditionAssertions.assertPreconditionViolationException;
 import static org.junit.platform.commons.support.PreconditionAssertions.assertPreconditionViolationExceptionForString;
+import static org.junit.platform.commons.util.ClassLoaderUtils.getDefaultClassLoader;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,27 +38,13 @@ import org.junit.platform.commons.util.ReflectionUtils;
 class ReflectionSupportTests {
 
 	private static final Predicate<Class<?>> allTypes = type -> true;
+	private static final Predicate<Resource> allResources = type -> true;
 	private static final Predicate<String> allNames = name -> true;
 	private static final Predicate<Method> allMethods = name -> true;
 	private static final Predicate<Field> allFields = name -> true;
 
 	static final String staticField = "static";
 	final String instanceField = "instance";
-
-	@Test
-	@SuppressWarnings("deprecation")
-	void loadClassDelegates() {
-		assertEquals(ReflectionUtils.loadClass("-"), ReflectionSupport.loadClass("-"));
-		assertEquals(ReflectionUtils.loadClass("A"), ReflectionSupport.loadClass("A"));
-		assertEquals(ReflectionUtils.loadClass("java.nio.Bits"), ReflectionSupport.loadClass("java.nio.Bits"));
-	}
-
-	@Test
-	@SuppressWarnings("deprecation")
-	void loadClassPreconditions() {
-		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.loadClass(null));
-		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.loadClass(""));
-	}
 
 	@Test
 	void tryToLoadClassDelegates() {
@@ -68,10 +56,40 @@ class ReflectionSupportTests {
 			ReflectionSupport.tryToLoadClass("java.nio.Bits"));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void tryToLoadClassPreconditions() {
 		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.tryToLoadClass(null));
 		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.tryToLoadClass(""));
+	}
+
+	/**
+	 * @since 1.10
+	 */
+	@Test
+	void tryToLoadClassWithExplicitClassLoaderDelegates() {
+		ClassLoader classLoader = getClass().getClassLoader();
+
+		assertEquals(ReflectionUtils.tryToLoadClass("-", classLoader).toOptional(),
+			ReflectionSupport.tryToLoadClass("-", classLoader).toOptional());
+		assertEquals(ReflectionUtils.tryToLoadClass("A", classLoader).toOptional(),
+			ReflectionSupport.tryToLoadClass("A", classLoader).toOptional());
+		assertEquals(ReflectionUtils.tryToLoadClass("java.nio.Bits", classLoader),
+			ReflectionSupport.tryToLoadClass("java.nio.Bits", classLoader));
+	}
+
+	/**
+	 * @since 1.10
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void tryToLoadClassWithExplicitClassLoaderPreconditions() {
+		var cl = getClass().getClassLoader();
+
+		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.tryToLoadClass(null, cl));
+		assertPreconditionViolationExceptionForString("Class name", () -> ReflectionSupport.tryToLoadClass("", cl));
+
+		assertPreconditionViolationException("ClassLoader", () -> ReflectionSupport.tryToLoadClass("int", null));
 	}
 
 	@TestFactory
@@ -82,17 +100,40 @@ class ReflectionSupportTests {
 		paths.addAll(ReflectionUtils.getAllClasspathRootDirectories());
 		for (var path : paths) {
 			var root = path.toUri();
-			var displayName = root.getPath();
-			if (displayName.length() > 42) {
-				displayName = "..." + displayName.substring(displayName.length() - 42);
-			}
-			tests.add(DynamicTest.dynamicTest(displayName,
+			tests.add(DynamicTest.dynamicTest(createDisplayName(root),
 				() -> assertEquals(ReflectionUtils.findAllClassesInClasspathRoot(root, allTypes, allNames),
 					ReflectionSupport.findAllClassesInClasspathRoot(root, allTypes, allNames))));
 		}
 		return tests;
 	}
 
+	/**
+	 * @since 1.12
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void tryToGetResourcesPreconditions() {
+		assertPreconditionViolationExceptionForString("Resource name", () -> ReflectionSupport.tryToGetResources(null));
+		assertPreconditionViolationExceptionForString("Resource name", () -> ReflectionSupport.tryToGetResources(""));
+		assertPreconditionViolationException("Class loader",
+			() -> ReflectionSupport.tryToGetResources("default-package.resource", null));
+		assertPreconditionViolationException("Class loader",
+			() -> ReflectionSupport.tryToGetResources("default-package.resource", null));
+	}
+
+	/**
+	 * @since 1.12
+	 */
+	@Test
+	void tryToGetResources() {
+		assertEquals(ReflectionUtils.tryToGetResources("default-package.resource").toOptional(),
+			ReflectionSupport.tryToGetResources("default-package.resource").toOptional());
+		assertEquals(
+			ReflectionUtils.tryToGetResources("default-package.resource", getDefaultClassLoader()).toOptional(), //
+			ReflectionSupport.tryToGetResources("default-package.resource", getDefaultClassLoader()).toOptional());
+	}
+
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAllClassesInClasspathRootPreconditions() {
 		var path = Path.of(".").toUri();
@@ -104,6 +145,70 @@ class ReflectionSupportTests {
 			() -> ReflectionSupport.findAllClassesInClasspathRoot(path, allTypes, null));
 	}
 
+	/**
+	 * @since 1.11
+	 */
+	@TestFactory
+	List<DynamicTest> findAllResourcesInClasspathRootDelegates() throws Throwable {
+		List<DynamicTest> tests = new ArrayList<>();
+		List<Path> paths = new ArrayList<>();
+		paths.add(Path.of(".").toRealPath());
+		paths.addAll(ReflectionUtils.getAllClasspathRootDirectories());
+		for (var path : paths) {
+			var root = path.toUri();
+			tests.add(DynamicTest.dynamicTest(createDisplayName(root),
+				() -> assertThat(ReflectionUtils.findAllResourcesInClasspathRoot(root, allResources)) //
+						.containsExactlyElementsOf(
+							ReflectionSupport.findAllResourcesInClasspathRoot(root, allResources))));
+		}
+		return tests;
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void findAllResourcesInClasspathRootPreconditions() {
+		var path = Path.of(".").toUri();
+		assertPreconditionViolationException("root",
+			() -> ReflectionSupport.findAllResourcesInClasspathRoot(null, allResources));
+		assertPreconditionViolationException("resourceFilter",
+			() -> ReflectionSupport.findAllResourcesInClasspathRoot(path, null));
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@TestFactory
+	List<DynamicTest> streamAllResourcesInClasspathRootDelegates() throws Throwable {
+		List<DynamicTest> tests = new ArrayList<>();
+		List<Path> paths = new ArrayList<>();
+		paths.add(Path.of(".").toRealPath());
+		paths.addAll(ReflectionUtils.getAllClasspathRootDirectories());
+		for (var path : paths) {
+			var root = path.toUri();
+			tests.add(DynamicTest.dynamicTest(createDisplayName(root),
+				() -> assertThat(ReflectionUtils.streamAllResourcesInClasspathRoot(root, allResources)) //
+						.containsExactlyElementsOf(
+							ReflectionSupport.streamAllResourcesInClasspathRoot(root, allResources).toList())));
+		}
+		return tests;
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void streamAllResourcesInClasspathRootPreconditions() {
+		var path = Path.of(".").toUri();
+		assertPreconditionViolationException("root",
+			() -> ReflectionSupport.streamAllResourcesInClasspathRoot(null, allResources));
+		assertPreconditionViolationException("resourceFilter",
+			() -> ReflectionSupport.streamAllResourcesInClasspathRoot(path, null));
+	}
+
 	@Test
 	void findAllClassesInPackageDelegates() {
 		assertNotEquals(0, ReflectionSupport.findAllClassesInPackage("org.junit", allTypes, allNames).size());
@@ -111,6 +216,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.findAllClassesInPackage("org.junit", allTypes, allNames));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAllClassesInPackagePreconditions() {
 		assertPreconditionViolationExceptionForString("basePackageName",
@@ -121,12 +227,59 @@ class ReflectionSupportTests {
 			() -> ReflectionSupport.findAllClassesInPackage("org.junit", allTypes, null));
 	}
 
+	/**
+	 * @since 1.11
+	 */
+	@Test
+	void findAllResourcesInPackageDelegates() {
+		assertNotEquals(0, ReflectionSupport.findAllResourcesInPackage("org.junit", allResources).size());
+
+		assertEquals(ReflectionUtils.findAllResourcesInPackage("org.junit", allResources),
+			ReflectionSupport.findAllResourcesInPackage("org.junit", allResources));
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void findAllResourcesInPackagePreconditions() {
+		assertPreconditionViolationExceptionForString("basePackageName",
+			() -> ReflectionSupport.findAllResourcesInPackage(null, allResources));
+		assertPreconditionViolationException("resourceFilter",
+			() -> ReflectionSupport.findAllResourcesInPackage("org.junit", null));
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@Test
+	void streamAllResourcesInPackageDelegates() {
+		assertNotEquals(0, ReflectionSupport.streamAllResourcesInPackage("org.junit", allResources).count());
+
+		assertEquals(ReflectionUtils.streamAllResourcesInPackage("org.junit", allResources).toList(),
+			ReflectionSupport.streamAllResourcesInPackage("org.junit", allResources).toList());
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void streamAllResourcesInPackagePreconditions() {
+		assertPreconditionViolationExceptionForString("basePackageName",
+			() -> ReflectionSupport.streamAllResourcesInPackage(null, allResources));
+		assertPreconditionViolationException("resourceFilter",
+			() -> ReflectionSupport.streamAllResourcesInPackage("org.junit", null));
+	}
+
 	@Test
 	void findAllClassesInModuleDelegates() {
 		assertEquals(ReflectionUtils.findAllClassesInModule("org.junit.platform.commons", allTypes, allNames),
 			ReflectionSupport.findAllClassesInModule("org.junit.platform.commons", allTypes, allNames));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findAllClassesInModulePreconditions() {
 		var exception = assertThrows(PreconditionViolationException.class,
@@ -138,12 +291,57 @@ class ReflectionSupportTests {
 			() -> ReflectionSupport.findAllClassesInModule("org.junit.platform.commons", allTypes, null));
 	}
 
+	/**
+	 * @since 1.11
+	 */
+	@Test
+	void findAllResourcesInModuleDelegates() {
+		assertEquals(ReflectionUtils.findAllResourcesInModule("org.junit.platform.commons", allResources),
+			ReflectionSupport.findAllResourcesInModule("org.junit.platform.commons", allResources));
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void findAllResourcesInModulePreconditions() {
+		var exception = assertThrows(PreconditionViolationException.class,
+			() -> ReflectionSupport.findAllResourcesInModule(null, allResources));
+		assertEquals("Module name must not be null or empty", exception.getMessage());
+		assertPreconditionViolationException("Resource filter",
+			() -> ReflectionSupport.findAllResourcesInModule("org.junit.platform.commons", null));
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@Test
+	void streamAllResourcesInModuleDelegates() {
+		assertEquals(ReflectionUtils.streamAllResourcesInModule("org.junit.platform.commons", allResources).toList(),
+			ReflectionSupport.streamAllResourcesInModule("org.junit.platform.commons", allResources).toList());
+	}
+
+	/**
+	 * @since 1.11
+	 */
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	@Test
+	void streamAllResourcesInModulePreconditions() {
+		var exception = assertThrows(PreconditionViolationException.class,
+			() -> ReflectionSupport.streamAllResourcesInModule(null, allResources));
+		assertEquals("Module name must not be null or empty", exception.getMessage());
+		assertPreconditionViolationException("Resource filter",
+			() -> ReflectionSupport.streamAllResourcesInModule("org.junit.platform.commons", null));
+	}
+
 	@Test
 	void newInstanceDelegates() {
 		assertEquals(ReflectionUtils.newInstance(String.class, "foo"),
 			ReflectionSupport.newInstance(String.class, "foo"));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void newInstancePreconditions() {
 		assertPreconditionViolationException("Class", () -> ReflectionSupport.newInstance(null));
@@ -160,6 +358,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.invokeMethod(method, null, "true"));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void invokeMethodPreconditions() throws Exception {
 		assertPreconditionViolationException("Method", () -> ReflectionSupport.invokeMethod(null, null, "true"));
@@ -183,6 +382,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.findFields(ReflectionSupportTests.class, allFields, HierarchyTraversalMode.TOP_DOWN));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findFieldsPreconditions() {
 		assertPreconditionViolationException("Class",
@@ -208,6 +408,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.tryToReadFieldValue(instanceField, this));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void tryToReadFieldValuePreconditions() throws Exception {
 		assertPreconditionViolationException("Field", () -> ReflectionSupport.tryToReadFieldValue(null, this));
@@ -229,6 +430,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.findMethod(Boolean.class, "valueOf", String.class));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findMethodPreconditions() {
 		assertPreconditionViolationException("Class",
@@ -262,6 +464,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.findMethods(ReflectionSupportTests.class, allMethods, HierarchyTraversalMode.TOP_DOWN));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findMethodsPreconditions() {
 		assertPreconditionViolationException("Class",
@@ -282,6 +485,7 @@ class ReflectionSupportTests {
 			ReflectionSupport.findNestedClasses(ClassWithNestedClasses.class, ReflectionUtils::isStatic));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void findNestedClassesPreconditions() {
 		assertPreconditionViolationException("Class",
@@ -290,11 +494,21 @@ class ReflectionSupportTests {
 			() -> ReflectionSupport.findNestedClasses(ClassWithNestedClasses.class, null));
 	}
 
+	private static String createDisplayName(URI root) {
+		var displayName = root.getPath();
+		if (displayName.length() > 42) {
+			displayName = "..." + displayName.substring(displayName.length() - 42);
+		}
+		return displayName;
+	}
+
 	static class ClassWithNestedClasses {
 
+		@SuppressWarnings({ "InnerClassMayBeStatic", "unused" })
 		class Nested1 {
 		}
 
+		@SuppressWarnings("unused")
 		static class Nested2 {
 		}
 

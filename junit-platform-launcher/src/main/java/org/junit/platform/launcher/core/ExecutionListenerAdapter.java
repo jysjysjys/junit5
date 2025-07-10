@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.platform.launcher.core;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
@@ -59,6 +60,11 @@ class ExecutionListenerAdapter implements EngineExecutionListener {
 	@Override
 	public void reportingEntryPublished(TestDescriptor testDescriptor, ReportEntry entry) {
 		this.testExecutionListener.reportingEntryPublished(getTestIdentifier(testDescriptor), entry);
+	}
+
+	@Override
+	public void fileEntryPublished(TestDescriptor testDescriptor, FileEntry file) {
+		this.testExecutionListener.fileEntryPublished(getTestIdentifier(testDescriptor), file);
 	}
 
 	private TestIdentifier getTestIdentifier(TestDescriptor testDescriptor) {

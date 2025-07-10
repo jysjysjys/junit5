@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,12 +11,13 @@
 package org.junit.jupiter.migrationsupport.rules.adapter;
 
 import static org.apiguardian.api.API.Status.INTERNAL;
-import static org.junit.platform.commons.util.ReflectionUtils.findMethod;
-import static org.junit.platform.commons.util.ReflectionUtils.invokeMethod;
+import static org.junit.platform.commons.support.ReflectionSupport.findMethod;
+import static org.junit.platform.commons.support.ReflectionSupport.invokeMethod;
 
 import java.lang.reflect.Method;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.migrationsupport.rules.member.TestRuleAnnotatedMember;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.ClassUtils;
@@ -37,13 +38,13 @@ public abstract class AbstractTestRuleAdapter implements GenericBeforeAndAfterAd
 			() -> adapteeClass + " is not assignable from " + this.target.getClass());
 	}
 
-	protected Object executeMethod(String name) {
+	protected @Nullable Object executeMethod(String name) {
 		return executeMethod(name, new Class<?>[0]);
 	}
 
-	protected Object executeMethod(String methodName, Class<?>[] parameterTypes, Object... arguments) {
+	protected @Nullable Object executeMethod(String methodName, Class<?>[] parameterTypes, Object... arguments) {
 		Method method = findMethod(this.target.getClass(), methodName, parameterTypes).orElseThrow(
-			() -> new JUnitException(String.format("Failed to find method %s(%s) in class %s", methodName,
+			() -> new JUnitException("Failed to find method %s(%s) in class %s".formatted(methodName,
 				ClassUtils.nullSafeToString(parameterTypes), this.target.getClass().getName())));
 
 		return invokeMethod(method, this.target, arguments);

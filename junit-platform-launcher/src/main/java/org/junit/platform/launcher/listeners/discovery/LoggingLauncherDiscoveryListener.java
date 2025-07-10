@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,6 +18,7 @@ import java.util.function.Supplier;
 
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
+import org.junit.platform.engine.DiscoveryIssue;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.SelectorResolutionResult;
 import org.junit.platform.engine.UniqueId;
@@ -68,24 +69,25 @@ class LoggingLauncherDiscoveryListener implements LauncherDiscoveryListener {
 	@Override
 	public void selectorProcessed(UniqueId engineId, DiscoverySelector selector, SelectorResolutionResult result) {
 		switch (result.getStatus()) {
-			case RESOLVED:
-				logger.debug(() -> selector + " was resolved by " + engineId);
-				break;
-			case FAILED:
-				logger.error(result.getThrowable().orElse(null),
-					() -> "Resolution of " + selector + " by " + engineId + " failed");
-				break;
-			case UNRESOLVED:
+			case RESOLVED -> logger.debug(() -> selector + " was resolved by " + engineId);
+			case FAILED -> logger.error(result.getThrowable().orElse(null),
+				() -> "Resolution of " + selector + " by " + engineId + " failed");
+			case UNRESOLVED -> {
 				Consumer<Supplier<String>> loggingConsumer = logger::debug;
-				if (selector instanceof UniqueIdSelector) {
-					UniqueId uniqueId = ((UniqueIdSelector) selector).getUniqueId();
+				if (selector instanceof UniqueIdSelector uniqueIdSelector) {
+					UniqueId uniqueId = uniqueIdSelector.getUniqueId();
 					if (uniqueId.hasPrefix(engineId)) {
 						loggingConsumer = logger::warn;
 					}
 				}
 				loggingConsumer.accept(() -> selector + " could not be resolved by " + engineId);
-				break;
+			}
 		}
+	}
+
+	@Override
+	public void issueEncountered(UniqueId engineId, DiscoveryIssue issue) {
+		logger.trace(() -> "Issue encountered during discovery by TestEngine with ID '" + engineId + "': " + issue);
 	}
 
 	@Override

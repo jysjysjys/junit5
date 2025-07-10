@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -22,6 +22,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashSet;
 import java.util.Objects;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestDescriptor;
@@ -47,16 +49,21 @@ import org.junit.platform.engine.UniqueId;
 @API(status = STABLE, since = "1.0")
 public final class TestIdentifier implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
+	@Serial
 	private static final ObjectStreamField[] serialPersistentFields = ObjectStreamClass.lookup(
 		SerializedForm.class).getFields();
 
 	// These are effectively final but not technically due to late initialization when deserializing
 	private /* final */ UniqueId uniqueId;
-	private /* final */ UniqueId parentId;
+
+	private /* final */ @Nullable UniqueId parentId;
+
 	private /* final */ String displayName;
 	private /* final */ String legacyReportingName;
-	private /* final */ TestSource source;
+
+	private /* final */ @Nullable TestSource source;
 	private /* final */ Set<TestTag> tags;
 	private /* final */ Type type;
 
@@ -76,8 +83,8 @@ public final class TestIdentifier implements Serializable {
 		return new TestIdentifier(uniqueId, displayName, source, tags, type, parentId, legacyReportingName);
 	}
 
-	private TestIdentifier(UniqueId uniqueId, String displayName, TestSource source, Set<TestTag> tags, Type type,
-			UniqueId parentId, String legacyReportingName) {
+	private TestIdentifier(UniqueId uniqueId, String displayName, @Nullable TestSource source, Set<TestTag> tags,
+			Type type, @Nullable UniqueId parentId, String legacyReportingName) {
 		Preconditions.notNull(type, "TestDescriptor.Type must not be null");
 		this.uniqueId = uniqueId;
 		this.parentId = parentId;
@@ -89,14 +96,11 @@ public final class TestIdentifier implements Serializable {
 	}
 
 	private Set<TestTag> copyOf(Set<TestTag> tags) {
-		switch (tags.size()) {
-			case 0:
-				return emptySet();
-			case 1:
-				return singleton(getOnlyElement(tags));
-			default:
-				return new LinkedHashSet<>(tags);
-		}
+		return switch (tags.size()) {
+			case 0 -> emptySet();
+			case 1 -> singleton(getOnlyElement(tags));
+			default -> new LinkedHashSet<>(tags);
+		};
 	}
 
 	/**
@@ -122,9 +126,9 @@ public final class TestIdentifier implements Serializable {
 	 * behind the scenes.
 	 *
 	 * @return the unique ID for this identifier; never {@code null}
-	 * @since 5.8
+	 * @since 1.8
 	 */
-	@API(status = STABLE, since = "5.8")
+	@API(status = STABLE, since = "1.8")
 	public UniqueId getUniqueIdObject() {
 		return this.uniqueId;
 	}
@@ -150,9 +154,9 @@ public final class TestIdentifier implements Serializable {
 	 *
 	 * @return a container for the unique ID for this identifier's parent;
 	 * never {@code null} though potentially <em>empty</em>
-	 * @since 5.8
+	 * @since 1.8
 	 */
-	@API(status = STABLE, since = "5.8")
+	@API(status = STABLE, since = "1.8")
 	public Optional<UniqueId> getParentIdObject() {
 		return Optional.ofNullable(this.parentId);
 	}
@@ -245,11 +249,7 @@ public final class TestIdentifier implements Serializable {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof TestIdentifier) {
-			TestIdentifier that = (TestIdentifier) obj;
-			return Objects.equals(this.uniqueId, that.uniqueId);
-		}
-		return false;
+		return (obj instanceof TestIdentifier that && Objects.equals(this.uniqueId, that.uniqueId));
 	}
 
 	@Override
@@ -272,11 +272,13 @@ public final class TestIdentifier implements Serializable {
 		// @formatter:on
 	}
 
+	@Serial
 	private void writeObject(ObjectOutputStream s) throws IOException {
 		SerializedForm serializedForm = new SerializedForm(this);
 		serializedForm.serialize(s);
 	}
 
+	@Serial
 	private void readObject(ObjectInputStream s) throws ClassNotFoundException, IOException {
 		SerializedForm serializedForm = SerializedForm.deserialize(s);
 		uniqueId = UniqueId.parse(serializedForm.uniqueId);
@@ -284,30 +286,39 @@ public final class TestIdentifier implements Serializable {
 		source = serializedForm.source;
 		tags = serializedForm.tags;
 		type = serializedForm.type;
-		parentId = UniqueId.parse(serializedForm.parentId);
+		String parentId = serializedForm.parentId;
+		this.parentId = parentId == null ? null : UniqueId.parse(parentId);
 		legacyReportingName = serializedForm.legacyReportingName;
 	}
 
 	/**
 	 * Represents the serialized output of {@code TestIdentifier}. The fields on this
-	 * class match the fields that {@code TestIdentifier} had prior to 5.8.
+	 * class match the fields that {@code TestIdentifier} had prior to 1.8.
 	 */
 	private static class SerializedForm implements Serializable {
 
+		@Serial
 		private static final long serialVersionUID = 1L;
 
 		private final String uniqueId;
+
+		@Nullable
 		private final String parentId;
+
 		private final String displayName;
 		private final String legacyReportingName;
+
+		@Nullable
 		private final TestSource source;
+
 		@SuppressWarnings({ "serial", "RedundantSuppression" }) // always used with serializable implementation (see TestIdentifier#copyOf())
 		private final Set<TestTag> tags;
 		private final Type type;
 
 		SerializedForm(TestIdentifier testIdentifier) {
 			this.uniqueId = testIdentifier.uniqueId.toString();
-			this.parentId = testIdentifier.parentId.toString();
+			UniqueId parentId = testIdentifier.parentId;
+			this.parentId = parentId == null ? null : parentId.toString();
 			this.displayName = testIdentifier.displayName;
 			this.legacyReportingName = testIdentifier.legacyReportingName;
 			this.source = testIdentifier.source;
@@ -316,7 +327,7 @@ public final class TestIdentifier implements Serializable {
 		}
 
 		@SuppressWarnings("unchecked")
-		private SerializedForm(ObjectInputStream.GetField fields) throws IOException {
+		private SerializedForm(ObjectInputStream.GetField fields) throws IOException, ClassNotFoundException {
 			this.uniqueId = (String) fields.get("uniqueId", null);
 			this.parentId = (String) fields.get("parentId", null);
 			this.displayName = (String) fields.get("displayName", null);
@@ -338,7 +349,7 @@ public final class TestIdentifier implements Serializable {
 			s.writeFields();
 		}
 
-		static SerializedForm deserialize(ObjectInputStream s) throws ClassNotFoundException, IOException {
+		static SerializedForm deserialize(ObjectInputStream s) throws IOException, ClassNotFoundException {
 			ObjectInputStream.GetField fields = s.readFields();
 			return new SerializedForm(fields);
 		}

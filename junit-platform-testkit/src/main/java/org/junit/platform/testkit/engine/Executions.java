@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.testkit.engine;
 
-import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import java.io.OutputStream;
@@ -18,7 +17,6 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +46,7 @@ public final class Executions {
 	private Executions(Stream<Execution> executions, String category) {
 		Preconditions.notNull(executions, "Execution stream must not be null");
 
-		this.executions = Collections.unmodifiableList(executions.collect(toList()));
+		this.executions = executions.toList();
 		this.category = category;
 	}
 
@@ -56,7 +54,7 @@ public final class Executions {
 		Preconditions.notNull(events, "Event list must not be null");
 		Preconditions.containsNoNullElements(events, "Event list must not contain null elements");
 
-		this.executions = Collections.unmodifiableList(createExecutions(events));
+		this.executions = List.copyOf(createExecutions(events));
 		this.category = category;
 	}
 
@@ -256,11 +254,8 @@ public final class Executions {
 
 		for (Event event : events) {
 			switch (event.getType()) {
-				case STARTED: {
-					executionStarts.put(event.getTestDescriptor(), event.getTimestamp());
-					break;
-				}
-				case SKIPPED: {
+				case STARTED -> executionStarts.put(event.getTestDescriptor(), event.getTimestamp());
+				case SKIPPED -> {
 					// Based on the Javadoc for EngineExecutionListener.executionSkipped(...),
 					// a skipped descriptor must never be reported as started or finished,
 					// but just in case a TestEngine does not adhere to that contract, we
@@ -273,9 +268,8 @@ public final class Executions {
 					Execution skippedEvent = Execution.skipped(event.getTestDescriptor(), timestamp, timestamp,
 						event.getRequiredPayload(String.class));
 					executions.add(skippedEvent);
-					break;
 				}
-				case FINISHED: {
+				case FINISHED -> {
 					Instant startInstant = executionStarts.remove(event.getTestDescriptor());
 					Instant endInstant = event.getTimestamp();
 
@@ -287,11 +281,9 @@ public final class Executions {
 							endInstant, event.getRequiredPayload(TestExecutionResult.class));
 						executions.add(finishedEvent);
 					}
-					break;
 				}
-				default: {
+				default -> {
 					// Ignore other events
-					break;
 				}
 			}
 		}

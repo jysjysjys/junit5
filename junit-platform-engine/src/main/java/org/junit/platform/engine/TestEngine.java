@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -54,6 +54,8 @@ public interface TestEngine {
 	 * and JUnit Jupiter use {@code "junit-vintage"} and {@code "junit-jupiter"},
 	 * respectively. When in doubt, you may use the fully qualified name of your
 	 * custom {@code TestEngine} implementation class.
+	 *
+	 * @return the ID of this test engine; never {@code null} or blank
 	 */
 	String getId();
 
@@ -184,12 +186,7 @@ public interface TestEngine {
 		if (standalone.isPresent()) {
 			return standalone;
 		}
-		String fallback = "DEVELOPMENT";
-		Optional<String> moduleVersion = ModuleUtils.getModuleVersion(getClass());
-		if (moduleVersion.isPresent()) {
-			return moduleVersion;
-		}
-		return Optional.of(PackageUtils.getAttribute(getClass(), Package::getImplementationVersion).orElse(fallback));
+		return Optional.of(PackageUtils.getModuleOrImplementationVersion(getClass()).orElse("DEVELOPMENT"));
 	}
 
 }

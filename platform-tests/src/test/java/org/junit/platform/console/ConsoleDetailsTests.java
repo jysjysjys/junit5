@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,21 +10,21 @@
 
 package org.junit.platform.console;
 
-import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertLinesMatch;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.DynamicContainer.dynamicContainer;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
-import static org.junit.platform.commons.util.ReflectionUtils.findMethods;
+import static org.junit.platform.commons.support.HierarchyTraversalMode.TOP_DOWN;
+import static org.junit.platform.commons.support.ReflectionSupport.findMethods;
 import static org.junit.platform.commons.util.ReflectionUtils.getFullyQualifiedMethodName;
 
 import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -78,7 +78,7 @@ class ConsoleDetailsTests {
 		// String containerName = containerClass.getSimpleName();
 		List<DynamicNode> nodes = new ArrayList<>();
 		Map<Details, List<DynamicTest>> map = new EnumMap<>(Details.class);
-		for (var method : findMethods(containerClass, m -> m.isAnnotationPresent(Test.class))) {
+		for (var method : findMethods(containerClass, m -> m.isAnnotationPresent(Test.class), TOP_DOWN)) {
 			var methodName = method.getName();
 			var types = method.getParameterTypes();
 			for (var details : Details.values()) {
@@ -86,6 +86,7 @@ class ConsoleDetailsTests {
 				for (var theme : Theme.values()) {
 					var caption = containerName + "-" + methodName + "-" + details + "-" + theme;
 					String[] args = { //
+							"execute", //
 							"--include-engine", "junit-jupiter", //
 							"--details", details.name(), //
 							"--details-theme", theme.name(), //
@@ -108,6 +109,7 @@ class ConsoleDetailsTests {
 		return nodes;
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@DisplayName("Basic")
 	static class BasicTestCase {
 
@@ -122,6 +124,7 @@ class ConsoleDetailsTests {
 
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@DisplayName("Skip")
 	static class SkipTestCase {
 
@@ -137,6 +140,7 @@ class ConsoleDetailsTests {
 
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@DisplayName("Fail")
 	static class FailTestCase {
 
@@ -152,6 +156,7 @@ class ConsoleDetailsTests {
 
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	@DisplayName("Report")
 	static class ReportTestCase {
 
@@ -193,17 +198,7 @@ class ConsoleDetailsTests {
 
 	}
 
-	private static class Runner implements Executable {
-
-		private final String dirName;
-		private final String outName;
-		private final String[] args;
-
-		private Runner(String dirName, String outName, String... args) {
-			this.dirName = dirName;
-			this.outName = outName;
-			this.args = args;
-		}
+	private record Runner(String dirName, String outName, String... args) implements Executable {
 
 		@Override
 		public void execute() throws Throwable {
@@ -214,16 +209,16 @@ class ConsoleDetailsTests {
 			if (optionalUri.isEmpty()) {
 				if (Boolean.getBoolean("org.junit.platform.console.ConsoleDetailsTests.writeResultOut")) {
 					// do not use Files.createTempDirectory(prefix) as we want one folder for one container
-					var temp = Paths.get(System.getProperty("java.io.tmpdir"), dirName.replace('/', '-'));
+					var temp = Path.of(System.getProperty("java.io.tmpdir"), dirName.replace('/', '-'));
 					Files.createDirectories(temp);
 					var path = Files.writeString(temp.resolve(outName), result.out);
 					throw new TestAbortedException(
-						format("resource `%s` not found\nwrote console stdout to: %s/%s", dirName, outName, path));
+						"resource `%s` not found\nwrote console stdout to: %s/%s".formatted(dirName, outName, path));
 				}
 				fail("could not load resource named `" + dirName + "/" + outName + "`");
 			}
 
-			var path = Paths.get(optionalUri.get());
+			var path = Path.of(optionalUri.get());
 			assumeTrue(Files.exists(path), "path does not exist: " + path);
 			assumeTrue(Files.isReadable(path), "can not read: " + path);
 

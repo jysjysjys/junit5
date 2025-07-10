@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,7 +11,6 @@
 package example;
 
 // tag::user_guide[]
-
 import static example.util.StringUtils.isPalindrome;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.DynamicContainer.dynamicContainer;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
-import static org.junit.jupiter.api.Named.named;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,7 +32,6 @@ import example.util.Calculator;
 
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
-import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.function.ThrowingConsumer;
@@ -46,11 +43,12 @@ class DynamicTestsDemo {
 
 	private final Calculator calculator = new Calculator();
 
+	// This method will not be executed but produce a warning
+	@TestFactory
 	// end::user_guide[]
 	@Tag("exclude")
+	DynamicTest dummy() { return dynamicTest("dummy", () -> {}); }
 	// tag::user_guide[]
-	// This will result in a JUnitException!
-	@TestFactory
 	List<String> dynamicTestsWithInvalidReturnType() {
 		return Arrays.asList("Hello");
 	}
@@ -97,15 +95,15 @@ class DynamicTestsDemo {
 	Stream<DynamicTest> dynamicTestsFromIntStream() {
 		// Generates tests for the first 10 even integers.
 		return IntStream.iterate(0, n -> n + 2).limit(10)
-			.mapToObj(n -> dynamicTest("test" + n, () -> assertTrue(n % 2 == 0)));
+			.mapToObj(n -> dynamicTest("test" + n, () -> assertEquals(0, n % 2)));
 	}
 
 	@TestFactory
-	Stream<DynamicTest> generateRandomNumberOfTestsFromIterator() {
+	Stream<DynamicTest> generateRandomNumberOfTests() {
 
 		// Generates random positive integers between 0 and 100 until
 		// a number evenly divisible by 7 is encountered.
-		Iterator<Integer> inputGenerator = new Iterator<Integer>() {
+		Iterator<Integer> inputGenerator = new Iterator<>() {
 
 			Random random = new Random();
 			// end::user_guide[]
@@ -154,21 +152,6 @@ class DynamicTestsDemo {
 	}
 
 	@TestFactory
-	Stream<DynamicTest> dynamicTestsFromStreamFactoryMethodWithNames() {
-		// Stream of palindromes to check
-		Stream<Named<String>> inputStream = Stream.of(
-				named("racecar is a palindrome", "racecar"),
-				named("radar is also a palindrome", "radar"),
-				named("mom also seems to be a palindrome", "mom"),
-				named("dad is yet another palindrome", "dad")
-			);
-
-		// Returns a stream of dynamic tests.
-		return DynamicTest.stream(inputStream,
-			text -> assertTrue(isPalindrome(text)));
-	}
-
-	@TestFactory
 	Stream<DynamicNode> dynamicTestsWithContainers() {
 		return Stream.of("A", "B", "C")
 			.map(input -> dynamicContainer("Container " + input, Stream.of(
@@ -192,6 +175,5 @@ class DynamicTestsDemo {
 				.map(text -> dynamicTest(text, () -> assertTrue(isPalindrome(text)))
 		));
 	}
-
 }
 // end::user_guide[]

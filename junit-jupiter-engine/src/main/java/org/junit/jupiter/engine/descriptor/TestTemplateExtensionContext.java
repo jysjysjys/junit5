@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,13 +12,15 @@ package org.junit.jupiter.engine.descriptor;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestInstances;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
+import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.support.hierarchical.Node;
 
@@ -27,13 +29,14 @@ import org.junit.platform.engine.support.hierarchical.Node;
  */
 final class TestTemplateExtensionContext extends AbstractExtensionContext<TestTemplateTestDescriptor> {
 
-	private final TestInstances testInstances;
+	private final @Nullable TestInstances testInstances;
 
 	TestTemplateExtensionContext(ExtensionContext parent, EngineExecutionListener engineExecutionListener,
-			TestTemplateTestDescriptor testDescriptor, JupiterConfiguration configuration, TestInstances testInstances,
-			ExecutableInvoker executableInvoker) {
+			TestTemplateTestDescriptor testDescriptor, JupiterConfiguration configuration,
+			ExtensionRegistry extensionRegistry, LauncherStoreFacade launcherStoreFacade,
+			@Nullable TestInstances testInstances) {
 
-		super(parent, engineExecutionListener, testDescriptor, configuration, executableInvoker);
+		super(parent, engineExecutionListener, testDescriptor, configuration, extensionRegistry, launcherStoreFacade);
 		this.testInstances = testInstances;
 	}
 
@@ -45,6 +48,11 @@ final class TestTemplateExtensionContext extends AbstractExtensionContext<TestTe
 	@Override
 	public Optional<Class<?>> getTestClass() {
 		return Optional.of(getTestDescriptor().getTestClass());
+	}
+
+	@Override
+	public List<Class<?>> getEnclosingTestClasses() {
+		return getTestDescriptor().getEnclosingTestClasses();
 	}
 
 	@Override

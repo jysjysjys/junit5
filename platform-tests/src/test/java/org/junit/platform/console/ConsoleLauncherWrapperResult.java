@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,13 @@
 
 package org.junit.platform.console;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.PrintWriter;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.console.options.CommandResult;
 import org.junit.platform.launcher.listeners.TestExecutionSummary;
 
 /**
@@ -24,14 +28,17 @@ class ConsoleLauncherWrapperResult implements TestExecutionSummary {
 	final String out;
 	final String err;
 	final int code;
-	private final TestExecutionSummary summary;
 
-	ConsoleLauncherWrapperResult(String[] args, String out, String err, ConsoleLauncherExecutionResult result) {
+	private final @Nullable TestExecutionSummary summary;
+
+	ConsoleLauncherWrapperResult(String[] args, String out, String err, CommandResult<?> result) {
 		this.args = args;
 		this.out = out;
 		this.err = err;
 		this.code = result.getExitCode();
-		this.summary = result.getTestExecutionSummary().orElse(null);
+		this.summary = (TestExecutionSummary) result.getValue() //
+				.filter(TestExecutionSummary.class::isInstance) //
+				.orElse(null);
 	}
 
 	private void checkTestExecutionSummaryState() {
@@ -43,114 +50,118 @@ class ConsoleLauncherWrapperResult implements TestExecutionSummary {
 	@Override
 	public long getTimeStarted() {
 		checkTestExecutionSummaryState();
-		return summary.getTimeStarted();
+		return requiredSummary().getTimeStarted();
 	}
 
 	@Override
 	public long getTimeFinished() {
 		checkTestExecutionSummaryState();
-		return summary.getTimeFinished();
+		return requiredSummary().getTimeFinished();
 	}
 
 	@Override
 	public long getTotalFailureCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTotalFailureCount();
+		return requiredSummary().getTotalFailureCount();
 	}
 
 	@Override
 	public long getContainersFoundCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersFoundCount();
+		return requiredSummary().getContainersFoundCount();
 	}
 
 	@Override
 	public long getContainersStartedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersStartedCount();
+		return requiredSummary().getContainersStartedCount();
 	}
 
 	@Override
 	public long getContainersSkippedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersSkippedCount();
+		return requiredSummary().getContainersSkippedCount();
 	}
 
 	@Override
 	public long getContainersAbortedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersAbortedCount();
+		return requiredSummary().getContainersAbortedCount();
 	}
 
 	@Override
 	public long getContainersSucceededCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersSucceededCount();
+		return requiredSummary().getContainersSucceededCount();
 	}
 
 	@Override
 	public long getContainersFailedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getContainersFailedCount();
+		return requiredSummary().getContainersFailedCount();
 	}
 
 	@Override
 	public long getTestsFoundCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsFoundCount();
+		return requiredSummary().getTestsFoundCount();
 	}
 
 	@Override
 	public long getTestsStartedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsStartedCount();
+		return requiredSummary().getTestsStartedCount();
 	}
 
 	@Override
 	public long getTestsSkippedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsSkippedCount();
+		return requiredSummary().getTestsSkippedCount();
 	}
 
 	@Override
 	public long getTestsAbortedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsAbortedCount();
+		return requiredSummary().getTestsAbortedCount();
 	}
 
 	@Override
 	public long getTestsSucceededCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsSucceededCount();
+		return requiredSummary().getTestsSucceededCount();
 	}
 
 	@Override
 	public long getTestsFailedCount() {
 		checkTestExecutionSummaryState();
-		return summary.getTestsFailedCount();
+		return requiredSummary().getTestsFailedCount();
 	}
 
 	@Override
 	public void printTo(PrintWriter writer) {
 		checkTestExecutionSummaryState();
-		summary.printTo(writer);
+		requiredSummary().printTo(writer);
 	}
 
 	@Override
 	public void printFailuresTo(PrintWriter writer) {
 		checkTestExecutionSummaryState();
-		summary.printFailuresTo(writer);
+		requiredSummary().printFailuresTo(writer);
 	}
 
 	@Override
 	public void printFailuresTo(PrintWriter writer, int maxStackTraceLines) {
 		checkTestExecutionSummaryState();
-		summary.printFailuresTo(writer, maxStackTraceLines);
+		requiredSummary().printFailuresTo(writer, maxStackTraceLines);
 	}
 
 	@Override
 	public List<Failure> getFailures() {
 		checkTestExecutionSummaryState();
-		return summary.getFailures();
+		return requiredSummary().getFailures();
+	}
+
+	private TestExecutionSummary requiredSummary() {
+		return requireNonNull(summary);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,14 +21,14 @@ import java.util.concurrent.Executors;
 
 import com.sun.net.httpserver.HttpServer;
 
+import org.junit.platform.engine.support.store.Namespace;
+import org.junit.platform.engine.support.store.NamespacedHierarchicalStore;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 
 public class GlobalSetupTeardownListener implements LauncherSessionListener {
-
-	private Fixture fixture;
 
 	@Override
 	public void launcherSessionOpened(LauncherSession session) {
@@ -37,55 +37,33 @@ public class GlobalSetupTeardownListener implements LauncherSessionListener {
 			@Override
 			public void testPlanExecutionStarted(TestPlan testPlan) {
 				//end::user_guide[]
-				if (!testPlan.getConfigurationParameters().getBoolean("enableHttpServer").orElse(false)) {
+				if (!testPlan.getConfigurationParameters().getBoolean("enableHttpServer").orElse(true)) {
 					// avoid starting multiple HTTP servers unnecessarily from UsingTheLauncherDemo
 					return;
 				}
 				//tag::user_guide[]
-				if (fixture == null) {
-					fixture = new Fixture();
-					fixture.setUp();
-				}
+				NamespacedHierarchicalStore<Namespace> store = session.getStore(); // <1>
+				store.getOrComputeIfAbsent(Namespace.GLOBAL, "httpServer", key -> { // <2>
+					InetSocketAddress address = new InetSocketAddress(getLoopbackAddress(), 0);
+					HttpServer server;
+					try {
+						server = HttpServer.create(address, 0);
+					}
+					catch (IOException e) {
+						throw new UncheckedIOException("Failed to start HTTP server", e);
+					}
+					server.createContext("/test", exchange -> {
+						exchange.sendResponseHeaders(204, -1);
+						exchange.close();
+					});
+					ExecutorService executorService = Executors.newCachedThreadPool();
+					server.setExecutor(executorService);
+					server.start(); // <3>
+
+					return new CloseableHttpServer(server, executorService);
+				});
 			}
 		});
-	}
-
-	@Override
-	public void launcherSessionClosed(LauncherSession session) {
-		if (fixture != null) {
-			fixture.tearDown();
-			fixture = null;
-		}
-	}
-
-	static class Fixture {
-
-		private HttpServer server;
-		private ExecutorService executorService;
-
-		void setUp() {
-			try {
-				server = HttpServer.create(new InetSocketAddress(getLoopbackAddress(), 0), 0);
-			}
-			catch (IOException e) {
-				throw new UncheckedIOException("Failed to start HTTP server", e);
-			}
-			server.createContext("/test", exchange -> {
-				exchange.sendResponseHeaders(204, -1);
-				exchange.close();
-			});
-			executorService = Executors.newCachedThreadPool();
-			server.setExecutor(executorService);
-			server.start(); // <1>
-			int port = server.getAddress().getPort();
-			System.setProperty("http.server.host", getLoopbackAddress().getHostAddress()); // <2>
-			System.setProperty("http.server.port", String.valueOf(port)); // <3>
-		}
-
-		void tearDown() {
-			server.stop(0); // <4>
-			executorService.shutdownNow();
-		}
 	}
 
 }

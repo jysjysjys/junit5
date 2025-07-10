@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,9 +18,11 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.engine.extension.ExtensionRegistry;
+import org.junit.jupiter.engine.support.MethodReflectionUtils;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 /**
@@ -37,22 +39,20 @@ public class DefaultExecutableInvoker implements ExecutableInvoker {
 		this.extensionRegistry = extensionRegistry;
 	}
 
-	public DefaultExecutableInvoker(JupiterEngineExecutionContext context) {
-		this(context.getExtensionContext(), context.getExtensionRegistry());
-	}
-
 	@Override
-	public <T> T invoke(Constructor<T> constructor, Object outerInstance) {
+	public <T> T invoke(Constructor<T> constructor, @Nullable Object outerInstance) {
+		@Nullable
 		Object[] arguments = resolveParameters(constructor, Optional.empty(), Optional.ofNullable(outerInstance),
 			extensionContext, extensionRegistry);
 		return ReflectionUtils.newInstance(constructor, arguments);
 	}
 
 	@Override
-	public Object invoke(Method method, Object target) {
+	public @Nullable Object invoke(Method method, @Nullable Object target) {
+		@Nullable
 		Object[] arguments = resolveParameters(method, Optional.ofNullable(target), extensionContext,
 			extensionRegistry);
-		return ReflectionUtils.invokeMethod(method, target, arguments);
+		return MethodReflectionUtils.invoke(method, target, arguments);
 	}
 
 }

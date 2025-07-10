@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.jupiter.api;
 
-import static java.lang.String.format;
 import static java.lang.String.join;
 import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 import static org.junit.platform.commons.util.Preconditions.condition;
@@ -20,9 +19,10 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.regex.PatternSyntaxException;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code AssertLinesMatch} is a collection of utility methods that support asserting
@@ -42,7 +42,7 @@ class AssertLinesMatch {
 		assertLinesMatch(expectedLines, actualLines, (Object) null);
 	}
 
-	static void assertLinesMatch(List<String> expectedLines, List<String> actualLines, String message) {
+	static void assertLinesMatch(List<String> expectedLines, List<String> actualLines, @Nullable String message) {
 		assertLinesMatch(expectedLines, actualLines, (Object) message);
 	}
 
@@ -50,11 +50,12 @@ class AssertLinesMatch {
 		assertLinesMatch(expectedLines, actualLines, (Object) null);
 	}
 
-	static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines, String message) {
+	static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines, @Nullable String message) {
 		assertLinesMatch(expectedLines, actualLines, (Object) message);
 	}
 
-	static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines, Object messageOrSupplier) {
+	static void assertLinesMatch(Stream<String> expectedLines, Stream<String> actualLines,
+			@Nullable Object messageOrSupplier) {
 		notNull(expectedLines, "expectedLines must not be null");
 		notNull(actualLines, "actualLines must not be null");
 
@@ -63,12 +64,13 @@ class AssertLinesMatch {
 			return;
 		}
 
-		List<String> expectedListOfStrings = expectedLines.collect(Collectors.toList());
-		List<String> actualListOfStrings = actualLines.collect(Collectors.toList());
+		List<String> expectedListOfStrings = expectedLines.toList();
+		List<String> actualListOfStrings = actualLines.toList();
 		assertLinesMatch(expectedListOfStrings, actualListOfStrings, messageOrSupplier);
 	}
 
-	static void assertLinesMatch(List<String> expectedLines, List<String> actualLines, Object messageOrSupplier) {
+	static void assertLinesMatch(List<String> expectedLines, List<String> actualLines,
+			@Nullable Object messageOrSupplier) {
 		notNull(expectedLines, "expectedLines must not be null");
 		notNull(actualLines, "actualLines must not be null");
 
@@ -80,17 +82,8 @@ class AssertLinesMatch {
 		new LinesMatcher(expectedLines, actualLines, messageOrSupplier).assertLinesMatch();
 	}
 
-	private static class LinesMatcher {
-
-		private final List<String> expectedLines;
-		private final List<String> actualLines;
-		private final Object messageOrSupplier;
-
-		LinesMatcher(List<String> expectedLines, List<String> actualLines, Object messageOrSupplier) {
-			this.expectedLines = expectedLines;
-			this.actualLines = actualLines;
-			this.messageOrSupplier = messageOrSupplier;
-		}
+	private record LinesMatcher(List<String> expectedLines, List<String> actualLines,
+			@Nullable Object messageOrSupplier) {
 
 		void assertLinesMatch() {
 			int expectedSize = expectedLines.size();
@@ -196,7 +189,7 @@ class AssertLinesMatch {
 			String newLine = System.lineSeparator();
 			assertionFailure() //
 					.message(messageOrSupplier) //
-					.reason(format(format, args)) //
+					.reason(format.formatted(args)) //
 					.expected(join(newLine, expectedLines)) //
 					.actual(join(newLine, actualLines)) //
 					.includeValuesInMessage(false) //
@@ -205,16 +198,16 @@ class AssertLinesMatch {
 	}
 
 	static boolean isFastForwardLine(String line) {
-		line = line.trim();
+		line = line.strip();
 		return line.length() >= 4 && line.startsWith(">>") && line.endsWith(">>");
 	}
 
 	static int parseFastForwardLimit(String fastForwardLine) {
-		fastForwardLine = fastForwardLine.trim();
-		String text = fastForwardLine.substring(2, fastForwardLine.length() - 2).trim();
+		fastForwardLine = fastForwardLine.strip();
+		String text = fastForwardLine.substring(2, fastForwardLine.length() - 2).strip();
 		try {
 			int limit = Integer.parseInt(text);
-			condition(limit > 0, () -> format("fast-forward(%d) limit must be greater than zero", limit));
+			condition(limit > 0, () -> "fast-forward(%d) limit must be greater than zero".formatted(limit));
 			return limit;
 		}
 		catch (NumberFormatException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -28,6 +28,7 @@ import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.engine.support.descriptor.DemoMethodTestDescriptor;
 import org.mockito.InOrder;
@@ -42,30 +43,28 @@ class CompositeEngineExecutionListenerTests {
 	void shouldNotThrowExceptionButLogIfDynamicTestRegisteredListenerMethodFails(LogRecordListener logRecordListener) {
 		compositeEngineExecutionListener().dynamicTestRegistered(anyTestDescriptor());
 
-		assertThatTestListenerErrorLogged(logRecordListener, ThrowingEngineExecutionListener.class,
-			"dynamicTestRegistered");
+		assertThatTestListenerErrorLogged(logRecordListener, "dynamicTestRegistered");
 	}
 
 	@Test
 	void shouldNotThrowExceptionButLogIfExecutionStartedListenerMethodFails(LogRecordListener logRecordListener) {
 		compositeEngineExecutionListener().executionStarted(anyTestDescriptor());
 
-		assertThatTestListenerErrorLogged(logRecordListener, ThrowingEngineExecutionListener.class, "executionStarted");
+		assertThatTestListenerErrorLogged(logRecordListener, "executionStarted");
 	}
 
 	@Test
 	void shouldNotThrowExceptionButLogIfExecutionSkippedListenerMethodFails(LogRecordListener logRecordListener) {
 		compositeEngineExecutionListener().executionSkipped(anyTestDescriptor(), "deliberately skipped container");
 
-		assertThatTestListenerErrorLogged(logRecordListener, ThrowingEngineExecutionListener.class, "executionSkipped");
+		assertThatTestListenerErrorLogged(logRecordListener, "executionSkipped");
 	}
 
 	@Test
 	void shouldNotThrowExceptionButLogIfExecutionFinishedListenerMethodFails(LogRecordListener logRecordListener) {
 		compositeEngineExecutionListener().executionFinished(anyTestDescriptor(), anyTestExecutionResult());
 
-		assertThatTestListenerErrorLogged(logRecordListener, ThrowingEngineExecutionListener.class,
-			"executionFinished");
+		assertThatTestListenerErrorLogged(logRecordListener, "executionFinished");
 	}
 
 	@Test
@@ -73,8 +72,7 @@ class CompositeEngineExecutionListenerTests {
 			LogRecordListener logRecordListener) {
 		compositeEngineExecutionListener().reportingEntryPublished(anyTestDescriptor(), ReportEntry.from("one", "two"));
 
-		assertThatTestListenerErrorLogged(logRecordListener, ThrowingEngineExecutionListener.class,
-			"reportingEntryPublished");
+		assertThatTestListenerErrorLogged(logRecordListener, "reportingEntryPublished");
 	}
 
 	@Test
@@ -133,16 +131,15 @@ class CompositeEngineExecutionListenerTests {
 		return mock();
 	}
 
-	private void assertThatTestListenerErrorLogged(LogRecordListener logRecordListener, Class<?> listenerClass,
-			String methodName) {
-		assertThat(firstWarnLogRecord(logRecordListener).getMessage()).startsWith(
-			"EngineExecutionListener [" + listenerClass.getName() + "] threw exception for method: " + methodName);
+	private void assertThatTestListenerErrorLogged(LogRecordListener logRecordListener, String methodName) {
+		assertThat(firstWarnLogRecord(logRecordListener).getMessage()).startsWith("EngineExecutionListener ["
+				+ ThrowingEngineExecutionListener.class.getName() + "] threw exception for method: " + methodName);
 	}
 
 	private static TestDescriptor anyTestDescriptor() {
 		var testClass = CompositeEngineExecutionListenerTests.class;
 		var method = ReflectionUtils.findMethod(testClass, "anyTestDescriptor", new Class<?>[0]).orElseThrow();
-		return new DemoMethodTestDescriptor(UniqueId.root("method", "unique_id"), testClass, method);
+		return new DemoMethodTestDescriptor(UniqueId.root("method", "unique_id"), method);
 	}
 
 	private static class ThrowingEngineExecutionListener implements EngineExecutionListener {
@@ -169,6 +166,11 @@ class CompositeEngineExecutionListenerTests {
 
 		@Override
 		public void reportingEntryPublished(TestDescriptor testDescriptor, ReportEntry entry) {
+			throw new RuntimeException("failed to invoke listener");
+		}
+
+		@Override
+		public void fileEntryPublished(TestDescriptor testDescriptor, FileEntry file) {
 			throw new RuntimeException("failed to invoke listener");
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -46,7 +46,7 @@ class UniqueIdTests {
 			var uniqueId = UniqueId.forEngine(ENGINE_ID);
 
 			assertEquals("[engine:junit-jupiter]", uniqueId.toString());
-			assertSegment(uniqueId.getSegments().get(0), "engine", "junit-jupiter");
+			assertSegment(uniqueId.getSegments().getFirst(), "engine", "junit-jupiter");
 		}
 
 		@Test
@@ -61,7 +61,7 @@ class UniqueIdTests {
 			var uniqueIdWithEngine = UniqueId.forEngine(ENGINE_ID);
 			assertThat(uniqueIdWithEngine.getEngineId()).contains("junit-jupiter");
 
-			var uniqueIdWithoutEngine = UniqueId.root("root", "avalue");
+			var uniqueIdWithoutEngine = UniqueId.root("root", "aValue");
 			assertEquals(Optional.empty(), uniqueIdWithoutEngine.getEngineId());
 		}
 
@@ -70,7 +70,7 @@ class UniqueIdTests {
 			var uniqueId = UniqueId.root("aType", "aValue");
 
 			assertEquals("[aType:aValue]", uniqueId.toString());
-			assertSegment(uniqueId.getSegments().get(0), "aType", "aValue");
+			assertSegment(uniqueId.getSegments().getFirst(), "aType", "aValue");
 		}
 
 		@Test
@@ -96,7 +96,7 @@ class UniqueIdTests {
 			uniqueId.append("class", "org.junit.MyClass");
 
 			assertThat(uniqueId.getSegments()).hasSize(1);
-			assertSegment(uniqueId.getSegments().get(0), "engine", ENGINE_ID);
+			assertSegment(uniqueId.getSegments().getFirst(), "engine", ENGINE_ID);
 		}
 
 		@Test
@@ -123,6 +123,7 @@ class UniqueIdTests {
 			assertSegment(uniqueId.getSegments().get(2), "t2", "v2");
 		}
 
+		@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 		@Test
 		void appendingNullIsNotAllowed() {
 			var uniqueId = UniqueId.forEngine(ENGINE_ID);
@@ -153,7 +154,7 @@ class UniqueIdTests {
 
 		@Test
 		void ensureDefaultUniqueIdFormatDecodingEncodesSegmentParts() {
-			var segment = UniqueId.parse("[%5B+%25+%5D):(%3A+%2B+%2F]").getSegments().get(0);
+			var segment = UniqueId.parse("[%5B+%25+%5D):(%3A+%2B+%2F]").getSegments().getFirst();
 			assertEquals("[ % ])", segment.getType());
 			assertEquals("(: + /", segment.getValue());
 		}
@@ -163,7 +164,7 @@ class UniqueIdTests {
 			for (char c = 0; c < Character.MAX_VALUE; c++) {
 				var value = "foo " + c + " bar";
 				var uniqueId = UniqueId.parse(UniqueId.root("type", value).toString());
-				var segment = uniqueId.getSegments().get(0);
+				var segment = uniqueId.getSegments().getFirst();
 				assertEquals(value, segment.getValue());
 			}
 		}
@@ -229,6 +230,7 @@ class UniqueIdTests {
 	@Nested
 	class Prefixing {
 
+		@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 		@Test
 		void nullIsNotAPrefix() {
 			var id = UniqueId.forEngine(ENGINE_ID);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -30,13 +30,14 @@ class InternalTestPlan extends TestPlan {
 	private final TestPlan delegate;
 
 	static InternalTestPlan from(LauncherDiscoveryResult discoveryResult) {
-		TestPlan delegate = TestPlan.from(discoveryResult.getEngineTestDescriptors(),
-			discoveryResult.getConfigurationParameters());
+		TestPlan delegate = TestPlan.from(discoveryResult.containsCriticalIssuesOrContainsTests(),
+			discoveryResult.getEngineTestDescriptors(), discoveryResult.getConfigurationParameters(),
+			discoveryResult.getOutputDirectoryProvider());
 		return new InternalTestPlan(discoveryResult, delegate);
 	}
 
 	private InternalTestPlan(LauncherDiscoveryResult discoveryResult, TestPlan delegate) {
-		super(delegate.containsTests(), delegate.getConfigurationParameters());
+		super(delegate.containsTests(), delegate.getConfigurationParameters(), delegate.getOutputDirectoryProvider());
 		this.discoveryResult = discoveryResult;
 		this.delegate = delegate;
 	}
@@ -53,12 +54,6 @@ class InternalTestPlan extends TestPlan {
 
 	public TestPlan getDelegate() {
 		return delegate;
-	}
-
-	@Override
-	@SuppressWarnings("deprecation")
-	public void add(TestIdentifier testIdentifier) {
-		delegate.add(testIdentifier);
 	}
 
 	@Override
@@ -81,21 +76,9 @@ class InternalTestPlan extends TestPlan {
 		return delegate.getChildren(parent);
 	}
 
-	@SuppressWarnings("deprecation")
-	@Override
-	public Set<TestIdentifier> getChildren(String parentId) {
-		return delegate.getChildren(parentId);
-	}
-
 	@Override
 	public Set<TestIdentifier> getChildren(UniqueId parentId) {
 		return delegate.getChildren(parentId);
-	}
-
-	@SuppressWarnings("deprecation")
-	@Override
-	public TestIdentifier getTestIdentifier(String uniqueId) throws PreconditionViolationException {
-		return delegate.getTestIdentifier(uniqueId);
 	}
 
 	@Override

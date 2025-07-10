@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,21 +11,18 @@
 package org.junit.platform.console.tasks;
 
 import java.io.PrintWriter;
-import java.util.regex.Pattern;
 
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
-import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
 /**
  * @since 1.0
  */
-class FlatPrintingListener implements TestExecutionListener {
-
-	private static final Pattern LINE_START_PATTERN = Pattern.compile("(?m)^");
+class FlatPrintingListener implements DetailsPrintingListener {
 
 	static final String INDENTATION = "             ";
 
@@ -77,6 +74,12 @@ class FlatPrintingListener implements TestExecutionListener {
 		printlnMessage(Style.REPORTED, "Reported values", entry.toString());
 	}
 
+	@Override
+	public void fileEntryPublished(TestIdentifier testIdentifier, FileEntry file) {
+		printlnTestDescriptor(Style.REPORTED, "Reported:", testIdentifier);
+		printlnMessage(Style.REPORTED, "Reported file", file.toString());
+	}
+
 	private void printlnTestDescriptor(Style style, String message, TestIdentifier testIdentifier) {
 		println(style, "%-10s   %s (%s)", message, testIdentifier.getDisplayName(), testIdentifier.getUniqueId());
 	}
@@ -90,7 +93,7 @@ class FlatPrintingListener implements TestExecutionListener {
 	}
 
 	private void println(Style style, String format, Object... args) {
-		this.out.println(colorPalette.paint(style, String.format(format, args)));
+		this.out.println(colorPalette.paint(style, format.formatted(args)));
 	}
 
 	/**
@@ -103,7 +106,17 @@ class FlatPrintingListener implements TestExecutionListener {
 	 * @return indented message
 	 */
 	private static String indented(String message) {
-		return LINE_START_PATTERN.matcher(message).replaceAll(INDENTATION).trim();
+		return DetailsPrintingListener.indented(message, INDENTATION);
 	}
 
+	@Override
+	public void listTests(TestPlan testPlan) {
+		testPlan.accept(new TestPlan.Visitor() {
+			@Override
+			public void visit(TestIdentifier testIdentifier) {
+				println(Style.valueOf(testIdentifier), "%s (%s)", testIdentifier.getDisplayName(),
+					testIdentifier.getUniqueId());
+			}
+		});
+	}
 }

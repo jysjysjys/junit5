@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,9 +11,11 @@
 package org.junit.jupiter.migrationsupport.rules;
 
 import static java.util.Collections.unmodifiableList;
-import static org.junit.platform.commons.util.AnnotationUtils.findPublicAnnotatedFields;
-import static org.junit.platform.commons.util.AnnotationUtils.isAnnotated;
-import static org.junit.platform.commons.util.ReflectionUtils.findMethods;
+import static java.util.Objects.requireNonNull;
+import static org.junit.platform.commons.support.AnnotationSupport.findPublicAnnotatedFields;
+import static org.junit.platform.commons.support.AnnotationSupport.isAnnotated;
+import static org.junit.platform.commons.support.HierarchyTraversalMode.TOP_DOWN;
+import static org.junit.platform.commons.support.ReflectionSupport.findMethods;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -81,7 +83,7 @@ class TestRuleSupport implements BeforeEachCallback, TestExecutionExceptionHandl
 		Predicate<Method> isRuleMethod = method -> isAnnotated(method, Rule.class);
 		Predicate<Method> hasCorrectReturnType = method -> TestRule.class.isAssignableFrom(method.getReturnType());
 
-		return findMethods(testInstance.getClass(), isRuleMethod.and(hasCorrectReturnType));
+		return findMethods(testInstance.getClass(), isRuleMethod.and(hasCorrectReturnType), TOP_DOWN);
 	}
 
 	private List<Field> findAnnotatedFields(Object testInstance) {
@@ -100,7 +102,7 @@ class TestRuleSupport implements BeforeEachCallback, TestExecutionExceptionHandl
 
 		// If no appropriate @Rule annotated members were discovered, we then
 		// have to rethrow the exception in order not to silently swallow it.
-		// Fixes bug: https://github.com/junit-team/junit5/issues/1069
+		// Fixes bug: https://github.com/junit-team/junit-framework/issues/1069
 		if (numRuleAnnotatedMembers == 0) {
 			throw throwable;
 		}
@@ -145,8 +147,8 @@ class TestRuleSupport implements BeforeEachCallback, TestExecutionExceptionHandl
 		Object testInstance = context.getRequiredTestInstance();
 		Namespace namespace = Namespace.create(TestRuleSupport.class, context.getRequiredTestClass());
 		// @formatter:off
-		return new ArrayList<>(context.getStore(namespace)
-				.getOrComputeIfAbsent("rule-annotated-members", key -> findRuleAnnotatedMembers(testInstance), List.class));
+		return new ArrayList<>(requireNonNull(context.getStore(namespace)
+				.getOrComputeIfAbsent("rule-annotated-members", key -> findRuleAnnotatedMembers(testInstance), List.class)));
 		// @formatter:on
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,12 +11,15 @@
 package org.junit.platform.engine.support.hierarchical;
 
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
 import java.util.concurrent.Future;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.ExecutionRequest;
+import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.support.hierarchical.Node.ExecutionMode;
 
 /**
@@ -27,7 +30,7 @@ import org.junit.platform.engine.support.hierarchical.Node.ExecutionMode;
  * @see SameThreadHierarchicalTestExecutorService
  * @see ForkJoinPoolHierarchicalTestExecutorService
  */
-@API(status = EXPERIMENTAL, since = "1.3")
+@API(status = STABLE, since = "1.10")
 public interface HierarchicalTestExecutorService extends AutoCloseable {
 
 	/**
@@ -49,7 +52,7 @@ public interface HierarchicalTestExecutorService extends AutoCloseable {
 	 * to be finished
 	 * @see #invokeAll(List)
 	 */
-	Future<Void> submit(TestTask testTask);
+	Future<@Nullable Void> submit(TestTask testTask);
 
 	/**
 	 * Invoke all supplied {@linkplain TestTask test tasks} and block until
@@ -93,6 +96,17 @@ public interface HierarchicalTestExecutorService extends AutoCloseable {
 		 * Get the {@linkplain ResourceLock resource lock} of this task.
 		 */
 		ResourceLock getResourceLock();
+
+		/**
+		 * Get the {@linkplain TestDescriptor test descriptor} of this task.
+		 *
+		 * @throws UnsupportedOperationException if not supported for this TestTask implementation
+		 * @since 6.0
+		 */
+		@API(status = EXPERIMENTAL, since = "6.0")
+		default TestDescriptor getTestDescriptor() {
+			throw new UnsupportedOperationException();
+		}
 
 		/**
 		 * Execute this task.

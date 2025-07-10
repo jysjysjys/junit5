@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -23,6 +23,9 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 // tag::user_guide[]
 public class SwingEdtInterceptor implements InvocationInterceptor {
 
+	//end::user_guide[]
+	@SuppressWarnings("NullAway")
+	//tag::user_guide[]
 	@Override
 	public void interceptTestMethod(Invocation<Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -33,7 +33,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -41,12 +40,15 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.util.ClassUtils;
+import org.junit.platform.engine.DiscoveryIssue.Severity;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestTag;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.testkit.engine.EngineDiscoveryResults;
+import org.junit.platform.testkit.engine.EngineTestKit;
 import org.junit.runner.manipulation.Filter;
 import org.junit.vintage.engine.samples.PlainOldJavaClassWithoutAnyTestsTestCase;
 import org.junit.vintage.engine.samples.junit3.JUnit3SuiteWithSingleTestCaseWithSingleTestWhichFails;
@@ -76,8 +78,6 @@ import org.junit.vintage.engine.samples.junit4.TestCaseRunWithJUnitPlatformRunne
  * @since 4.12
  */
 class VintageTestEngineDiscoveryTests {
-
-	VintageTestEngine engine = new VintageTestEngine();
 
 	@Test
 	void resolvesSimpleJUnit4TestClass() throws Exception {
@@ -212,7 +212,7 @@ class VintageTestEngineDiscoveryTests {
 		List<TestDescriptor> testMethodDescriptors = new ArrayList<>(runnerDescriptor.getChildren());
 		assertThat(testMethodDescriptors).hasSize(2);
 
-		var testMethodDescriptor = testMethodDescriptors.get(0);
+		var testMethodDescriptor = testMethodDescriptors.getFirst();
 		assertEquals("theory", testMethodDescriptor.getDisplayName());
 		assertEquals(VintageUniqueIdBuilder.uniqueIdForMethod(testClass, "theory", "0"),
 			testMethodDescriptor.getUniqueId());
@@ -271,7 +271,7 @@ class VintageTestEngineDiscoveryTests {
 	@Test
 	void resolvesClasspathSelectorForJarFile() throws Exception {
 		var jarUrl = getClass().getResource("/vintage-testjar.jar");
-		var jarFile = Paths.get(jarUrl.toURI());
+		var jarFile = Path.of(jarUrl.toURI());
 
 		var originalClassLoader = Thread.currentThread().getContextClassLoader();
 		try (var classLoader = new URLClassLoader(new URL[] { jarUrl })) {
@@ -703,6 +703,28 @@ class VintageTestEngineDiscoveryTests {
 		assertMethodSource(testClass.getMethod("test"), testMethodDescriptor);
 	}
 
+	@Test
+	void reportsNoDiscoveryIssuesWhenNoTestsAreFound() {
+		var request = discoveryRequestForClass(PlainOldJavaClassWithoutAnyTestsTestCase.class);
+
+		var results = discover(request);
+
+		assertThat(results.getDiscoveryIssues()).isEmpty();
+	}
+
+	@Test
+	void reportDiscoveryIssueWhenTestsAreFound() {
+		var request = discoveryRequestForClass(PlainJUnit4TestCaseWithSingleTestWhichFails.class);
+
+		var results = discover(request);
+
+		assertThat(results.getDiscoveryIssues()).hasSize(1);
+
+		var issue = results.getDiscoveryIssues().getFirst();
+		assertThat(issue.severity()).isEqualTo(Severity.INFO);
+		assertThat(issue.message()).contains("JUnit Vintage engine is deprecated");
+	}
+
 	private TestDescriptor findChildByDisplayName(TestDescriptor runnerDescriptor, String displayName) {
 		// @formatter:off
 		var children = runnerDescriptor.getChildren();
@@ -716,12 +738,17 @@ class VintageTestEngineDiscoveryTests {
 	}
 
 	private TestDescriptor discoverTests(LauncherDiscoveryRequest discoveryRequest) {
-		return engine.discover(discoveryRequest, UniqueId.forEngine(engine.getId()));
+		return discover(discoveryRequest).getEngineDescriptor();
+	}
+
+	@SuppressWarnings("deprecation")
+	private static EngineDiscoveryResults discover(LauncherDiscoveryRequest discoveryRequest) {
+		return EngineTestKit.discover(new VintageTestEngine(), discoveryRequest);
 	}
 
 	private Path getClasspathRoot(Class<?> testClass) throws Exception {
 		var location = testClass.getProtectionDomain().getCodeSource().getLocation();
-		return Paths.get(location.toURI());
+		return Path.of(location.toURI());
 	}
 
 	private void assertYieldsNoDescriptors(Class<?> testClass) {

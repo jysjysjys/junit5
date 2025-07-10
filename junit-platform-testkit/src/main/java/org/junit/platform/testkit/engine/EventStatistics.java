@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -124,6 +124,20 @@ public class EventStatistics {
 	public EventStatistics reportingEntryPublished(long expected) {
 		this.executables.add(
 			() -> assertEquals(expected, this.events.reportingEntryPublished().count(), "reporting entry published"));
+		return this;
+	}
+
+	/**
+	 * Specify the number of expected <em>file entry publication</em> events.
+	 *
+	 * @param expected the expected number of events
+	 * @return this {@code EventStatistics} for method chaining
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public EventStatistics fileEntryPublished(long expected) {
+		this.executables.add(
+			() -> assertEquals(expected, this.events.fileEntryPublished().count(), "file entry published"));
 		return this;
 	}
 

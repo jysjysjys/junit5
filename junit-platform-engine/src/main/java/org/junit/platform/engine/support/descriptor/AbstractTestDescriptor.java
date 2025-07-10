@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,12 +13,16 @@ package org.junit.platform.engine.support.descriptor;
 import static java.util.Collections.emptySet;
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
@@ -41,9 +45,9 @@ public abstract class AbstractTestDescriptor implements TestDescriptor {
 
 	private final String displayName;
 
-	private final TestSource source;
+	private final @Nullable TestSource source;
 
-	private TestDescriptor parent;
+	private @Nullable TestDescriptor parent;
 
 	/**
 	 * The synchronized set of children associated with this {@code TestDescriptor}.
@@ -84,7 +88,7 @@ public abstract class AbstractTestDescriptor implements TestDescriptor {
 	 * {@code TestDescriptor}; can be {@code null}
 	 * @see #AbstractTestDescriptor(UniqueId, String)
 	 */
-	protected AbstractTestDescriptor(UniqueId uniqueId, String displayName, TestSource source) {
+	protected AbstractTestDescriptor(UniqueId uniqueId, String displayName, @Nullable TestSource source) {
 		this.uniqueId = Preconditions.notNull(uniqueId, "UniqueId must not be null");
 		this.displayName = Preconditions.notBlank(displayName, "displayName must not be null or blank");
 		this.source = source;
@@ -116,7 +120,7 @@ public abstract class AbstractTestDescriptor implements TestDescriptor {
 	}
 
 	@Override
-	public final void setParent(TestDescriptor parent) {
+	public final void setParent(@Nullable TestDescriptor parent) {
 		this.parent = parent;
 	}
 
@@ -141,10 +145,28 @@ public abstract class AbstractTestDescriptor implements TestDescriptor {
 
 	@Override
 	public void removeFromHierarchy() {
-		Preconditions.condition(!isRoot(), "cannot remove the root of a hierarchy");
-		this.parent.removeChild(this);
+		var parent = Preconditions.notNull(this.parent, "cannot remove the root of a hierarchy");
+		parent.removeChild(this);
 		this.children.forEach(child -> child.setParent(null));
 		this.children.clear();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public void orderChildren(UnaryOperator<List<TestDescriptor>> orderer) {
+		Preconditions.notNull(orderer, "orderer must not be null");
+		List<TestDescriptor> suggestedOrder = orderer.apply(new ArrayList<>(this.children));
+		Preconditions.notNull(suggestedOrder, "orderer may not return null");
+
+		Set<? extends TestDescriptor> orderedChildren = new LinkedHashSet<>(suggestedOrder);
+		boolean unmodified = this.children.equals(orderedChildren);
+		Preconditions.condition(unmodified && this.children.size() == suggestedOrder.size(),
+			"orderer may not add or remove test descriptors");
+
+		this.children.clear();
+		this.children.addAll(orderedChildren);
 	}
 
 	@Override

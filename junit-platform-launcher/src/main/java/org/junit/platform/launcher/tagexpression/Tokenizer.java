@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,15 +18,17 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * @since 1.1
  */
 class Tokenizer {
 
-	private static final Pattern PATTERN = Pattern.compile("\\s*(?:(?:(?:any|none)\\(\\))|[()!|&]|(?:[^\\s()!|&]+))",
+	private static final Pattern PATTERN = Pattern.compile("\\s*(?:(?:any|none)\\(\\)|[()!|&]|[^\\s()!|&]+)",
 		CASE_INSENSITIVE);
 
-	List<Token> tokenize(String infixTagExpression) {
+	List<Token> tokenize(@Nullable String infixTagExpression) {
 		if (infixTagExpression == null) {
 			return emptyList();
 		}

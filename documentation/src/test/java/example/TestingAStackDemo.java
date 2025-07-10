@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -27,8 +27,6 @@ import org.junit.jupiter.api.Test;
 @DisplayName("A stack")
 class TestingAStackDemo {
 
-	Stack<Object> stack;
-
 	@Test
 	@DisplayName("is instantiated with new Stack()")
 	void isInstantiatedWithNew() {
@@ -38,6 +36,8 @@ class TestingAStackDemo {
 	@Nested
 	@DisplayName("when new")
 	class WhenNew {
+
+		Stack<Object> stack;
 
 		@BeforeEach
 		void createNewStack() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,8 @@
 package org.junit.platform.launcher.tagexpression;
 
 import java.util.function.Supplier;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * @since 1.1
@@ -39,12 +41,12 @@ class ParseStatus {
 
 	static ParseStatus errorAt(Token token, String operatorRepresentation, String message) {
 		return error(
-			message + " for '" + operatorRepresentation + "' at index " + format(token.trimmedTokenStartIndex()));
+			message + " for '" + operatorRepresentation + "' at index " + format(token.strippedTokenStartIndex()));
 	}
 
 	static ParseStatus missingOperatorBetween(TokenWith<TagExpression> lhs, TokenWith<TagExpression> rhs) {
-		String lhsString = "'" + lhs.element.toString() + "' at index " + format(lhs.token.lastCharacterIndex());
-		String rhsString = "'" + rhs.element.toString() + "' at index " + format(rhs.token.trimmedTokenStartIndex());
+		String lhsString = "'" + lhs.element() + "' at index " + format(lhs.token().lastCharacterIndex());
+		String rhsString = "'" + rhs.element() + "' at index " + format(rhs.token().strippedTokenStartIndex());
 		return error("missing operator between " + lhsString + " and " + rhsString);
 	}
 
@@ -56,13 +58,13 @@ class ParseStatus {
 		return "<" + indexInTagExpression + ">";
 	}
 
-	private static ParseStatus error(String errorMessage) {
+	private static ParseStatus error(@Nullable String errorMessage) {
 		return new ParseStatus(errorMessage);
 	}
 
-	final String errorMessage;
+	final @Nullable String errorMessage;
 
-	private ParseStatus(String errorMessage) {
+	private ParseStatus(@Nullable String errorMessage) {
 		this.errorMessage = errorMessage;
 	}
 

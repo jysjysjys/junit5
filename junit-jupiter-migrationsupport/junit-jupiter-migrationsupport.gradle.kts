@@ -1,7 +1,7 @@
 plugins {
 	id("junitbuild.java-library-conventions")
+	id("junitbuild.java-nullability-conventions")
 	id("junitbuild.junit4-compatibility")
-	id("junitbuild.testing-conventions")
 }
 
 description = "JUnit Jupiter Migration Support"
@@ -12,26 +12,30 @@ dependencies {
 	api(projects.junitJupiterApi)
 
 	compileOnlyApi(libs.apiguardian)
-
-	testImplementation(projects.junitJupiterEngine)
-	testImplementation(projects.junitPlatformLauncher)
-	testImplementation(projects.junitPlatformSuiteEngine)
-	testImplementation(projects.junitPlatformTestkit)
+	compileOnlyApi(libs.jspecify)
 
 	osgiVerification(projects.junitJupiterEngine)
 	osgiVerification(projects.junitPlatformLauncher)
 }
 
-tasks.jar {
-	bundle {
-		bnd("""
-			# Import JUnit4 packages with a version
-			Import-Package: \
-				${extra["importAPIGuardian"]},\
-				org.junit;version="[${libs.versions.junit4Min.get()},5)",\
-				org.junit.platform.commons.logging;status=INTERNAL,\
-				org.junit.rules;version="[${libs.versions.junit4Min.get()},5)",\
-				*
-		""")
+tasks {
+	compileJava {
+		options.compilerArgs.add("-Xlint:-requires-automatic,-requires-transitive-automatic") // JUnit 4
+	}
+	jar {
+		bundle {
+			val importAPIGuardian: String by extra
+			val importJSpecify: String by extra
+			bnd("""
+				# Import JUnit4 packages with a version
+				Import-Package: \
+					$importAPIGuardian,\
+					$importJSpecify,\
+					org.junit;version="[${libs.versions.junit4Min.get()},5)",\
+					org.junit.platform.commons.logging;status=INTERNAL,\
+					org.junit.rules;version="[${libs.versions.junit4Min.get()},5)",\
+					*
+			""")
+		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,27 +14,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertLinesMatch;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static platform.tooling.support.Helper.TOOL_TIMEOUT;
+import static platform.tooling.support.tests.Projects.copyToWorkspace;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import de.sormuras.bartholdy.Result;
-
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.JRE;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.platform.tests.process.OutputFiles;
 
 import platform.tooling.support.MavenRepo;
-import platform.tooling.support.Request;
+import platform.tooling.support.ProcessStarters;
 
 /**
  * @since 1.4
  */
 class MultiReleaseJarTests {
 
+	@ManagedResource
+	LocalMavenRepo localMavenRepo;
+
+	@ManagedResource
+	MavenRepoProxy mavenRepoProxy;
+
 	@Test
-	void checkDefault() throws Exception {
-		var variant = "default";
+	void checkDefault(@TempDir Path workspace, @FilePrefix("maven") OutputFiles outputFiles) throws Exception {
 		var expectedLines = List.of( //
 			">> BANNER >>", //
 			".", //
@@ -65,34 +71,26 @@ class MultiReleaseJarTests {
 			"" //
 		);
 
-		var result = mvn(variant);
+		var result = ProcessStarters.maven() //
+				.workingDir(copyToWorkspace(Projects.MULTI_RELEASE_JAR, workspace)) //
+				.addArguments(localMavenRepo.toCliArgument(), "-Dmaven.repo=" + MavenRepo.dir()) //
+				.addArguments("-Dsnapshot.repo.url=" + mavenRepoProxy.getBaseUri()) //
+				.addArguments("--update-snapshots", "--show-version", "--errors", "--batch-mode") //
+				.addArguments("test") //
+				.putEnvironment(MavenEnvVars.forJre(JRE.currentJre())) //
+				.redirectOutput(outputFiles) //
+				.startAndWait();
 
-		result.getOutputLines("out").forEach(System.out::println);
-		result.getOutputLines("err").forEach(System.err::println);
+		assertEquals(0, result.exitCode());
+		assertEquals("", result.stdErr());
 
-		assertEquals(0, result.getExitCode());
-		assertEquals("", result.getOutput("err"));
-		assertTrue(result.getOutputLines("out").contains("[INFO] BUILD SUCCESS"));
+		var outputLines = result.stdOutLines();
+		assertTrue(outputLines.contains("[INFO] BUILD SUCCESS"));
+		assertFalse(outputLines.contains("[WARNING] "), "Warning marker detected");
+		assertFalse(outputLines.contains("[ERROR] "), "Error marker detected");
 
-		var workspace = Path.of("build/test-workspace/multi-release-jar", variant);
 		var actualLines = Files.readAllLines(workspace.resolve("target/junit-platform/console-launcher.out.log"));
 		assertLinesMatch(expectedLines, actualLines);
-	}
-
-	private Result mvn(String variant) {
-		var result = Request.builder() //
-				.setTool(Request.maven()) //
-				.setProject("multi-release-jar") //
-				.addArguments("-Dmaven.repo=" + MavenRepo.dir()) //
-				.addArguments("--update-snapshots", "--show-version", "--errors", "--batch-mode", "--file", variant,
-					"test") //
-				.setTimeout(TOOL_TIMEOUT) //
-				.build() //
-				.run();
-
-		assertFalse(result.isTimedOut(), () -> "tool timed out: " + result);
-
-		return result;
 	}
 
 }

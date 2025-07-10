@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,13 +12,16 @@ package org.junit.platform.engine.support.descriptor;
 
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.io.Serial;
 import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.commons.util.ResourceUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.TestSource;
 
@@ -32,6 +35,7 @@ import org.junit.platform.engine.TestSource;
 @API(status = STABLE, since = "1.0")
 public class ClasspathResourceSource implements TestSource {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	/**
@@ -76,7 +80,7 @@ public class ClasspathResourceSource implements TestSource {
 	 * {@code null} or blank
 	 * @param filePosition the position in the classpath resource; may be {@code null}
 	 */
-	public static ClasspathResourceSource from(String classpathResourceName, FilePosition filePosition) {
+	public static ClasspathResourceSource from(String classpathResourceName, @Nullable FilePosition filePosition) {
 		return new ClasspathResourceSource(classpathResourceName, filePosition);
 	}
 
@@ -109,13 +113,14 @@ public class ClasspathResourceSource implements TestSource {
 	}
 
 	private final String classpathResourceName;
-	private final FilePosition filePosition;
+
+	private final @Nullable FilePosition filePosition;
 
 	private ClasspathResourceSource(String classpathResourceName) {
 		this(classpathResourceName, null);
 	}
 
-	private ClasspathResourceSource(String classpathResourceName, FilePosition filePosition) {
+	private ClasspathResourceSource(String classpathResourceName, @Nullable FilePosition filePosition) {
 		Preconditions.notBlank(classpathResourceName, "Classpath resource name must not be null or blank");
 		boolean startsWithSlash = classpathResourceName.startsWith("/");
 		this.classpathResourceName = (startsWithSlash ? classpathResourceName.substring(1) : classpathResourceName);

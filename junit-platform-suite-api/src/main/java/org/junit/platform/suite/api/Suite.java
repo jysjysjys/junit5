@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,8 @@
 
 package org.junit.platform.suite.api;
 
+import static org.apiguardian.api.API.Status.STABLE;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -18,7 +20,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.apiguardian.api.API;
-import org.apiguardian.api.API.Status;
 import org.junit.platform.commons.annotation.Testable;
 
 /**
@@ -44,6 +45,7 @@ import org.junit.platform.commons.annotation.Testable;
  * configuration parameters are taken into account.
  *
  * @since 1.8
+ * @see Select
  * @see SelectClasses
  * @see SelectClasspathResource
  * @see SelectDirectories
@@ -61,6 +63,7 @@ import org.junit.platform.commons.annotation.Testable;
  * @see ExcludeTags
  * @see SuiteDisplayName
  * @see ConfigurationParameter
+ * @see ConfigurationParametersResource
  * @see DisableParentConfigurationParameters
  * @see org.junit.platform.launcher.LauncherDiscoveryRequest
  * @see org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
@@ -70,7 +73,7 @@ import org.junit.platform.commons.annotation.Testable;
 @Target(ElementType.TYPE)
 @Inherited
 @Documented
-@API(status = Status.EXPERIMENTAL, since = "1.8")
+@API(status = STABLE, since = "1.10")
 @Testable
 public @interface Suite {
 
@@ -79,7 +82,7 @@ public @interface Suite {
 	 *
 	 * @since 1.9
 	 */
-	@API(status = Status.EXPERIMENTAL, since = "1.9")
+	@API(status = STABLE, since = "1.11")
 	boolean failIfNoTests() default true;
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,9 @@
 
 package org.junit.platform.engine;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -115,13 +115,13 @@ class UniqueIdFormatTests {
 		@Test
 		default void parseMalformedUid() {
 			Throwable throwable = assertThrows(JUnitException.class, () -> getFormat().parse("malformed UID"));
-			assertTrue(throwable.getMessage().contains("malformed UID"));
+			assertThat(throwable).hasMessageContaining("malformed UID");
 		}
 
 		@Test
 		default void parseEngineUid() {
 			var parsedId = getFormat().parse(getEngineUid());
-			assertSegment(parsedId.getSegments().get(0), "engine", "junit-jupiter");
+			assertSegment(parsedId.getSegments().getFirst(), "engine", "junit-jupiter");
 			assertEquals(getEngineUid(), getFormat().format(parsedId));
 			assertEquals(getEngineUid(), parsedId.toString());
 		}

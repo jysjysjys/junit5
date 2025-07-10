@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,15 +10,21 @@
 
 package org.junit.platform.engine.discovery;
 
+import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
-import org.junit.platform.commons.util.ReflectionUtils;
+import org.junit.platform.commons.function.Try;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
  * A {@link DiscoverySelector} that selects a {@link Class} or class name so
@@ -42,17 +48,32 @@ import org.junit.platform.engine.DiscoverySelector;
 @API(status = STABLE, since = "1.0")
 public class ClassSelector implements DiscoverySelector {
 
+	private final @Nullable ClassLoader classLoader;
+
 	private final String className;
 
-	private Class<?> javaClass;
+	private @Nullable Class<?> javaClass;
 
-	ClassSelector(String className) {
+	ClassSelector(@Nullable ClassLoader classLoader, String className) {
 		this.className = className;
+		this.classLoader = classLoader;
 	}
 
 	ClassSelector(Class<?> javaClass) {
 		this.className = javaClass.getName();
+		this.classLoader = javaClass.getClassLoader();
 		this.javaClass = javaClass;
+	}
+
+	/**
+	 * Get the {@link ClassLoader} used to load the selected class.
+	 *
+	 * @return the {@code ClassLoader}; potentially {@code null}
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public @Nullable ClassLoader getClassLoader() {
+		return this.classLoader;
 	}
 
 	/**
@@ -71,9 +92,13 @@ public class ClassSelector implements DiscoverySelector {
 	 */
 	public Class<?> getJavaClass() {
 		if (this.javaClass == null) {
-			this.javaClass = ReflectionUtils.tryToLoadClass(this.className).getOrThrow(
-				cause -> new PreconditionViolationException("Could not load class with name: " + this.className,
-					cause));
+			// @formatter:off
+			Try<Class<?>> tryToLoadClass = this.classLoader == null
+				? ReflectionSupport.tryToLoadClass(this.className)
+				: ReflectionSupport.tryToLoadClass(this.className, this.classLoader);
+			this.javaClass = tryToLoadClass.getNonNullOrThrow(cause ->
+				new PreconditionViolationException("Could not load class with name: " + this.className, cause));
+			// @formatter:on
 		}
 		return this.javaClass;
 	}
@@ -105,7 +130,41 @@ public class ClassSelector implements DiscoverySelector {
 
 	@Override
 	public String toString() {
-		return new ToStringBuilder(this).append("className", this.className).toString();
+		// @formatter:off
+		return new ToStringBuilder(this)
+				.append("className", this.className)
+				.append("classLoader", this.classLoader)
+				.toString();
+		// @formatter:on
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, this.className));
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for {@link ClassSelector
+	 * ClassSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		private static final String PREFIX = "class";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<ClassSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			return Optional.of(DiscoverySelectors.selectClass(identifier.getValue()));
+		}
+
 	}
 
 }

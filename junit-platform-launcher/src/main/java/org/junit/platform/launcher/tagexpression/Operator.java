@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.launcher.tagexpression;
 
+import static java.util.Objects.requireNonNull;
 import static org.junit.platform.launcher.tagexpression.Operator.Associativity.Left;
 import static org.junit.platform.launcher.tagexpression.ParseStatus.missingOperatorBetween;
 import static org.junit.platform.launcher.tagexpression.ParseStatus.missingRhsOperand;
@@ -18,6 +19,8 @@ import static org.junit.platform.launcher.tagexpression.ParseStatus.success;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * @since 1.1
@@ -36,33 +39,35 @@ class Operator {
 		return new Operator(representation, precedence, 0, null, (expressions, operatorToken) -> success());
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	static Operator unaryOperator(String representation, int precedence, Associativity associativity,
 			Function<TagExpression, TagExpression> unaryExpression) {
 
 		return new Operator(representation, precedence, 1, associativity, (expressions, operatorToken) -> {
 			TokenWith<TagExpression> rhs = expressions.pop();
-			if (operatorToken.isLeftOf(rhs.token)) {
-				Token combinedToken = operatorToken.concatenate(rhs.token);
-				expressions.push(new TokenWith<>(combinedToken, unaryExpression.apply(rhs.element)));
+			if (operatorToken.isLeftOf(rhs.token())) {
+				Token combinedToken = operatorToken.concatenate(rhs.token());
+				expressions.push(new TokenWith<>(combinedToken, unaryExpression.apply(rhs.element())));
 				return success();
 			}
 			return missingRhsOperand(operatorToken, representation);
 		});
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	static Operator binaryOperator(String representation, int precedence, Associativity associativity,
 			BiFunction<TagExpression, TagExpression, TagExpression> binaryExpression) {
 
 		return new Operator(representation, precedence, 2, associativity, (expressions, operatorToken) -> {
 			TokenWith<TagExpression> rhs = expressions.pop();
 			TokenWith<TagExpression> lhs = expressions.pop();
-			Token lhsToken = lhs.token;
-			if (lhsToken.isLeftOf(operatorToken) && operatorToken.isLeftOf(rhs.token)) {
-				Token combinedToken = lhsToken.concatenate(operatorToken).concatenate(rhs.token);
-				expressions.push(new TokenWith<>(combinedToken, binaryExpression.apply(lhs.element, rhs.element)));
+			Token lhsToken = lhs.token();
+			if (lhsToken.isLeftOf(operatorToken) && operatorToken.isLeftOf(rhs.token())) {
+				Token combinedToken = lhsToken.concatenate(operatorToken).concatenate(rhs.token());
+				expressions.push(new TokenWith<>(combinedToken, binaryExpression.apply(lhs.element(), rhs.element())));
 				return success();
 			}
-			if (rhs.token.isLeftOf(operatorToken)) {
+			if (rhs.token().isLeftOf(operatorToken)) {
 				return missingRhsOperand(operatorToken, representation);
 			}
 			if (operatorToken.isLeftOf(lhsToken)) {
@@ -75,10 +80,12 @@ class Operator {
 	private final String representation;
 	private final int precedence;
 	private final int arity;
-	private final Associativity associativity;
+
+	private final @Nullable Associativity associativity;
+
 	private final TagExpressionCreator tagExpressionCreator;
 
-	private Operator(String representation, int precedence, int arity, Associativity associativity,
+	private Operator(String representation, int precedence, int arity, @Nullable Associativity associativity,
 			TagExpressionCreator tagExpressionCreator) {
 
 		this.representation = representation;
@@ -126,7 +133,8 @@ class Operator {
 			if (2 == mismatch) {
 				return "missing lhs and rhs operand";
 			}
-			return missingOneOperand(operatorToken.isLeftOf(expressions.peek().token) ? "lhs" : "rhs");
+			return missingOneOperand(
+				operatorToken.isLeftOf(requireNonNull(expressions.peek()).token()) ? "lhs" : "rhs");
 		}
 		return "missing operand";
 	}

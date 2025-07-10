@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,9 +11,9 @@
 package org.junit.platform.testkit.engine;
 
 import static java.util.function.Predicate.isEqual;
-import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
+import static org.apiguardian.api.API.Status.STABLE;
 import static org.assertj.core.api.Assertions.allOf;
 import static org.junit.platform.commons.util.FunctionUtils.where;
 import static org.junit.platform.engine.TestExecutionResult.Status.ABORTED;
@@ -42,6 +42,7 @@ import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.TestExecutionResult.Status;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.FileEntry;
 import org.junit.platform.engine.reporting.ReportEntry;
 import org.junit.platform.engine.support.descriptor.EngineDescriptor;
 
@@ -60,7 +61,7 @@ public final class EventConditions {
 
 	/**
 	 * Create a new {@link Condition} that matches if and only if an
-	 * {@link Event} matches all of the supplied conditions.
+	 * {@link Event} matches all the supplied conditions.
 	 */
 	@SafeVarargs
 	@SuppressWarnings("varargs")
@@ -141,7 +142,7 @@ public final class EventConditions {
 	 * {@link Event}'s {@linkplain Event#getTestDescriptor() test descriptor} is
 	 * a {@linkplain TestDescriptor#isContainer() container} and its
 	 * {@linkplain TestDescriptor#getUniqueId() unique id} contains the
-	 * fully-qualified name of the supplied {@link Class}.
+	 * fully qualified name of the supplied {@link Class}.
 	 */
 	public static Condition<Event> container(Class<?> clazz) {
 		Preconditions.notNull(clazz, "Class must not be null");
@@ -249,6 +250,32 @@ public final class EventConditions {
 
 	/**
 	 * Create a new {@link Condition} that matches if and only if the
+	 * {@linkplain TestDescriptor#getUniqueId() unique id} of an {@link Event}'s
+	 * {@linkplain Event#getTestDescriptor() test descriptor} is equal to the
+	 * {@link UniqueId} parsed from the supplied {@link String}.
+	 *
+	 * @since 1.13
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static Condition<Event> uniqueId(String uniqueId) {
+		return uniqueId(UniqueId.parse(uniqueId));
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if the
+	 * {@linkplain TestDescriptor#getUniqueId() unique id} of an {@link Event}'s
+	 * {@linkplain Event#getTestDescriptor() test descriptor} is equal to the
+	 * supplied {@link UniqueId}.
+	 *
+	 * @since 1.13
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static Condition<Event> uniqueId(UniqueId uniqueId) {
+		return uniqueId(new Condition<>(isEqual(uniqueId), "equal to '%s'", uniqueId));
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if the
 	 * {@linkplain TestDescriptor#getUniqueId() unique id} of an
 	 * {@link Event}'s {@linkplain Event#getTestDescriptor() test descriptor}
 	 * contains the supplied {@link String}.
@@ -258,11 +285,22 @@ public final class EventConditions {
 			String text = segment.getType() + ":" + segment.getValue();
 			return text.contains(uniqueIdSubstring);
 		};
+		return uniqueId(new Condition<>(uniqueId -> uniqueId.getSegments().stream().anyMatch(predicate),
+			"substring '%s'", uniqueIdSubstring));
+	}
 
-		return new Condition<>(
-			byTestDescriptor(
-				where(TestDescriptor::getUniqueId, uniqueId -> uniqueId.getSegments().stream().anyMatch(predicate))),
-			"descriptor with uniqueId substring '%s'", uniqueIdSubstring);
+	/**
+	 * Create a new {@link Condition} that matches if and only if the
+	 * {@linkplain TestDescriptor#getUniqueId() unique id} of an {@link Event}'s
+	 * {@linkplain Event#getTestDescriptor() test descriptor} matches the
+	 * supplied {@link Condition}.
+	 *
+	 * @since 1.13
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static Condition<Event> uniqueId(Condition<? super UniqueId> condition) {
+		return new Condition<>(byTestDescriptor(where(TestDescriptor::getUniqueId, condition::matches)),
+			"descriptor with uniqueId %s", condition.description().value());
 	}
 
 	/**
@@ -287,7 +325,7 @@ public final class EventConditions {
 	 */
 	public static Condition<Event> uniqueIdSubstrings(List<String> uniqueIdSubstrings) {
 		// The following worked with AssertJ 3.13.2
-		// return allOf(uniqueIdSubstrings.stream().map(EventConditions::uniqueIdSubstring).collect(toList()));
+		// return allOf(uniqueIdSubstrings.stream().map(EventConditions::uniqueIdSubstring).toList());
 
 		// Workaround for a regression in AssertJ 3.14.0 that loses the individual descriptions
 		// when multiple conditions are supplied as an Iterable instead of as an array.
@@ -297,8 +335,8 @@ public final class EventConditions {
 		// does not track all descriptions.
 		List<Condition<Event>> conditions = uniqueIdSubstrings.stream()//
 				.map(EventConditions::uniqueIdSubstring)//
-				.collect(toList());
-		List<Description> descriptions = conditions.stream().map(Condition::description).collect(toList());
+				.toList();
+		List<Description> descriptions = conditions.stream().map(Condition::description).toList();
 		return allOf(conditions).describedAs(new JoinDescription("all of :[", "]", descriptions));
 	}
 
@@ -311,6 +349,21 @@ public final class EventConditions {
 	public static Condition<Event> displayName(String displayName) {
 		return new Condition<>(byTestDescriptor(where(TestDescriptor::getDisplayName, isEqual(displayName))),
 			"descriptor with display name '%s'", displayName);
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if the
+	 * {@linkplain TestDescriptor#getLegacyReportingName()} () legacy reporting name}
+	 * of an {@link Event}'s {@linkplain Event#getTestDescriptor() test descriptor}
+	 * is equal to the supplied {@link String}.
+	 *
+	 * @since 1.13
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static Condition<Event> legacyReportingName(String legacyReportingName) {
+		return new Condition<>(
+			byTestDescriptor(where(TestDescriptor::getLegacyReportingName, isEqual(legacyReportingName))),
+			"descriptor with legacy reporting name '%s'", legacyReportingName);
 	}
 
 	/**
@@ -464,10 +517,23 @@ public final class EventConditions {
 	 * {@link Event}'s {@linkplain Event#getPayload() payload} is an instance of
 	 * {@link ReportEntry} that contains the supplied key-value pairs.
 	 */
-	@API(status = EXPERIMENTAL, since = "1.7")
+	@API(status = STABLE, since = "1.10")
 	public static Condition<Event> reportEntry(Map<String, String> keyValuePairs) {
 		return new Condition<>(byPayload(ReportEntry.class, it -> it.getKeyValuePairs().equals(keyValuePairs)),
 			"event for report entry with key-value pairs %s", keyValuePairs);
+	}
+
+	/**
+	 * Create a new {@link Condition} that matches if and only if an
+	 * {@link Event}'s {@linkplain Event#getPayload() payload} is an instance of
+	 * {@link FileEntry} that contains a file that matches the supplied
+	 * {@link Predicate}.
+	 *
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public static Condition<Event> fileEntry(Predicate<FileEntry> predicate) {
+		return new Condition<>(byPayload(FileEntry.class, predicate), "event for file entry with custom predicate");
 	}
 
 }

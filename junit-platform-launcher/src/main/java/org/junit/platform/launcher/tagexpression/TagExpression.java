@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.apiguardian.api.API.Status.INTERNAL;
 import java.util.Collection;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.engine.TestTag;
 
 /**
@@ -30,11 +31,12 @@ public interface TagExpression {
 	 * Attempt to parse a {@link TagExpression} from the supplied <em>tag
 	 * expression string</em>.
 	 *
-	 * @param infixTagExpression the tag expression string to parse; never {@code null}.
+	 * @param infixTagExpression the tag expression string to parse; may be
+	 * {@code null}.
 	 * @see ParseResult
 	 */
 	@API(status = INTERNAL, since = "1.1")
-	static ParseResult parseFrom(String infixTagExpression) {
+	static ParseResult parseFrom(@Nullable String infixTagExpression) {
 		return new Parser().parse(infixTagExpression);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,9 +21,9 @@ final class NodeUtils {
 		/* no-op */
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	static <C extends EngineExecutionContext> Node<C> asNode(TestDescriptor testDescriptor) {
-		return (testDescriptor instanceof Node ? (Node<C>) testDescriptor : noOpNode);
+		return (testDescriptor instanceof Node node ? node : noOpNode);
 	}
 
 	@SuppressWarnings("rawtypes")

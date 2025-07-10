@@ -3,41 +3,51 @@
 
 The `junit-platform-reporting` artifact contains `{TestExecutionListener}` implementations
 that generate XML test reports in two flavors:
-<<junit-platform-reporting-legacy-xml, legacy>> and
-<<junit-platform-reporting-open-test-reporting, Open Test Reporting>>.
+<<junit-platform-reporting-open-test-reporting, Open Test Reporting>> and
+<<junit-platform-reporting-legacy-xml, legacy>>.
 
 NOTE: The module also contains other `TestExecutionListener` implementations that can be
 used to build custom reporting. See <<running-tests-listeners>> for details.
 
-[[junit-platform-reporting-legacy-xml]]
-==== Legacy XML format
+[[junit-platform-reporting-output-directory]]
+==== Output Directory
 
-`{LegacyXmlReportGeneratingListener}` generates a separate XML report for each root in the
-`{TestPlan}`. Note that the generated XML format is compatible with the de facto standard
-for JUnit 4 based test reports that was made popular by the Ant build system.
+The JUnit Platform provides an `{OutputDirectoryProvider}` via
+`{EngineDiscoveryRequest}` and `{TestPlan}` to registered <<test-engines, test engines>>
+and <<running-tests-listeners, listeners>>, respectively. Its root directory can be
+configured via the following <<running-tests-config-params, configuration parameter>>:
 
-The `LegacyXmlReportGeneratingListener` is used by the <<running-tests-console-launcher>>
-as well.
+`junit.platform.reporting.output.dir=<path>`::
+  Configure the output directory for reporting. By default, `build` is used if a Gradle
+  build script is found, and `target` if a Maven POM is found; otherwise, the current
+  working directory is used.
+
+To create a unique output directory per test run, you can use the `\{uniqueNumber}`
+placeholder in the path. For example, `reports/junit-\{uniqueNumber}` will create
+directories like `reports/junit-8803697269315188212`. This can be useful when using
+Gradle's or Maven's parallel execution capabilities which create multiple JVM forks
+that run concurrently.
 
 [[junit-platform-reporting-open-test-reporting]]
-==== Open Test Reporting XML format
+==== Open Test Reporting
 
 `{OpenTestReportGeneratingListener}` writes an XML report for the entire execution in the
 event-based format specified by {OpenTestReporting} which supports all features of the
 JUnit Platform such as hierarchical test structures, display names, tags, etc.
 
 The listener is auto-registered and can be configured via the following
-<<running-tests-config-params>>:
+<<running-tests-config-params, configuration parameters>>:
 
 `junit.platform.reporting.open.xml.enabled=true|false`::
-  Enable/disable writing the report.
-`junit.platform.reporting.output.dir=<path>`::
-  Configure the output directory for the reports. By default, `build` is used if a Gradle
-  build script is found, and `target` if a Maven POM is found; otherwise, the current
-  working directory is used.
+  Enable/disable writing the report; defaults to `false`.
+`junit.platform.reporting.open.xml.git.enabled=true|false`::
+  Enable/disable including information about the Git repository (see https://github.com/ota4j-team/open-test-reporting#git[Git extension schema] of open-test-reporting); defaults to `false`.
 
-If enabled, the listener creates an XML report file named
-`junit-platform-events-<random-id>.xml` per test run in the configured output directory.
+If enabled, the listener creates an XML report file named `open-test-report.xml` in the
+configured <<junit-platform-reporting-output-directory, output directory>>.
+
+If <<running-tests-capturing-output, output capturing>> is enabled, the captured output
+written to `System.out` and `System.err` will be included in the report as well.
 
 TIP: The {OpenTestReportingCliTool} can be used to convert from the event-based format to
 the hierarchical format which is more human-readable.
@@ -55,7 +65,7 @@ using Gradle's Build Cache.
 .Groovy DSL
 ----
 dependencies {
-    testRuntimeOnly("org.junit.platform:junit-platform-reporting:{platform-version}")
+    testRuntimeOnly("org.junit.platform:junit-platform-reporting:{version}")
 }
 tasks.withType(Test).configureEach {
     def outputDir = reports.junitXml.outputLocation
@@ -73,7 +83,7 @@ tasks.withType(Test).configureEach {
 .Kotlin DSL
 ----
 dependencies {
-    testRuntimeOnly("org.junit.platform:junit-platform-reporting:{platform-version}")
+    testRuntimeOnly("org.junit.platform:junit-platform-reporting:{version}")
 }
 tasks.withType<Test>().configureEach {
     val outputDir = reports.junitXml.outputLocation
@@ -101,7 +111,7 @@ XML reports as follows:
 		<dependency>
 			<groupId>org.junit.platform</groupId>
 			<artifactId>junit-platform-reporting</artifactId>
-			<version>{platform-version}</version>
+			<version>{version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -132,7 +142,26 @@ output by setting the configuration parameters via `--config`:
 
 [source,console,subs=attributes+]
 ----
-$ java -jar junit-platform-console-standalone-{platform-version}.jar <OPTIONS> \
+$ java -jar junit-platform-console-standalone-{version}.jar <OPTIONS> \
   --config=junit.platform.reporting.open.xml.enabled=true \
   --config=junit.platform.reporting.output.dir=reports
 ----
+
+Configuration parameters can also be set in a custom properties file supplied as a
+classpath resource via the `--config-resource` option:
+
+[source,console,subs=attributes+]
+----
+$ java -jar junit-platform-console-standalone-{version}.jar <OPTIONS> \
+  --config-resource=configuration.properties
+----
+
+[[junit-platform-reporting-legacy-xml]]
+==== Legacy XML format
+
+`{LegacyXmlReportGeneratingListener}` generates a separate XML report for each root in the
+`{TestPlan}`. Note that the generated XML format is compatible with the de facto standard
+for JUnit 4 based test reports that was made popular by the Ant build system.
+
+The `LegacyXmlReportGeneratingListener` is used by the <<running-tests-console-launcher>>
+as well.

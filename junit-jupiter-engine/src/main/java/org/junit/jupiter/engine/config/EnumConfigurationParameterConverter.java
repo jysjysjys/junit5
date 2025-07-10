@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -51,10 +51,10 @@ public class EnumConfigurationParameterConverter<E extends Enum<E>> {
 		if (value.isPresent()) {
 			String constantName = null;
 			try {
-				constantName = value.get().trim().toUpperCase(Locale.ROOT);
+				constantName = value.get().strip().toUpperCase(Locale.ROOT);
 				E result = Enum.valueOf(enumType, constantName);
-				logger.config(() -> String.format("Using %s '%s' set via the '%s' configuration parameter.",
-					enumDisplayName, result, key));
+				logger.config(() -> "Using %s '%s' set via the '%s' configuration parameter.".formatted(enumDisplayName,
+					result, key));
 				return result;
 			}
 			catch (Exception ex) {

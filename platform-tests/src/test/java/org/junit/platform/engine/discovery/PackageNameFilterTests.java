@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -23,6 +23,7 @@ import org.junit.platform.commons.PreconditionViolationException;
  */
 class PackageNameFilterTests {
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void includePackageChecksPreconditions() {
 		assertThatThrownBy(() -> PackageNameFilter.includePackageNames((String[]) null)) //
@@ -74,6 +75,7 @@ class PackageNameFilterTests {
 					+ includedPackage2 + "'");
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void excludePackageChecksPreconditions() {
 		assertThatThrownBy(() -> PackageNameFilter.excludePackageNames((String[]) null)) //

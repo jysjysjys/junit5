@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -40,7 +40,7 @@ public final class PackageUtils {
 		/* no-op */
 	}
 
-	static final String DEFAULT_PACKAGE_NAME = "";
+	public static final String DEFAULT_PACKAGE_NAME = "";
 
 	/**
 	 * Get the package attribute for the supplied {@code type} using the
@@ -95,8 +95,27 @@ public final class PackageUtils {
 				return Optional.ofNullable(mainAttributes.getValue(name));
 			}
 		}
-		catch (Exception e) {
+		catch (Exception ex) {
 			return Optional.empty();
 		}
 	}
+
+	/**
+	 * Get the module or implementation version for the supplied {@code type}.
+	 *
+	 * <p>The former is only available if the type is part of a versioned module
+	 * on the module path; the latter only if the type is part of a JAR file with
+	 * a manifest that contains an {@code Implementation-Version} attribute.
+	 *
+	 * @since 1.11
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static Optional<String> getModuleOrImplementationVersion(Class<?> type) {
+		Optional<String> moduleVersion = ModuleUtils.getModuleVersion(type);
+		if (moduleVersion.isPresent()) {
+			return moduleVersion;
+		}
+		return getAttribute(type, Package::getImplementationVersion);
+	}
+
 }

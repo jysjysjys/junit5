@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -31,15 +31,15 @@ import org.apiguardian.api.API;
  * <p>Tag expressions are boolean expressions with the following allowed
  * operators: {@code !} (not), {@code &} (and) and {@code |} (or). Parentheses
  * can be used to adjust for operator precedence. Please refer to the
- * <a href="https://junit.org/junit5/docs/current/user-guide/#running-tests-tag-expressions">JUnit 5 User Guide</a>
+ * <a href="https://docs.junit.org/current/user-guide/#running-tests-tag-expressions">JUnit User Guide</a>
  * for usage examples.
  *
  * <h2>Syntax Rules for Tags</h2>
  * <ul>
  * <li>A tag must not be blank.</li>
- * <li>A trimmed tag must not contain whitespace.</li>
- * <li>A trimmed tag must not contain ISO control characters.</li>
- * <li>A trimmed tag must not contain <em>reserved characters</em>.</li>
+ * <li>A stripped tag must not contain whitespace.</li>
+ * <li>A stripped tag must not contain ISO control characters.</li>
+ * <li>A stripped tag must not contain <em>reserved characters</em>.</li>
  * </ul>
  *
  * <p><em>Reserved characters</em> that are not permissible as part of a tag name.
@@ -55,7 +55,6 @@ import org.apiguardian.api.API;
  *
  * @since 1.0
  * @see Suite
- * @see org.junit.platform.runner.JUnitPlatform
  * @see org.junit.platform.launcher.TagFilter#includeTags
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -68,7 +67,7 @@ public @interface IncludeTags {
 	/**
 	 * One or more tags to include.
 	 *
-	 * <p>Note: each tag will be {@linkplain String#trim() trimmed} and
+	 * <p>Note: each tag will be {@linkplain String#strip() stripped} and
 	 * validated according to the <em>Syntax Rules for Tags</em> (see
 	 * {@linkplain IncludeTags class-level Javadoc} for details).
 	 */

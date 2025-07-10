@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.engine;
 
-import static org.apiguardian.api.API.Status.DEPRECATED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Optional;
@@ -18,6 +17,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.util.Preconditions;
 
@@ -117,28 +117,19 @@ public interface ConfigurationParameters {
 	 * @see #CONFIG_FILE_NAME
 	 */
 	@API(status = STABLE, since = "1.3")
-	default <T> Optional<T> get(String key, Function<String, T> transformer) {
+	default <T> Optional<T> get(String key, Function<? super String, ? extends @Nullable T> transformer) {
 		Preconditions.notNull(transformer, "transformer must not be null");
 		return get(key).map(input -> {
 			try {
 				return transformer.apply(input);
 			}
 			catch (Exception ex) {
-				String message = String.format(
-					"Failed to transform configuration parameter with key '%s' and initial value '%s'", key, input);
+				String message = "Failed to transform configuration parameter with key '%s' and initial value '%s'".formatted(
+					key, input);
 				throw new JUnitException(message, ex);
 			}
 		});
 	}
-
-	/**
-	 * Get the number of configuration parameters stored directly in this
-	 * {@code ConfigurationParameters}.
-	 * @deprecated as of JUnit Platform 1.9 in favor of {@link #keySet()}
-	 */
-	@Deprecated
-	@API(status = DEPRECATED, since = "1.9")
-	int size();
 
 	/**
 	 * Get the keys of all configuration parameters stored in this

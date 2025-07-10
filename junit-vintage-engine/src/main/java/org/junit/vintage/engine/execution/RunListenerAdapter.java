@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,11 +15,13 @@ import static org.junit.vintage.engine.descriptor.VintageTestDescriptor.SEGMENT_
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.Ignore;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
@@ -49,7 +51,7 @@ class RunListenerAdapter extends RunListener {
 
 	@Override
 	public void testRunStarted(Description description) {
-		if (description.isSuite() && description.getAnnotation(Ignore.class) == null) {
+		if (description.isSuite() && !testRun.getRunnerTestDescriptor().isIgnored()) {
 			fireExecutionStarted(testRun.getRunnerTestDescriptor(), EventType.REPORTED);
 		}
 	}
@@ -65,7 +67,9 @@ class RunListenerAdapter extends RunListener {
 
 	@Override
 	public void testIgnored(Description description) {
-		testIgnored(lookupOrRegisterNextTestDescriptor(description), determineReasonForIgnoredTest(description));
+		TestDescriptor testDescriptor = lookupOrRegisterNextTestDescriptor(description);
+		String reason = determineReasonForIgnoredTest(testDescriptor, description).orElse("<unknown>");
+		testIgnored(testDescriptor, reason);
 	}
 
 	@Override
@@ -99,6 +103,10 @@ class RunListenerAdapter extends RunListener {
 
 	@Override
 	public void testRunFinished(Result result) {
+		testRunFinished();
+	}
+
+	void testRunFinished() {
 		reportContainerFinished(testRun.getRunnerTestDescriptor());
 	}
 
@@ -176,9 +184,21 @@ class RunListenerAdapter extends RunListener {
 		fireExecutionSkipped(testDescriptor, reason);
 	}
 
-	private String determineReasonForIgnoredTest(Description description) {
-		Ignore ignoreAnnotation = description.getAnnotation(Ignore.class);
-		return Optional.ofNullable(ignoreAnnotation).map(Ignore::value).orElse("<unknown>");
+	private Optional<String> determineReasonForIgnoredTest(TestDescriptor testDescriptor, Description description) {
+		Optional<String> reason = getReason(description.getAnnotation(Ignore.class));
+		if (reason.isPresent()) {
+			return reason;
+		}
+		// Workaround for some runners (e.g. JUnit38ClassRunner) don't include the @Ignore annotation
+		// in the description, so we read it from the test class directly
+		return testDescriptor.getSource() //
+				.filter(ClassSource.class::isInstance) //
+				.map(source -> ((ClassSource) source).getJavaClass()) //
+				.flatMap(testClass -> getReason(testClass.getAnnotation(Ignore.class)));
+	}
+
+	private static Optional<String> getReason(@Nullable Ignore annotation) {
+		return Optional.ofNullable(annotation).map(Ignore::value);
 	}
 
 	private void dynamicTestRegistered(TestDescriptor testDescriptor) {
@@ -201,7 +221,7 @@ class RunListenerAdapter extends RunListener {
 
 	private boolean isAncestor(TestDescriptor candidate, TestDescriptor testDescriptor) {
 		Optional<TestDescriptor> parent = testDescriptor.getParent();
-		if (!parent.isPresent()) {
+		if (parent.isEmpty()) {
 			return false;
 		}
 		if (parent.get().equals(candidate)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,22 +10,18 @@
 
 package org.junit.jupiter.params.provider;
 
-import static org.junit.jupiter.params.provider.CsvParserFactory.createParserFor;
-import static org.junit.platform.commons.util.CollectionUtils.toSet;
-
-import java.io.StringReader;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import com.univocity.parsers.csv.CsvParser;
+import de.siegmar.fastcsv.reader.CsvRecord;
+import de.siegmar.fastcsv.reader.NamedCsvRecord;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
@@ -35,78 +31,43 @@ import org.junit.platform.commons.util.UnrecoverableExceptions;
  */
 class CsvArgumentsProvider extends AnnotationBasedArgumentsProvider<CsvSource> {
 
-	private static final String LINE_SEPARATOR = "\n";
-
-	private Set<String> nullValues;
-	private CsvParser csvParser;
-
 	@Override
-	protected Stream<? extends Arguments> provideArguments(ExtensionContext context, CsvSource annotation) {
-		this.nullValues = toSet(annotation.nullValues());
-		this.csvParser = createParserFor(annotation);
-		final boolean textBlockDeclared = !annotation.textBlock().isEmpty();
-		Preconditions.condition(annotation.value().length > 0 ^ textBlockDeclared,
+	protected Stream<? extends Arguments> provideArguments(ParameterDeclarations parameters, ExtensionContext context,
+			CsvSource csvSource) {
+
+		CsvReaderFactory.validate(csvSource);
+
+		List<Arguments> arguments = new ArrayList<>();
+
+		try (var reader = CsvReaderFactory.createReaderFor(csvSource, getData(csvSource))) {
+			boolean useHeadersInDisplayName = csvSource.useHeadersInDisplayName();
+			for (CsvRecord record : reader) {
+				arguments.add(processCsvRecord(record, useHeadersInDisplayName));
+			}
+		}
+		catch (Throwable throwable) {
+			throw handleCsvException(throwable, csvSource);
+		}
+
+		return arguments.stream();
+	}
+
+	private static String getData(CsvSource csvSource) {
+		var values = csvSource.value();
+		Preconditions.condition(values.length > 0 ^ !csvSource.textBlock().isEmpty(),
 			() -> "@CsvSource must be declared with either `value` or `textBlock` but not both");
 
-		return textBlockDeclared ? parseTextBlock(annotation) : parseValueArray(annotation);
-	}
-
-	private Stream<Arguments> parseTextBlock(CsvSource annotation) {
-		String textBlock = annotation.textBlock();
-		boolean useHeadersInDisplayName = annotation.useHeadersInDisplayName();
-		List<Arguments> argumentsList = new ArrayList<>();
-
-		try {
-			List<String[]> csvRecords = this.csvParser.parseAll(new StringReader(textBlock));
-			String[] headers = useHeadersInDisplayName ? getHeaders(this.csvParser) : null;
-
-			AtomicInteger index = new AtomicInteger(0);
-			for (String[] csvRecord : csvRecords) {
-				index.incrementAndGet();
-				Preconditions.notNull(csvRecord,
-					() -> "Record at index " + index + " contains invalid CSV: \"\"\"\n" + textBlock + "\n\"\"\"");
-				argumentsList.add(processCsvRecord(csvRecord, this.nullValues, useHeadersInDisplayName, headers));
+		if (!csvSource.textBlock().isEmpty()) {
+			return csvSource.textBlock();
+		}
+		else {
+			for (int i = 0; i < values.length; i++) {
+				int finalI = i;
+				Preconditions.notBlank(values[i],
+					() -> "CSV record at index %d must not be blank".formatted(finalI + 1));
 			}
+			return String.join("\n", values);
 		}
-		catch (Throwable throwable) {
-			throw handleCsvException(throwable, annotation);
-		}
-
-		return argumentsList.stream();
-	}
-
-	private Stream<Arguments> parseValueArray(CsvSource annotation) {
-		boolean useHeadersInDisplayName = annotation.useHeadersInDisplayName();
-		List<Arguments> argumentsList = new ArrayList<>();
-
-		try {
-			String[] headers = null;
-			AtomicInteger index = new AtomicInteger(0);
-			for (String input : annotation.value()) {
-				index.incrementAndGet();
-				String[] csvRecord = this.csvParser.parseLine(input + LINE_SEPARATOR);
-				// Lazily retrieve headers if necessary.
-				if (useHeadersInDisplayName && headers == null) {
-					headers = getHeaders(this.csvParser);
-					continue;
-				}
-				Preconditions.notNull(csvRecord,
-					() -> "Record at index " + index + " contains invalid CSV: \"" + input + "\"");
-				argumentsList.add(processCsvRecord(csvRecord, this.nullValues, useHeadersInDisplayName, headers));
-			}
-		}
-		catch (Throwable throwable) {
-			throw handleCsvException(throwable, annotation);
-		}
-
-		return argumentsList.stream();
-	}
-
-	// Cannot get parsed headers until after parsing has started.
-	static String[] getHeaders(CsvParser csvParser) {
-		return Arrays.stream(csvParser.getContext().parsedHeaders())//
-				.map(String::trim)//
-				.toArray(String[]::new);
 	}
 
 	/**
@@ -114,31 +75,40 @@ class CsvArgumentsProvider extends AnnotationBasedArgumentsProvider<CsvSource> {
 	 * {@link Named} if necessary (for CSV header support), and returns the
 	 * CSV record wrapped in an {@link Arguments} instance.
 	 */
-	static Arguments processCsvRecord(Object[] csvRecord, Set<String> nullValues, boolean useHeadersInDisplayName,
-			String[] headers) {
+	static Arguments processCsvRecord(CsvRecord record, boolean useHeadersInDisplayName) {
+		List<String> fields = record.getFields();
+		List<String> headers = useHeadersInDisplayName ? getHeaders(record) : List.of();
 
-		// Nothing to process?
-		if (nullValues.isEmpty() && !useHeadersInDisplayName) {
-			return Arguments.of(csvRecord);
-		}
+		Preconditions.condition(!useHeadersInDisplayName || fields.size() <= headers.size(), //
+			() -> String.format( //
+				"The number of columns (%d) exceeds the number of supplied headers (%d) in CSV record: %s", //
+				fields.size(), headers.size(), fields)); //
 
-		Preconditions.condition(!useHeadersInDisplayName || (csvRecord.length <= headers.length),
-			() -> String.format(
-				"The number of columns (%d) exceeds the number of supplied headers (%d) in CSV record: %s",
-				csvRecord.length, headers.length, Arrays.toString(csvRecord)));
+		@Nullable
+		Object[] arguments = new Object[fields.size()];
 
-		Object[] arguments = new Object[csvRecord.length];
-		for (int i = 0; i < csvRecord.length; i++) {
-			Object column = csvRecord[i];
-			if (nullValues.contains(column)) {
-				column = null;
-			}
+		for (int i = 0; i < fields.size(); i++) {
+			Object argument = resolveNullMarker(fields.get(i));
 			if (useHeadersInDisplayName) {
-				column = Named.of(headers[i] + " = " + column, column);
+				String header = resolveNullMarker(headers.get(i));
+				argument = asNamed(header + " = " + argument, argument);
 			}
-			arguments[i] = column;
+			arguments[i] = argument;
 		}
+
 		return Arguments.of(arguments);
+	}
+
+	private static List<String> getHeaders(CsvRecord record) {
+		return ((NamedCsvRecord) record).getHeader();
+	}
+
+	private static @Nullable String resolveNullMarker(String record) {
+		return record == CsvReaderFactory.DefaultFieldModifier.NULL_MARKER ? null : record;
+	}
+
+	private static Named<@Nullable Object> asNamed(String name, @Nullable Object column) {
+		return Named.<@Nullable Object> of(name, column);
 	}
 
 	/**
@@ -148,8 +118,8 @@ class CsvArgumentsProvider extends AnnotationBasedArgumentsProvider<CsvSource> {
 	 */
 	static RuntimeException handleCsvException(Throwable throwable, Annotation annotation) {
 		UnrecoverableExceptions.rethrowIfUnrecoverable(throwable);
-		if (throwable instanceof PreconditionViolationException) {
-			throw (PreconditionViolationException) throwable;
+		if (throwable instanceof PreconditionViolationException exception) {
+			throw exception;
 		}
 		throw new CsvParsingException("Failed to parse CSV input configured via " + annotation, throwable);
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -34,6 +34,19 @@ public final class ClassLoaderUtils {
 
 	private ClassLoaderUtils() {
 		/* no-op */
+	}
+
+	/**
+	 * Get the {@link ClassLoader} for the supplied {@link Class}, falling back
+	 * to the {@link #getDefaultClassLoader() default class loader} if the class
+	 * loader for the supplied class is {@code null}.
+	 * @param clazz the class for which to retrieve the class loader; never {@code null}
+	 * @since 1.10
+	 */
+	public static ClassLoader getClassLoader(Class<?> clazz) {
+		Preconditions.notNull(clazz, "Class must not be null");
+		ClassLoader classLoader = clazz.getClassLoader();
+		return (classLoader != null) ? classLoader : getDefaultClassLoader();
 	}
 
 	public static ClassLoader getDefaultClassLoader() {

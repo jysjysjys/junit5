@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,15 +16,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import org.junit.platform.commons.logging.Logger;
-import org.junit.platform.commons.logging.LoggerFactory;
-import org.junit.platform.commons.util.ReflectionUtils;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.platform.engine.ConfigurationParameters;
+import org.junit.platform.engine.DiscoveryIssue;
+import org.junit.platform.engine.DiscoveryIssue.Severity;
+import org.junit.platform.engine.EngineDiscoveryListener;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.UniqueId.Segment;
 import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.UniqueIdSelector;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
+import org.junit.platform.engine.support.descriptor.ClassSource;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter;
 import org.junit.platform.engine.support.discovery.SelectorResolver;
 
 /**
@@ -32,19 +36,25 @@ import org.junit.platform.engine.support.discovery.SelectorResolver;
  */
 final class ClassSelectorResolver implements SelectorResolver {
 
-	private static final Logger log = LoggerFactory.getLogger(ClassSelectorResolver.class);
-
-	private static final IsSuiteClass isSuiteClass = new IsSuiteClass();
-
+	private final IsSuiteClass isSuiteClass;
 	private final Predicate<String> classNameFilter;
 	private final SuiteEngineDescriptor suiteEngineDescriptor;
 	private final ConfigurationParameters configurationParameters;
+	private final OutputDirectoryProvider outputDirectoryProvider;
+	private final EngineDiscoveryListener discoveryListener;
+	private final DiscoveryIssueReporter issueReporter;
 
 	ClassSelectorResolver(Predicate<String> classNameFilter, SuiteEngineDescriptor suiteEngineDescriptor,
-			ConfigurationParameters configurationParameters) {
+			ConfigurationParameters configurationParameters, OutputDirectoryProvider outputDirectoryProvider,
+			EngineDiscoveryListener discoveryListener, DiscoveryIssueReporter issueReporter) {
+
+		this.isSuiteClass = new IsSuiteClass(issueReporter);
 		this.classNameFilter = classNameFilter;
 		this.suiteEngineDescriptor = suiteEngineDescriptor;
 		this.configurationParameters = configurationParameters;
+		this.outputDirectoryProvider = outputDirectoryProvider;
+		this.discoveryListener = discoveryListener;
+		this.issueReporter = issueReporter;
 	}
 
 	@Override
@@ -89,7 +99,7 @@ final class ClassSelectorResolver implements SelectorResolver {
 	}
 
 	private static Optional<Class<?>> tryLoadSuiteClass(UniqueId.Segment segment) {
-		return ReflectionUtils.tryToLoadClass(segment.getValue()).toOptional();
+		return ReflectionSupport.tryToLoadClass(segment.getValue()).toOptional();
 	}
 
 	private static Resolution toResolution(Optional<SuiteTestDescriptor> suite) {
@@ -99,11 +109,14 @@ final class ClassSelectorResolver implements SelectorResolver {
 	private Optional<SuiteTestDescriptor> newSuiteDescriptor(Class<?> suiteClass, TestDescriptor parent) {
 		UniqueId id = parent.getUniqueId().append(SuiteTestDescriptor.SEGMENT_TYPE, suiteClass.getName());
 		if (containsCycle(id)) {
-			log.config(() -> createConfigContainsCycleMessage(suiteClass, id));
+			issueReporter.reportIssue(
+				DiscoveryIssue.builder(Severity.INFO, createConfigContainsCycleMessage(suiteClass, id)) //
+						.source(ClassSource.from(suiteClass)));
 			return Optional.empty();
 		}
 
-		return Optional.of(new SuiteTestDescriptor(id, suiteClass, configurationParameters));
+		return Optional.of(new SuiteTestDescriptor(id, suiteClass, configurationParameters, outputDirectoryProvider,
+			discoveryListener, issueReporter));
 	}
 
 	private static boolean containsCycle(UniqueId id) {
@@ -120,8 +133,7 @@ final class ClassSelectorResolver implements SelectorResolver {
 	}
 
 	private static String createConfigContainsCycleMessage(Class<?> suiteClass, UniqueId suiteId) {
-		return String.format(
-			"The suite configuration of [%s] resulted in a cycle [%s] and will not be discovered a second time.",
+		return "The suite configuration of [%s] resulted in a cycle [%s] and will not be discovered a second time.".formatted(
 			suiteClass.getName(), suiteId);
 	}
 

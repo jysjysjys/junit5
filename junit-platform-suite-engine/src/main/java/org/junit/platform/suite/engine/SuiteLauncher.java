@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -16,12 +16,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.engine.CancellationToken;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.TestEngine;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.support.store.Namespace;
+import org.junit.platform.engine.support.store.NamespacedHierarchicalStore;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.EngineDiscoveryOrchestrator;
-import org.junit.platform.launcher.core.EngineDiscoveryOrchestrator.Phase;
 import org.junit.platform.launcher.core.EngineExecutionOrchestrator;
 import org.junit.platform.launcher.core.LauncherDiscoveryResult;
 import org.junit.platform.launcher.core.ServiceLoaderTestEngineRegistry;
@@ -54,13 +56,14 @@ class SuiteLauncher {
 	}
 
 	LauncherDiscoveryResult discover(LauncherDiscoveryRequest discoveryRequest, UniqueId parentId) {
-		return discoveryOrchestrator.discover(discoveryRequest, Phase.DISCOVERY, parentId);
+		return discoveryOrchestrator.discover(discoveryRequest, parentId);
 	}
 
-	TestExecutionSummary execute(LauncherDiscoveryResult discoveryResult,
-			EngineExecutionListener parentEngineExecutionListener) {
+	TestExecutionSummary execute(LauncherDiscoveryResult discoveryResult, EngineExecutionListener executionListener,
+			NamespacedHierarchicalStore<Namespace> requestLevelStore, CancellationToken cancellationToken) {
 		SummaryGeneratingListener listener = new SummaryGeneratingListener();
-		executionOrchestrator.execute(discoveryResult, parentEngineExecutionListener, listener);
+		executionOrchestrator.execute(discoveryResult, executionListener, listener, requestLevelStore,
+			cancellationToken);
 		return listener.getSummary();
 	}
 

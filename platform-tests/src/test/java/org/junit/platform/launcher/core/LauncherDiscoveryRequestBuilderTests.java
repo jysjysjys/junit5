@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.launcher.core;
 
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,7 +63,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			// @formatter:on
 
 			var packageSelectors = discoveryRequest.getSelectorsByType(ModuleSelector.class).stream().map(
-				ModuleSelector::getModuleName).collect(toList());
+				ModuleSelector::getModuleName).toList();
 			assertThat(packageSelectors).contains("java.base");
 		}
 
@@ -78,7 +77,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			// @formatter:on
 
 			var packageSelectors = discoveryRequest.getSelectorsByType(PackageSelector.class).stream().map(
-				PackageSelector::getPackageName).collect(toList());
+				PackageSelector::getPackageName).toList();
 			assertThat(packageSelectors).contains("org.junit.platform.engine");
 		}
 
@@ -93,8 +92,9 @@ class LauncherDiscoveryRequestBuilderTests {
 				.build();
 			// @formatter:on
 
-			List<Class<?>> classes = discoveryRequest.getSelectorsByType(ClassSelector.class).stream().map(
-				ClassSelector::getJavaClass).collect(toList());
+			@SuppressWarnings("rawtypes")
+			List<Class> classes = discoveryRequest.getSelectorsByType(ClassSelector.class).stream()//
+					.map(ClassSelector::getJavaClass).map(Class.class::cast).toList();
 			assertThat(classes).contains(SampleTestClass.class, LauncherDiscoveryRequestBuilderTests.class);
 		}
 
@@ -109,7 +109,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			var methodSelectors = discoveryRequest.getSelectorsByType(MethodSelector.class);
 			assertThat(methodSelectors).hasSize(1);
 
-			var methodSelector = methodSelectors.get(0);
+			var methodSelector = methodSelectors.getFirst();
 			assertThat(methodSelector.getJavaClass()).isEqualTo(LauncherDiscoveryRequestBuilderTests.class);
 			assertThat(methodSelector.getJavaMethod()).isEqualTo(fullyQualifiedMethod());
 		}
@@ -128,7 +128,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			var methodSelectors = discoveryRequest.getSelectorsByType(MethodSelector.class);
 			assertThat(methodSelectors).hasSize(1);
 
-			var methodSelector = methodSelectors.get(0);
+			var methodSelector = methodSelectors.getFirst();
 			assertThat(methodSelector.getJavaClass()).isEqualTo(testClass);
 			assertThat(methodSelector.getJavaMethod()).isEqualTo(testMethod);
 		}
@@ -148,7 +148,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			var methodSelectors = discoveryRequest.getSelectorsByType(MethodSelector.class);
 			assertThat(methodSelectors).hasSize(1);
 
-			var methodSelector = methodSelectors.get(0);
+			var methodSelector = methodSelectors.getFirst();
 			assertThat(methodSelector.getJavaClass()).isEqualTo(testClass);
 			assertThat(methodSelector.getJavaMethod()).isEqualTo(testMethod);
 		}
@@ -167,7 +167,7 @@ class LauncherDiscoveryRequestBuilderTests {
 			// @formatter:on
 
 			var uniqueIds = discoveryRequest.getSelectorsByType(UniqueIdSelector.class).stream().map(
-				UniqueIdSelector::getUniqueId).map(Object::toString).collect(toList());
+				UniqueIdSelector::getUniqueId).map(Object::toString).toList();
 
 			assertThat(uniqueIds).contains(id1.toString(), id2.toString());
 		}
@@ -190,7 +190,7 @@ class LauncherDiscoveryRequestBuilderTests {
 
 			var filters = discoveryRequest.getEngineFilters();
 			assertThat(filters).hasSize(1);
-			var engineFilter = filters.get(0);
+			var engineFilter = filters.getFirst();
 			assertTrue(engineFilter.apply(engine1).included());
 			assertTrue(engineFilter.apply(engine2).included());
 			assertTrue(engineFilter.apply(engine3).excluded());
@@ -313,6 +313,48 @@ class LauncherDiscoveryRequestBuilderTests {
 			assertThat(configParams.get("key1")).contains("value1");
 			assertThat(configParams.get("key2")).contains("value2");
 		}
+
+		@Test
+		void configurationParametersResource_areStoredInDiscoveryRequest() {
+			// @formatter:off
+			var discoveryRequest = request()
+					.configurationParametersResources("config-test.properties")
+					.build();
+			// @formatter:on
+
+			var configParams = discoveryRequest.getConfigurationParameters();
+			assertThat(configParams.get("com.example.prop.first")).contains("first value");
+			assertThat(configParams.get("com.example.prop.second")).contains("second value");
+			assertThat(configParams.get("com.example.prop.third")).contains("third value");
+		}
+
+		@Test
+		void configurationParametersResource_explicitConfigParametersOverrideResource() {
+			// @formatter:off
+			var discoveryRequest = request()
+					.configurationParametersResources("config-test.properties")
+					.configurationParameter("com.example.prop.first", "first value override")
+					.build();
+			// @formatter:on
+
+			var configParams = discoveryRequest.getConfigurationParameters();
+			assertThat(configParams.get("com.example.prop.first")).contains("first value override");
+			assertThat(configParams.get("com.example.prop.second")).contains("second value");
+		}
+
+		@Test
+		void configurationParametersResource_lastDeclaredResourceFileWins() {
+			// @formatter:off
+			var discoveryRequest = request()
+					.configurationParametersResources("config-test.properties")
+					.configurationParametersResources("config-test-override.properties")
+					.build();
+			// @formatter:on
+
+			var configParams = discoveryRequest.getConfigurationParameters();
+			assertThat(configParams.get("com.example.prop.first")).contains("first value from override file");
+			assertThat(configParams.get("com.example.prop.second")).contains("second value");
+		}
 	}
 
 	@Nested
@@ -356,6 +398,7 @@ class LauncherDiscoveryRequestBuilderTests {
 
 	}
 
+	@SuppressWarnings("JUnitMalformedDeclaration")
 	private static class SampleTestClass {
 
 		@Test

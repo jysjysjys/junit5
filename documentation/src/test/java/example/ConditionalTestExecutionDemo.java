@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,11 @@
 
 package example;
 
-import static org.junit.jupiter.api.condition.JRE.JAVA_10;
-import static org.junit.jupiter.api.condition.JRE.JAVA_11;
-import static org.junit.jupiter.api.condition.JRE.JAVA_8;
-import static org.junit.jupiter.api.condition.JRE.JAVA_9;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
+import static org.junit.jupiter.api.condition.JRE.JAVA_18;
+import static org.junit.jupiter.api.condition.JRE.JAVA_19;
+import static org.junit.jupiter.api.condition.JRE.JAVA_21;
+import static org.junit.jupiter.api.condition.JRE.JAVA_25;
 import static org.junit.jupiter.api.condition.OS.LINUX;
 import static org.junit.jupiter.api.condition.OS.MAC;
 import static org.junit.jupiter.api.condition.OS.WINDOWS;
@@ -101,59 +102,117 @@ class ConditionalTestExecutionDemo {
 
 	// tag::user_guide_jre[]
 	@Test
-	@EnabledOnJre(JAVA_8)
-	void onlyOnJava8() {
+	@EnabledOnJre(JAVA_17)
+	void onlyOnJava17() {
 		// ...
 	}
 
 	@Test
-	@EnabledOnJre({ JAVA_9, JAVA_10 })
-	void onJava9Or10() {
+	@EnabledOnJre({ JAVA_17, JAVA_21 })
+	void onJava17And21() {
 		// ...
 	}
 
 	@Test
-	@EnabledForJreRange(min = JAVA_9, max = JAVA_11)
-	void fromJava9to11() {
+	@EnabledForJreRange(min = JAVA_21, max = JAVA_25)
+	void fromJava21To25() {
 		// ...
 	}
 
 	@Test
-	@EnabledForJreRange(min = JAVA_9)
-	void fromJava9toCurrentJavaFeatureNumber() {
+	@EnabledForJreRange(min = JAVA_21)
+	void onJava21ndHigher() {
 		// ...
 	}
 
 	@Test
-	@EnabledForJreRange(max = JAVA_11)
-	void fromJava8To11() {
+	@EnabledForJreRange(max = JAVA_18)
+	void fromJava17To18() {
 		// ...
 	}
 
 	@Test
-	@DisabledOnJre(JAVA_9)
-	void notOnJava9() {
+	@DisabledOnJre(JAVA_19)
+	void notOnJava19() {
 		// ...
 	}
 
 	@Test
-	@DisabledForJreRange(min = JAVA_9, max = JAVA_11)
-	void notFromJava9to11() {
+	@DisabledForJreRange(min = JAVA_17, max = JAVA_17)
+	void notFromJava17To19() {
 		// ...
 	}
 
 	@Test
-	@DisabledForJreRange(min = JAVA_9)
-	void notFromJava9toCurrentJavaFeatureNumber() {
+	@DisabledForJreRange(min = JAVA_19)
+	void notOnJava19AndHigher() {
 		// ...
 	}
 
 	@Test
-	@DisabledForJreRange(max = JAVA_11)
-	void notFromJava8to11() {
+	@DisabledForJreRange(max = JAVA_18)
+	void notFromJava17To18() {
 		// ...
 	}
 	// end::user_guide_jre[]
+
+	// tag::user_guide_jre_arbitrary_versions[]
+	@Test
+	@EnabledOnJre(versions = 26)
+	void onlyOnJava26() {
+		// ...
+	}
+
+	@Test
+	@EnabledOnJre(versions = { 25, 26 })
+	// Can also be expressed as follows.
+	// @EnabledOnJre(value = JAVA_25, versions = 26)
+	void onJava25And26() {
+		// ...
+	}
+
+	@Test
+	@EnabledForJreRange(minVersion = 26)
+	void onJava26AndHigher() {
+		// ...
+	}
+
+	@Test
+	@EnabledForJreRange(minVersion = 25, maxVersion = 27)
+	// Can also be expressed as follows.
+	// @EnabledForJreRange(min = JAVA_25, maxVersion = 27)
+	void fromJava25To27() {
+		// ...
+	}
+
+	@Test
+	@DisabledOnJre(versions = 26)
+	void notOnJava26() {
+		// ...
+	}
+
+	@Test
+	@DisabledOnJre(versions = { 25, 26 })
+	// Can also be expressed as follows.
+	// @DisabledOnJre(value = JAVA_25, versions = 26)
+	void notOnJava25And26() {
+		// ...
+	}
+
+	@Test
+	@DisabledForJreRange(minVersion = 26)
+	void notOnJava26AndHigher() {
+		// ...
+	}
+
+	@Test
+	@DisabledForJreRange(minVersion = 25, maxVersion = 27)
+	// Can also be expressed as follows.
+	// @DisabledForJreRange(min = JAVA_25, maxVersion = 27)
+	void notFromJava25To27() {
+		// ...
+	}
+	// end::user_guide_jre_arbitrary_versions[]
 
 	// tag::user_guide_native[]
 	@Test

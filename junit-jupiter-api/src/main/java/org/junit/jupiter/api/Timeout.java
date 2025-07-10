@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.api;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
@@ -50,9 +50,9 @@ import org.apiguardian.api.API;
  *     <dd>Default timeout for {@link Test @Test} methods</dd>
  *     <dt>{@value #DEFAULT_TEST_TEMPLATE_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
  *     <dd>Default timeout for {@link TestTemplate @TestTemplate} methods</dd>
- *     <dt>{@value DEFAULT_TEST_FACTORY_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
+ *     <dt>{@value #DEFAULT_TEST_FACTORY_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
  *     <dd>Default timeout for {@link TestFactory @TestFactory} methods</dd>
- *     <dt>{@value DEFAULT_LIFECYCLE_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
+ *     <dt>{@value #DEFAULT_LIFECYCLE_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
  *     <dd>Default timeout for all lifecycle methods</dd>
  *     <dt>{@value #DEFAULT_BEFORE_ALL_METHOD_TIMEOUT_PROPERTY_NAME}</dt>
  *     <dd>Default timeout for {@link BeforeAll @BeforeAll} methods</dd>
@@ -298,7 +298,7 @@ public @interface Timeout {
 	String DEFAULT_AFTER_ALL_METHOD_TIMEOUT_PROPERTY_NAME = "junit.jupiter.execution.timeout.afterall.method.default";
 
 	/**
-	 * Property used to determine if timeouts are applied to tests: {@value}.
+	 * Property name used to configure whether timeouts are applied to tests: {@value}.
 	 *
 	 * <p>The value of this property will be used to toggle whether
 	 * {@link Timeout @Timeout} is applied to tests.</p>
@@ -329,7 +329,7 @@ public @interface Timeout {
 	 *
 	 * @since 5.9
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = MAINTAINED, since = "5.13.3")
 	String DEFAULT_TIMEOUT_THREAD_MODE_PROPERTY_NAME = "junit.jupiter.execution.timeout.thread.mode.default";
 
 	/**
@@ -354,16 +354,16 @@ public @interface Timeout {
 	 * @since 5.9
 	 * @see ThreadMode
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = STABLE, since = "5.11")
 	ThreadMode threadMode() default ThreadMode.INFERRED;
 
 	/**
-	 * {@code ThreadMode} is use to define whether the test code should be executed in the thread
-	 * of the calling code or in a separated thread.
+	 * {@code ThreadMode} is used to define whether test code should be executed
+	 * in the thread of the calling code or in a separate thread.
 	 *
 	 * @since 5.9
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
+	@API(status = STABLE, since = "5.11")
 	enum ThreadMode {
 		/**
 		 * The thread mode is determined using the parameter configured in property

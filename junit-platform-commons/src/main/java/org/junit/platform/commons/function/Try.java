@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.commons.function;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import java.util.Objects;
@@ -20,6 +21,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.JUnitException;
 
 /**
@@ -39,7 +42,7 @@ import org.junit.platform.commons.JUnitException;
  * @since 1.4
  */
 @API(status = MAINTAINED, since = "1.4")
-public abstract class Try<V> {
+public abstract class Try<V extends @Nullable Object> {
 
 	/**
 	 * Call the supplied {@link Callable} and return a successful {@code Try}
@@ -52,7 +55,7 @@ public abstract class Try<V> {
 	 * @see #success(Object)
 	 * @see #failure(Exception)
 	 */
-	public static <V> Try<V> call(Callable<V> action) {
+	public static <V extends @Nullable Object> Try<V> call(Callable<V> action) {
 		checkNotNull(action, "action");
 		return Try.of(() -> success(action.call()));
 	}
@@ -64,7 +67,7 @@ public abstract class Try<V> {
 	 * @return a succeeded {@code Try} that contains the supplied value; never
 	 * {@code null}
 	 */
-	public static <V> Try<V> success(V value) {
+	public static <V extends @Nullable Object> Try<V> success(V value) {
 		return new Success<>(value);
 	}
 
@@ -80,7 +83,7 @@ public abstract class Try<V> {
 	}
 
 	// Cannot use Preconditions due to package cycle
-	private static <T> T checkNotNull(T input, String title) {
+	private static <T> T checkNotNull(@Nullable T input, String title) {
 		if (input == null) {
 			// Cannot use PreconditionViolationException due to package cycle
 			throw new JUnitException(title + " must not be null");
@@ -151,6 +154,22 @@ public abstract class Try<V> {
 
 	/**
 	 * If this {@code Try} is a success, get the contained value; if this
+	 * {@code Try} is a failure, throw the contained exception.
+	 *
+	 * @return the contained value, if available
+	 * @throws Exception if this {@code Try} is a failure or the contained value
+	 * is {@code null}
+	 *
+	 * @since 6.0
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public final @NonNull V getNonNull() throws Exception {
+		var value = get();
+		return checkNotNull(value, "value");
+	}
+
+	/**
+	 * If this {@code Try} is a success, get the contained value; if this
 	 * {@code Try} is a failure, call the supplied {@link Function} with the
 	 * contained exception and throw the resulting {@link Exception}.
 	 *
@@ -160,6 +179,27 @@ public abstract class Try<V> {
 	 * @throws E if this {@code Try} is a failure
 	 */
 	public abstract <E extends Exception> V getOrThrow(Function<? super Exception, E> exceptionTransformer) throws E;
+
+	/**
+	 * If this {@code Try} is a success, get the contained value; if this
+	 * {@code Try} is a failure, call the supplied {@link Function} with the
+	 * contained exception and throw the resulting {@link Exception}.
+	 *
+	 * @param exceptionTransformer the transformer to be called with the
+	 * contained exception, if available; must not be {@code null}
+	 * @return the contained value, if available and not {@code null}
+	 * @throws E if this {@code Try} is a failure or the contained value
+	 * is {@code null}
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public final <E extends Exception> @NonNull V getNonNullOrThrow(
+			Function<@Nullable Exception, E> exceptionTransformer) throws E {
+		var value = getOrThrow(exceptionTransformer);
+		if (value == null) {
+			throw exceptionTransformer.apply(null);
+		}
+		return value;
+	}
 
 	/**
 	 * If this {@code Try} is a success, call the supplied {@link Consumer} with
@@ -198,7 +238,7 @@ public abstract class Try<V> {
 	 * except that a {@code Transformer} may throw an exception.
 	 */
 	@FunctionalInterface
-	public interface Transformer<S, T> {
+	public interface Transformer<S extends @Nullable Object, T extends @Nullable Object> {
 
 		/**
 		 * Apply this transformer to the supplied value.
@@ -209,7 +249,7 @@ public abstract class Try<V> {
 
 	}
 
-	private static class Success<V> extends Try<V> {
+	private static class Success<V extends @Nullable Object> extends Try<V> {
 
 		private final V value;
 
@@ -287,7 +327,7 @@ public abstract class Try<V> {
 		}
 	}
 
-	private static class Failure<V> extends Try<V> {
+	private static class Failure<V extends @Nullable Object> extends Try<V> {
 
 		private final Exception cause;
 

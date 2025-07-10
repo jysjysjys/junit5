@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,10 +20,12 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Order(Integer.MAX_VALUE)
 class HelperTests {
 
 	@Test
@@ -37,13 +39,10 @@ class HelperTests {
 			"junit-platform-commons", //
 			"junit-platform-console", //
 			"junit-platform-engine", //
-			"junit-platform-jfr", //
 			"junit-platform-launcher", //
 			"junit-platform-reporting", //
-			"junit-platform-runner", //
 			"junit-platform-suite", //
 			"junit-platform-suite-api", //
-			"junit-platform-suite-commons", //
 			"junit-platform-suite-engine", //
 			"junit-platform-testkit", //
 			"junit-vintage-engine"//
@@ -52,20 +51,18 @@ class HelperTests {
 
 	@Test
 	void version() {
-		assertNotNull(Helper.version("junit-jupiter"));
-		assertNotNull(Helper.version("junit-vintage"));
-		assertNotNull(Helper.version("junit-platform"));
+		assertNotNull(Helper.version());
 	}
 
 	@Test
 	void nonExistingJdkVersionYieldsAnEmptyOptional() {
-		assertEquals(Optional.empty(), Helper.getJavaHome("does not exist"));
+		assertEquals(Optional.empty(), Helper.getJavaHome(-1));
 	}
 
 	@ParameterizedTest
-	@ValueSource(ints = 8)
+	@ValueSource(ints = 17)
 	void checkJavaHome(int version) {
-		var home = Helper.getJavaHome(String.valueOf(version));
+		var home = Helper.getJavaHome(version);
 		assumeTrue(home.isPresent(), "No 'jdk' element found in Maven toolchain for: " + version);
 		assertTrue(Files.isDirectory(home.get()));
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -21,16 +21,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.jspecify.annotations.Nullable;
+
 public class ConcurrencyTestingUtils {
 
 	public static void executeConcurrently(int threads, Runnable action) throws Exception {
-		executeConcurrently(threads, () -> {
+		ConcurrencyTestingUtils.<@Nullable Object> executeConcurrently(threads, () -> {
 			action.run();
 			return null;
 		});
 	}
 
-	public static <T> List<T> executeConcurrently(int threads, Callable<T> action) throws Exception {
+	public static <T extends @Nullable Object> List<T> executeConcurrently(int threads, Callable<T> action)
+			throws Exception {
 		ExecutorService executorService = Executors.newFixedThreadPool(threads);
 		try {
 			CountDownLatch latch = new CountDownLatch(threads);

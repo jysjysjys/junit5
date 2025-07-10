@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,8 @@ package org.junit.platform.reporting.legacy;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.support.descriptor.ClassSource;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
@@ -21,8 +23,8 @@ import org.junit.platform.launcher.TestPlan;
  * Utility methods for dealing with legacy reporting infrastructure, such as
  * reporting systems built on the Ant-based XML reporting format for JUnit 4.
  *
- * This class was formerly from {@code junit-platform-launcher}
- * in {@link org.junit.platform.launcher.listeners} package.
+ * <p>This class was formerly from {@code junit-platform-launcher} in the
+ * {@link org.junit.platform.launcher.listeners} package.
  *
  * @since 1.0.3
  */
@@ -44,13 +46,42 @@ public final class LegacyReportingUtils {
 	 * {@linkplain TestIdentifier#getLegacyReportingName legacy reporting name}.
 	 *
 	 * @param testPlan the test plan that contains the {@code TestIdentifier};
-	 *                 never {@code null}
+	 * never {@code null}
 	 * @param testIdentifier the identifier to determine the class name for;
-	 *                 never {@code null}
+	 * never {@code null}
 	 * @see TestIdentifier#getLegacyReportingName
 	 */
-	@SuppressWarnings("deprecation")
 	public static String getClassName(TestPlan testPlan, TestIdentifier testIdentifier) {
-		return org.junit.platform.launcher.listeners.LegacyReportingUtils.getClassName(testPlan, testIdentifier);
+		Preconditions.notNull(testPlan, "testPlan must not be null");
+		Preconditions.notNull(testIdentifier, "testIdentifier must not be null");
+		for (TestIdentifier current = testIdentifier; current != null; current = getParent(testPlan, current)) {
+			ClassSource source = getClassSource(current);
+			if (source != null) {
+				return source.getClassName();
+			}
+		}
+		return getParentLegacyReportingName(testPlan, testIdentifier);
 	}
+
+	private static @Nullable TestIdentifier getParent(TestPlan testPlan, TestIdentifier testIdentifier) {
+		return testPlan.getParent(testIdentifier).orElse(null);
+	}
+
+	private static @Nullable ClassSource getClassSource(TestIdentifier current) {
+		// @formatter:off
+		return current.getSource()
+				.filter(ClassSource.class::isInstance)
+				.map(ClassSource.class::cast)
+				.orElse(null);
+		// @formatter:on
+	}
+
+	private static String getParentLegacyReportingName(TestPlan testPlan, TestIdentifier testIdentifier) {
+		// @formatter:off
+		return testPlan.getParent(testIdentifier)
+				.map(TestIdentifier::getLegacyReportingName)
+				.orElse("<unrooted>");
+		// @formatter:on
+	}
+
 }

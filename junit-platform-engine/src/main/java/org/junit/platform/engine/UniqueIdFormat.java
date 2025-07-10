@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,10 +11,9 @@
 package org.junit.platform.engine;
 
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
+import java.io.Serial;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +35,7 @@ import org.junit.platform.engine.UniqueId.Segment;
  */
 class UniqueIdFormat implements Serializable {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private static final UniqueIdFormat defaultFormat = new UniqueIdFormat('[', ':', ']', '/');
@@ -49,12 +49,7 @@ class UniqueIdFormat implements Serializable {
 	}
 
 	private static String encode(char c) {
-		try {
-			return URLEncoder.encode(String.valueOf(c), StandardCharsets.UTF_8.name());
-		}
-		catch (UnsupportedEncodingException e) {
-			throw new AssertionError("UTF-8 should be supported", e);
-		}
+		return URLEncoder.encode(String.valueOf(c), StandardCharsets.UTF_8);
 	}
 
 	private final char openSegment;
@@ -70,7 +65,7 @@ class UniqueIdFormat implements Serializable {
 		this.closeSegment = closeSegment;
 		this.segmentDelimiter = segmentDelimiter;
 		this.segmentPattern = Pattern.compile(
-			String.format("%s(.+)%s(.+)%s", quote(openSegment), quote(typeValueSeparator), quote(closeSegment)),
+			"%s(.+)%s(.+)%s".formatted(quote(openSegment), quote(typeValueSeparator), quote(closeSegment)),
 			Pattern.DOTALL);
 
 		// Compute "forbidden" character encoding map.
@@ -92,14 +87,14 @@ class UniqueIdFormat implements Serializable {
 	 */
 	UniqueId parse(String source) throws JUnitException {
 		String[] parts = source.split(String.valueOf(this.segmentDelimiter));
-		List<Segment> segments = Arrays.stream(parts).map(this::createSegment).collect(toList());
+		List<Segment> segments = Arrays.stream(parts).map(this::createSegment).toList();
 		return new UniqueId(this, segments);
 	}
 
 	private Segment createSegment(String segmentString) throws JUnitException {
 		Matcher segmentMatcher = this.segmentPattern.matcher(segmentString);
 		if (!segmentMatcher.matches()) {
-			throw new JUnitException(String.format("'%s' is not a well-formed UniqueId segment", segmentString));
+			throw new JUnitException("'%s' is not a well-formed UniqueId segment".formatted(segmentString));
 		}
 		String type = decode(checkAllowed(segmentMatcher.group(1)));
 		String value = decode(checkAllowed(segmentMatcher.group(2)));
@@ -116,7 +111,7 @@ class UniqueIdFormat implements Serializable {
 
 	private void checkDoesNotContain(String typeOrValue, char forbiddenCharacter) {
 		Preconditions.condition(typeOrValue.indexOf(forbiddenCharacter) < 0,
-			() -> String.format("type or value '%s' must not contain '%s'", typeOrValue, forbiddenCharacter));
+			() -> "type or value '%s' must not contain '%s'".formatted(typeOrValue, forbiddenCharacter));
 	}
 
 	/**
@@ -150,12 +145,7 @@ class UniqueIdFormat implements Serializable {
 	}
 
 	private static String decode(String s) {
-		try {
-			return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
-		}
-		catch (UnsupportedEncodingException e) {
-			throw new JUnitException("UTF-8 should be supported", e);
-		}
+		return URLDecoder.decode(s, StandardCharsets.UTF_8);
 	}
 
 }

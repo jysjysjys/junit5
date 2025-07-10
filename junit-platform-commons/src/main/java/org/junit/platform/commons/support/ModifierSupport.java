@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.platform.commons.support;
 
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
 
 import java.lang.reflect.Member;
@@ -140,6 +141,32 @@ public final class ModifierSupport {
 	 */
 	public static boolean isAbstract(Member member) {
 		return ReflectionUtils.isAbstract(member);
+	}
+
+	/**
+	 * Determine if the supplied class is not {@code abstract}.
+	 *
+	 * @param clazz the class to check; never {@code null}
+	 * @return {@code true} if the class is not {@code abstract}
+	 * @since 1.13
+	 * @see java.lang.reflect.Modifier#isAbstract(int)
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static boolean isNotAbstract(Class<?> clazz) {
+		return ReflectionUtils.isNotAbstract(clazz);
+	}
+
+	/**
+	 * Determine if the supplied member is not {@code abstract}.
+	 *
+	 * @param member the class to check; never {@code null}
+	 * @return {@code true} if the member is not {@code abstract}
+	 * @since 1.13
+	 * @see java.lang.reflect.Modifier#isAbstract(int)
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static boolean isNotAbstract(Member member) {
+		return ReflectionUtils.isNotAbstract(member);
 	}
 
 	/**

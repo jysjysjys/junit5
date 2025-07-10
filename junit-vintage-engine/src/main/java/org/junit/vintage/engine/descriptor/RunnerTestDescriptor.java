@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,20 +18,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.ClassSource;
+import org.junit.platform.engine.support.hierarchical.OpenTest4JAwareThrowableCollector;
+import org.junit.platform.engine.support.hierarchical.ThrowableCollector;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
 import org.junit.runner.Runner;
 import org.junit.runner.manipulation.Filter;
 import org.junit.runner.manipulation.Filterable;
 import org.junit.runner.manipulation.NoTestsRemainException;
+import org.junit.runners.ParentRunner;
+import org.junit.runners.model.RunnerScheduler;
 
 /**
  * @since 4.12
@@ -43,12 +53,15 @@ public class RunnerTestDescriptor extends VintageTestDescriptor {
 
 	private final Set<Description> rejectedExclusions = new HashSet<>();
 	private Runner runner;
+	private final boolean ignored;
 	private boolean wasFiltered;
-	private List<Filter> filters = new ArrayList<>();
 
-	public RunnerTestDescriptor(UniqueId uniqueId, Class<?> testClass, Runner runner) {
+	private @Nullable List<Filter> filters = new ArrayList<>();
+
+	public RunnerTestDescriptor(UniqueId uniqueId, Class<?> testClass, Runner runner, boolean ignored) {
 		super(uniqueId, runner.getDescription(), testClass.getSimpleName(), ClassSource.from(testClass));
 		this.runner = runner;
+		this.ignored = ignored;
 	}
 
 	@Override
@@ -59,6 +72,10 @@ public class RunnerTestDescriptor extends VintageTestDescriptor {
 
 	public Request toRequest() {
 		return new RunnerRequest(this.runner);
+	}
+
+	public Runner getRunner() {
+		return runner;
 	}
 
 	@Override
@@ -74,10 +91,10 @@ public class RunnerTestDescriptor extends VintageTestDescriptor {
 	}
 
 	private boolean tryToFilterRunner(Description description) {
-		if (runner instanceof Filterable) {
+		if (runner instanceof Filterable filterable) {
 			ExcludeDescriptionFilter filter = new ExcludeDescriptionFilter(description);
 			try {
-				((Filterable) runner).filter(filter);
+				filterable.filter(filter);
 			}
 			catch (NoTestsRemainException ignore) {
 				// it's safe to ignore this exception because childless TestDescriptors will get pruned
@@ -152,7 +169,52 @@ public class RunnerTestDescriptor extends VintageTestDescriptor {
 	}
 
 	private Runner getRunnerToReport() {
-		return (runner instanceof RunnerDecorator) ? ((RunnerDecorator) runner).getDecoratedRunner() : runner;
+		return (runner instanceof RunnerDecorator decorator) ? decorator.getDecoratedRunner() : runner;
+	}
+
+	public boolean isIgnored() {
+		return ignored;
+	}
+
+	public void setExecutorService(ExecutorService executorService) {
+		Runner runner = getRunnerToReport();
+		if (runner instanceof ParentRunner<?> parentRunner) {
+			parentRunner.setScheduler(new RunnerScheduler() {
+
+				private final List<Future<?>> futures = new CopyOnWriteArrayList<>();
+
+				@Override
+				public void schedule(Runnable childStatement) {
+					futures.add(executorService.submit(childStatement));
+				}
+
+				@Override
+				public void finished() {
+					ThrowableCollector collector = new OpenTest4JAwareThrowableCollector();
+					AtomicBoolean wasInterrupted = new AtomicBoolean(false);
+					for (Future<?> future : futures) {
+						collector.execute(() -> {
+							// We're calling `Future.get()` individually to allow for work stealing
+							// in case `ExecutorService` is a `ForkJoinPool`
+							try {
+								future.get();
+							}
+							catch (ExecutionException e) {
+								throw e.getCause();
+							}
+							catch (InterruptedException e) {
+								wasInterrupted.set(true);
+							}
+						});
+					}
+					collector.assertEmpty();
+					if (wasInterrupted.get()) {
+						logger.warn(() -> "Interrupted while waiting for runner to finish");
+						Thread.currentThread().interrupt();
+					}
+				}
+			});
+		}
 	}
 
 	private static class ExcludeDescriptionFilter extends Filter {

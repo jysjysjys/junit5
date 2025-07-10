@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,12 +11,13 @@
 package org.junit.platform.engine.support.hierarchical;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
 import java.util.concurrent.Future;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A simple {@linkplain HierarchicalTestExecutorService executor service} that
@@ -24,14 +25,15 @@ import org.apiguardian.api.API;
  *
  * @since 1.3
  */
-@API(status = EXPERIMENTAL, since = "1.3")
+@API(status = STABLE, since = "1.10")
 public class SameThreadHierarchicalTestExecutorService implements HierarchicalTestExecutorService {
 
 	public SameThreadHierarchicalTestExecutorService() {
 	}
 
 	@Override
-	public Future<Void> submit(TestTask testTask) {
+	@SuppressWarnings("NullAway")
+	public Future<@Nullable Void> submit(TestTask testTask) {
 		testTask.execute();
 		return completedFuture(null);
 	}

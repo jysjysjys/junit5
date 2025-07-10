@@ -1,3 +1,5 @@
+:testDir: ../../../../src/test/java
+
 [[migrating-from-junit4]]
 == Migrating from JUnit 4
 
@@ -19,11 +21,15 @@ plenty of time to migrate to JUnit Jupiter on their own schedule.
 [[migrating-from-junit4-running]]
 === Running JUnit 4 Tests on the JUnit Platform
 
+WARNING: The JUnit Vintage engine is deprecated and should only be used temporarily while
+migrating tests to JUnit Jupiter or another testing framework with native JUnit Platform
+support.
+
 Make sure that the `junit-vintage-engine` artifact is in your test runtime path. In that
 case JUnit 3 and JUnit 4 tests will automatically be picked up by the JUnit Platform
 launcher.
 
-See the example projects in the {junit5-samples-repo}[`junit5-samples`] repository to
+See the example projects in the {junit-examples-repo}[`junit-examples`] repository to
 find out how this is done with Gradle and Maven.
 
 [[migrating-from-junit4-categories-support]]
@@ -36,6 +42,151 @@ annotated with `@Category(Example.class)`, it will be tagged with `"com.acme.Exa
 Similar to the `Categories` runner in JUnit 4, this information can be used to filter the
 discovered tests before executing them (see <<running-tests>> for details).
 
+[[migrating-from-junit4-parallel-execution]]
+=== Parallel Execution
+
+The JUnit Vintage test engine supports parallel execution of top-level test classes and test methods,
+allowing existing JUnit 3 and JUnit 4 tests to benefit from improved performance through
+concurrent test execution. It can be enabled and configured using the following
+<<running-tests-config-params, configuration parameters>>:
+
+`junit.vintage.execution.parallel.enabled=true|false`::
+  Enable/disable parallel execution (defaults to `false`). Requires opt-in for `classes`
+  or `methods` to be executed in parallel using the configuration parameters below.
+
+`junit.vintage.execution.parallel.classes=true|false`::
+  Enable/disable parallel execution of test classes (defaults to `false`).
+
+`junit.vintage.execution.parallel.methods=true|false`::
+  Enable/disable parallel execution of test methods (defaults to `false`).
+
+`junit.vintage.execution.parallel.pool-size=<number>`::
+  Specifies the size of the thread pool to be used for parallel execution. By default, the
+  number of available processors is used.
+
+[[migrating-from-junit4-parallel-execution-class-level]]
+==== Parallelization at Class Level
+
+Let's assume we have two test classes `FooTest` and `BarTest` with each class containing
+three unit tests. Now, let's enable parallel execution of test classes:
+
+[source,properties]
+----
+junit.vintage.execution.parallel.enabled=true
+junit.vintage.execution.parallel.classes=true
+----
+
+With this setup, the `VintageTestEngine` will use two different threads,
+one for each test class:
+
+[source,plaintext]
+----
+ForkJoinPool-1-worker-1 - BarTest::test1
+ForkJoinPool-1-worker-2 - FooTest::test1
+ForkJoinPool-1-worker-1 - BarTest::test2
+ForkJoinPool-1-worker-2 - FooTest::test2
+ForkJoinPool-1-worker-1 - BarTest::test3
+ForkJoinPool-1-worker-2 - FooTest::test3
+----
+
+[[migrating-from-junit4-parallel-execution-method-level]]
+==== Parallelization at Method Level
+
+Alternatively, we can enable parallel test execution at a method level,
+rather than the class level:
+
+[source,properties]
+----
+junit.vintage.execution.parallel.enabled=true
+junit.vintage.execution.parallel.methods=true
+----
+
+Therefore, the test methods within each class will be executed in parallel, while
+different test classes will be executed sequentially:
+
+[source,plaintext]
+----
+ForkJoinPool-1-worker-1 - BarTest::test1
+ForkJoinPool-1-worker-2 - BarTest::test2
+ForkJoinPool-1-worker-3 - BarTest::test3
+
+ForkJoinPool-1-worker-3 - FooTest::test1
+ForkJoinPool-1-worker-2 - FooTest::test2
+ForkJoinPool-1-worker-1 - FooTest::test3
+----
+
+[[migrating-from-junit4-parallel-execution-class-and-method-level]]
+==== Full Parallelization
+
+Finally, we can also enable parallelization at both class and method level:
+
+[source,properties]
+----
+junit.vintage.execution.parallel.enabled=true
+junit.vintage.execution.parallel.classes=true
+junit.vintage.execution.parallel.methods=true
+----
+
+With these properties set, the `VintageTestEngine` will execute all tests classes and
+methods in parallel, potentially significantly reducing the overall test suite execution time:
+
+[source,plaintext]
+----
+ForkJoinPool-1-worker-6 - FooTest::test2
+ForkJoinPool-1-worker-7 - BarTest::test3
+ForkJoinPool-1-worker-3 - FooTest::test1
+ForkJoinPool-1-worker-8 - FooTest::test3
+ForkJoinPool-1-worker-5 - BarTest::test2
+ForkJoinPool-1-worker-4 - BarTest::test1
+----
+
+[[migrating-from-junit4-parallel-execution-pool-size]]
+==== Configuring the Pool Size
+
+The default thread pool size is equal to the number of available processors. However, we
+can also configure the pool size explicitly:
+
+[source,properties]
+----
+junit.vintage.execution.parallel.enabled=true
+junit.vintage.execution.parallel.classes=true
+junit.vintage.execution.parallel.methods=true
+junit.vintage.execution.parallel.pool-size=4
+----
+
+For instance, if we update our previous example that uses full parallelization and
+configure the pool size to four, we can expect to see our six test methods executed with
+a parallelism of four:
+
+[source,plaintext]
+----
+ForkJoinPool-1-worker-2 - FooTest::test1
+ForkJoinPool-1-worker-4 - BarTest::test2
+ForkJoinPool-1-worker-3 - BarTest::test1
+ForkJoinPool-1-worker-4 - BarTest::test3
+ForkJoinPool-1-worker-2 - FooTest::test2
+ForkJoinPool-1-worker-3 - FooTest::test3
+----
+
+As we can see, even though we set the thread pool size was four, only three threads were
+used in this case. This happens because the pool adjusts the number of active threads
+based on workload and system needs.
+
+[[migrating-from-junit4-parallel-execution-disabled]]
+==== Sequential Execution
+
+On the other hand, if we disable parallel execution, the `VintageTestEngine`
+will execute all tests sequentially, regardless of the other properties:
+
+[source,properties]
+----
+junit.vintage.execution.parallel.enabled=false
+junit.vintage.execution.parallel.classes=true
+junit.vintage.execution.parallel.methods=true
+----
+
+Similarly, tests will be executed sequentially if you enable parallel execution in general
+but enable neither class-level nor method-level parallelization.
 
 [[migrating-from-junit4-tips]]
 === Migration Tips
@@ -60,16 +211,57 @@ tests to JUnit Jupiter.
   - See also <<migrating-from-junit4-ignore-annotation-support>>.
 * `@Category` no longer exists; use `@Tag` instead.
 * `@RunWith` no longer exists; superseded by `@ExtendWith`.
+  - For `@RunWith(Enclosed.class)` use `@Nested`.
+  - For `@RunWith(Parameterized.class)` see <<migrating-from-junit4-tips-parameterized>>.
 * `@Rule` and `@ClassRule` no longer exist; superseded by `@ExtendWith` and
   `@RegisterExtension`.
   - See also <<migrating-from-junit4-rule-support>>.
+* `@Test(expected = ...)` and the `ExpectedException` rule no longer exist; use
+  `Assertions.assertThrows(...)` instead.
+  - See <<migrating-from-junit4-rule-support>> if you still need to use
+    `ExpectedException`.
 * Assertions and assumptions in JUnit Jupiter accept the failure message as their last
   argument instead of the first one.
   - See <<migrating-from-junit4-failure-message-arguments>> for details.
 
+[[migrating-from-junit4-tips-parameterized]]
+==== Parameterized test classes
+
+Unless `@UseParametersRunnerFactory` is used, a JUnit 4 parameterized test class can be
+converted into a JUnit Jupiter
+<<writing-tests-parameterized-tests, `@ParameterizedClass`>> by following these steps:
+
+. Replace `@RunWith(Parameterized.class)` with `@ParameterizedClass`.
+. Add a class-level `@MethodSource("methodName")` annotation where `methodName` is the
+  name of the method annotated with `@Parameters` and remove the `@Parameters` annotation
+  from the method.
+. Replace `@BeforeParam` and `@AfterParam` with `@BeforeParameterizedClassInvocation` and
+  `@AfterParameterizedClassInvocation`, respectively, if there are any methods with such
+  annotations.
+. Change the imports of the `@Test` and `@Parameter` annotations to use the
+  `org.junit.jupiter.params` package.
+. Change assertions etc. to use the `org.junit.jupiter.api` package as usual.
+. Optionally, remove all `public` modifiers from the class and its methods and fields.
+
+====
+[source,java,indent=0]
+.Before
+----
+include::{testDir}/example/ParameterizedMigrationDemo.java[tags=before]
+----
+
+[source,java,indent=0]
+.After
+----
+include::{testDir}/example/ParameterizedMigrationDemo.java[tags=after]
+----
+====
 
 [[migrating-from-junit4-rule-support]]
 === Limited JUnit 4 Rule Support
+
+WARNING: _JUnit 4 rule support_ is deprecated for removal since version 6.0.0. Please
+migrate to the corresponding APIs and extensions provided by JUnit Jupiter.
 
 As stated above, JUnit Jupiter does not and will not support JUnit 4 rules natively. The
 JUnit team realizes, however, that many organizations, especially large ones, are likely
@@ -104,6 +296,9 @@ extension model of JUnit Jupiter instead of the rule-based model of JUnit 4.
 
 [[migrating-from-junit4-ignore-annotation-support]]
 === JUnit 4 @Ignore Support
+
+WARNING: _JUnit 4 `@Ignore` support_ is deprecated for removal since version 6.0.0. Please
+use JUnit Jupiter's `@Disabled` annotation instead.
 
 In order to provide a smooth migration path from JUnit 4 to JUnit Jupiter, the
 `junit-jupiter-migrationsupport` module provides support for JUnit 4's `@Ignore`

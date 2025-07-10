@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,13 +18,7 @@ import org.junit.jupiter.api.function.Executable;
  *
  * @since 5.8
  */
-class DefaultDynamicTestInvocationContext implements DynamicTestInvocationContext {
-
-	private final Executable executable;
-
-	DefaultDynamicTestInvocationContext(Executable executable) {
-		this.executable = executable;
-	}
+record DefaultDynamicTestInvocationContext(Executable executable) implements DynamicTestInvocationContext {
 
 	@Override
 	public Executable getExecutable() {

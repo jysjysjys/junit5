@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.vintage.engine;
 
+import org.junit.platform.suite.api.ExcludeTags;
 import org.junit.platform.suite.api.IncludeClassNamePatterns;
 import org.junit.platform.suite.api.IncludeEngines;
 import org.junit.platform.suite.api.SelectPackages;
@@ -34,5 +35,6 @@ import org.junit.platform.suite.api.Suite;
 @SelectPackages("org.junit.vintage.engine")
 @IncludeClassNamePatterns(".*Tests?")
 @IncludeEngines("junit-jupiter")
+@ExcludeTags("missing-junit4")
 class VintageTestEngineTestSuite {
 }

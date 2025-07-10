@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.platform.launcher;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
@@ -43,6 +42,8 @@ import org.junit.platform.engine.EngineDiscoveryRequest;
  * discovery. All of them have to include a {@code TestDescriptor} for it to end up
  * in the test plan.</li>
  * </ul>
+ *
+ * <p>This interface is not intended to be implemented by clients.
  *
  * @since 1.0
  * @see org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
@@ -91,7 +92,7 @@ public interface LauncherDiscoveryRequest extends EngineDiscoveryRequest {
 	 * @return the discovery listener; never {@code null}
 	 * @since 1.6
 	 */
-	@API(status = EXPERIMENTAL, since = "1.6")
+	@API(status = STABLE, since = "1.10")
 	@Override
 	default LauncherDiscoveryListener getDiscoveryListener() {
 		return LauncherDiscoveryListener.NOOP;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,9 @@
 
 package org.junit.jupiter.api.condition;
 
-import static java.lang.String.format;
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.disabled;
 import static org.junit.jupiter.api.extension.ConditionEvaluationResult.enabled;
-import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
+import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -21,10 +20,13 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.platform.commons.JUnitException;
+import org.junit.platform.commons.support.ReflectionSupport;
+import org.junit.platform.commons.util.ClassLoaderUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.commons.util.StringUtils;
@@ -56,34 +58,42 @@ abstract class MethodBasedCondition<A extends Annotation> implements ExecutionCo
 				.orElseGet(this::enabledByDefault);
 	}
 
-	private Method getConditionMethod(String fullyQualifiedMethodName, ExtensionContext context) {
+	// package-private for testing
+	Method getConditionMethod(String fullyQualifiedMethodName, ExtensionContext context) {
+		Class<?> testClass = context.getRequiredTestClass();
 		if (!fullyQualifiedMethodName.contains("#")) {
-			return findMethod(context.getRequiredTestClass(), fullyQualifiedMethodName);
+			return findMethod(testClass, fullyQualifiedMethodName);
 		}
 		String[] methodParts = ReflectionUtils.parseFullyQualifiedMethodName(fullyQualifiedMethodName);
 		String className = methodParts[0];
 		String methodName = methodParts[1];
-		Class<?> clazz = ReflectionUtils.tryToLoadClass(className).getOrThrow(
-			cause -> new JUnitException(format("Could not load class [%s]", className), cause));
+		ClassLoader classLoader = ClassLoaderUtils.getClassLoader(testClass);
+		Class<?> clazz = ReflectionSupport.tryToLoadClass(className, classLoader).getNonNullOrThrow(
+			cause -> new JUnitException("Could not load class [%s]".formatted(className), cause));
 		return findMethod(clazz, methodName);
 	}
 
 	private Method findMethod(Class<?> clazz, String methodName) {
-		return ReflectionUtils.findMethod(clazz, methodName) //
+		return ReflectionSupport.findMethod(clazz, methodName) //
 				.orElseGet(() -> ReflectionUtils.getRequiredMethod(clazz, methodName, ExtensionContext.class));
 	}
 
 	private boolean invokeConditionMethod(Method method, ExtensionContext context) {
 		Preconditions.condition(method.getReturnType() == boolean.class,
-			() -> format("Method [%s] must return a boolean", method));
+			() -> "Method [%s] must return a boolean".formatted(method));
 		Preconditions.condition(acceptsExtensionContextOrNoArguments(method),
-			() -> format("Method [%s] must accept either an ExtensionContext or no arguments", method));
+			() -> "Method [%s] must accept either an ExtensionContext or no arguments".formatted(method));
 
 		Object testInstance = context.getTestInstance().orElse(null);
+		return invokeMethod(method, context, testInstance);
+	}
+
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
+	private static boolean invokeMethod(Method method, ExtensionContext context, @Nullable Object testInstance) {
 		if (method.getParameterCount() == 0) {
-			return (boolean) ReflectionUtils.invokeMethod(method, testInstance);
+			return (boolean) ReflectionSupport.invokeMethod(method, testInstance);
 		}
-		return (boolean) ReflectionUtils.invokeMethod(method, testInstance, context);
+		return (boolean) ReflectionSupport.invokeMethod(method, testInstance, context);
 	}
 
 	private boolean acceptsExtensionContextOrNoArguments(Method method) {
@@ -92,7 +102,7 @@ abstract class MethodBasedCondition<A extends Annotation> implements ExecutionCo
 	}
 
 	private ConditionEvaluationResult buildConditionEvaluationResult(boolean methodResult, A annotation) {
-		Supplier<String> defaultReason = () -> format("@%s(\"%s\") evaluated to %s",
+		Supplier<String> defaultReason = () -> "@%s(\"%s\") evaluated to %s".formatted(
 			this.annotationType.getSimpleName(), this.methodName.apply(annotation), methodResult);
 		if (isEnabled(methodResult)) {
 			return enabled(defaultReason.get());
@@ -104,7 +114,7 @@ abstract class MethodBasedCondition<A extends Annotation> implements ExecutionCo
 	protected abstract boolean isEnabled(boolean methodResult);
 
 	private ConditionEvaluationResult enabledByDefault() {
-		return enabled(format("@%s is not present", this.annotationType.getSimpleName()));
+		return enabled("@%s is not present".formatted(this.annotationType.getSimpleName()));
 	}
 
 }

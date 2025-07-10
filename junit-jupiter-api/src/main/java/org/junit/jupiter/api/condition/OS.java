@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,12 @@
 
 package org.junit.jupiter.api.condition;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Locale;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.commons.util.StringUtils;
@@ -95,23 +95,23 @@ public enum OS {
 
 	private static final Logger logger = LoggerFactory.getLogger(OS.class);
 
-	private static final OS CURRENT_OS = determineCurrentOs();
+	private static final @Nullable OS CURRENT_OS = determineCurrentOs();
 
 	/**
-	 * Get the current operating system.
+	 * {@return the current operating system, if known; otherwise, {@code null}}
 	 *
 	 * @since 5.9
 	 */
-	@API(status = EXPERIMENTAL, since = "5.9")
-	public static OS current() {
+	@API(status = STABLE, since = "5.10")
+	public static @Nullable OS current() {
 		return CURRENT_OS;
 	}
 
-	private static OS determineCurrentOs() {
+	private static @Nullable OS determineCurrentOs() {
 		return parse(System.getProperty("os.name"));
 	}
 
-	static OS parse(String osName) {
+	static @Nullable OS parse(String osName) {
 		if (StringUtils.isBlank(osName)) {
 			logger.debug(
 				() -> "JVM system property 'os.name' is undefined. It is therefore not possible to detect the current OS.");

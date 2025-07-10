@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -56,6 +57,7 @@ class MethodSourceTests extends AbstractTestSourceTests {
 		assertEqualsAndHashCode(MethodSource.from(method1), MethodSource.from(method1), MethodSource.from(method2));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void instantiatingWithNullNamesShouldThrowPreconditionViolationException() {
 		assertThrows(PreconditionViolationException.class, () -> MethodSource.from("foo", null));
@@ -74,11 +76,13 @@ class MethodSourceTests extends AbstractTestSourceTests {
 		assertThrows(PreconditionViolationException.class, () -> MethodSource.from("  ", "foo"));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void instantiationWithNullMethodShouldThrowPreconditionViolationException() {
 		assertThrows(PreconditionViolationException.class, () -> MethodSource.from(null));
 	}
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void instantiationWithNullClassOrMethodShouldThrowPreconditionViolationException() {
 		assertThrows(PreconditionViolationException.class,
@@ -239,7 +243,7 @@ class MethodSourceTests extends AbstractTestSourceTests {
 
 	@Test
 	void getJavaMethodFromStringShouldFindMethodWithParameter() throws Exception {
-		var testMethod = getClass().getDeclaredMethod("method3", Integer.TYPE);
+		var testMethod = getClass().getDeclaredMethod("method3", int.class);
 		var source = MethodSource.from(getClass().getName(), testMethod.getName(), testMethod.getParameterTypes());
 
 		assertThat(source.getJavaMethod()).isEqualTo(testMethod);
@@ -254,7 +258,7 @@ class MethodSourceTests extends AbstractTestSourceTests {
 
 	@Test
 	void getJavaMethodFromStringShouldThrowExceptionIfParameterTypesDoNotMatch() {
-		var source = MethodSource.from(getClass().getName(), "method3", Double.TYPE);
+		var source = MethodSource.from(getClass().getName(), "method3", double.class);
 
 		assertThrows(PreconditionViolationException.class, source::getJavaMethod);
 	}

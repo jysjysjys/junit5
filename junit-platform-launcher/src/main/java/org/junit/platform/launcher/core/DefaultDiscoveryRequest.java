@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,9 +10,6 @@
 
 package org.junit.platform.launcher.core;
 
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
-
 import java.util.List;
 
 import org.junit.platform.commons.util.Preconditions;
@@ -20,6 +17,7 @@ import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.DiscoveryFilter;
 import org.junit.platform.engine.DiscoverySelector;
 import org.junit.platform.engine.EngineDiscoveryRequest;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
 import org.junit.platform.launcher.EngineFilter;
 import org.junit.platform.launcher.LauncherDiscoveryListener;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
@@ -51,37 +49,41 @@ final class DefaultDiscoveryRequest implements LauncherDiscoveryRequest {
 	// Listener for test discovery that may abort on errors.
 	private final LauncherDiscoveryListener discoveryListener;
 
+	private final OutputDirectoryProvider outputDirectoryProvider;
+
 	DefaultDiscoveryRequest(List<DiscoverySelector> selectors, List<EngineFilter> engineFilters,
 			List<DiscoveryFilter<?>> discoveryFilters, List<PostDiscoveryFilter> postDiscoveryFilters,
-			LauncherConfigurationParameters configurationParameters, LauncherDiscoveryListener discoveryListener) {
-		this.selectors = selectors;
-		this.engineFilters = engineFilters;
-		this.discoveryFilters = discoveryFilters;
-		this.postDiscoveryFilters = postDiscoveryFilters;
+			LauncherConfigurationParameters configurationParameters, LauncherDiscoveryListener discoveryListener,
+			OutputDirectoryProvider outputDirectoryProvider) {
+		this.selectors = List.copyOf(selectors);
+		this.engineFilters = List.copyOf(engineFilters);
+		this.discoveryFilters = List.copyOf(discoveryFilters);
+		this.postDiscoveryFilters = List.copyOf(postDiscoveryFilters);
 		this.configurationParameters = configurationParameters;
 		this.discoveryListener = discoveryListener;
+		this.outputDirectoryProvider = outputDirectoryProvider;
 	}
 
 	@Override
 	public <T extends DiscoverySelector> List<T> getSelectorsByType(Class<T> selectorType) {
 		Preconditions.notNull(selectorType, "selectorType must not be null");
-		return this.selectors.stream().filter(selectorType::isInstance).map(selectorType::cast).collect(toList());
+		return this.selectors.stream().filter(selectorType::isInstance).map(selectorType::cast).toList();
 	}
 
 	@Override
 	public List<EngineFilter> getEngineFilters() {
-		return unmodifiableList(this.engineFilters);
+		return this.engineFilters;
 	}
 
 	@Override
 	public <T extends DiscoveryFilter<?>> List<T> getFiltersByType(Class<T> filterType) {
 		Preconditions.notNull(filterType, "filterType must not be null");
-		return this.discoveryFilters.stream().filter(filterType::isInstance).map(filterType::cast).collect(toList());
+		return this.discoveryFilters.stream().filter(filterType::isInstance).map(filterType::cast).toList();
 	}
 
 	@Override
 	public List<PostDiscoveryFilter> getPostDiscoveryFilters() {
-		return unmodifiableList(this.postDiscoveryFilters);
+		return this.postDiscoveryFilters;
 	}
 
 	@Override
@@ -91,7 +93,12 @@ final class DefaultDiscoveryRequest implements LauncherDiscoveryRequest {
 
 	@Override
 	public LauncherDiscoveryListener getDiscoveryListener() {
-		return discoveryListener;
+		return this.discoveryListener;
+	}
+
+	@Override
+	public OutputDirectoryProvider getOutputDirectoryProvider() {
+		return this.outputDirectoryProvider;
 	}
 
 }

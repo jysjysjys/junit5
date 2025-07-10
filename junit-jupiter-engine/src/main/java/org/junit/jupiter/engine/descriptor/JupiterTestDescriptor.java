@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,13 +10,14 @@
 
 package org.junit.jupiter.engine.descriptor;
 
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toCollection;
 import static java.util.stream.Collectors.toSet;
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.jupiter.engine.descriptor.DisplayNameUtils.determineDisplayName;
-import static org.junit.platform.commons.util.AnnotationUtils.findAnnotation;
-import static org.junit.platform.commons.util.AnnotationUtils.findRepeatableAnnotations;
+import static org.junit.platform.commons.support.AnnotationSupport.findAnnotation;
+import static org.junit.platform.commons.support.AnnotationSupport.findRepeatableAnnotations;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.Collections;
@@ -24,31 +25,32 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.Extension;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ResourceAccessMode;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.execution.ConditionEvaluator;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.jupiter.engine.extension.ExtensionRegistry;
-import org.junit.platform.commons.JUnitException;
-import org.junit.platform.commons.logging.Logger;
-import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.commons.util.ExceptionUtils;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
+import org.junit.platform.engine.DiscoveryIssue;
+import org.junit.platform.engine.DiscoveryIssue.Severity;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestSource;
 import org.junit.platform.engine.TestTag;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
 import org.junit.platform.engine.support.hierarchical.ExclusiveResource;
-import org.junit.platform.engine.support.hierarchical.ExclusiveResource.LockMode;
 import org.junit.platform.engine.support.hierarchical.Node;
 
 /**
@@ -58,18 +60,16 @@ import org.junit.platform.engine.support.hierarchical.Node;
 public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 		implements Node<JupiterEngineExecutionContext> {
 
-	private static final Logger logger = LoggerFactory.getLogger(JupiterTestDescriptor.class);
-
 	private static final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
 
 	final JupiterConfiguration configuration;
 
 	JupiterTestDescriptor(UniqueId uniqueId, AnnotatedElement element, Supplier<String> displayNameSupplier,
-			TestSource source, JupiterConfiguration configuration) {
+			@Nullable TestSource source, JupiterConfiguration configuration) {
 		this(uniqueId, determineDisplayName(element, displayNameSupplier), source, configuration);
 	}
 
-	JupiterTestDescriptor(UniqueId uniqueId, String displayName, TestSource source,
+	JupiterTestDescriptor(UniqueId uniqueId, String displayName, @Nullable TestSource source,
 			JupiterConfiguration configuration) {
 		super(uniqueId, displayName, source);
 		this.configuration = configuration;
@@ -77,27 +77,26 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 
 	// --- TestDescriptor ------------------------------------------------------
 
-	static Set<TestTag> getTags(AnnotatedElement element) {
-		// @formatter:off
-		return findRepeatableAnnotations(element, Tag.class).stream()
-				.map(Tag::value)
+	static Set<TestTag> getTags(AnnotatedElement element, Supplier<String> elementDescription,
+			Supplier<TestSource> sourceProvider, Consumer<DiscoveryIssue> issueCollector) {
+		AtomicReference<@Nullable TestSource> source = new AtomicReference<>();
+		return findRepeatableAnnotations(element, Tag.class).stream() //
+				.map(Tag::value) //
 				.filter(tag -> {
 					boolean isValid = TestTag.isValid(tag);
 					if (!isValid) {
-						// TODO [#242] Replace logging with precondition check once we have a proper mechanism for
-						// handling validation exceptions during the TestEngine discovery phase.
-						//
-						// As an alternative to a precondition check here, we could catch any
-						// PreconditionViolationException thrown by TestTag::create.
-						logger.warn(() -> String.format(
-							"Configuration error: invalid tag syntax in @Tag(\"%s\") declaration on [%s]. Tag will be ignored.",
-							tag, element));
+						String message = "Invalid tag syntax in @Tag(\"%s\") declaration on %s. Tag will be ignored.".formatted(
+							tag, elementDescription.get());
+						if (source.get() == null) {
+							source.set(sourceProvider.get());
+						}
+						issueCollector.accept(
+							DiscoveryIssue.builder(Severity.WARNING, message).source(source.get()).build());
 					}
 					return isValid;
-				})
-				.map(TestTag::create)
+				}) //
+				.map(TestTag::create) //
 				.collect(collectingAndThen(toCollection(LinkedHashSet::new), Collections::unmodifiableSet));
-		// @formatter:on
 	}
 
 	/**
@@ -117,7 +116,7 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 
 		// No handlers left?
 		if (exceptionHandlers.isEmpty()) {
-			ExceptionUtils.throwAsUncheckedException(throwable);
+			throw ExceptionUtils.throwAsUncheckedException(throwable);
 		}
 
 		try {
@@ -139,8 +138,7 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 			return executionMode.get();
 		}
 		Optional<TestDescriptor> parent = getParent();
-		while (parent.isPresent() && parent.get() instanceof JupiterTestDescriptor) {
-			JupiterTestDescriptor jupiterParent = (JupiterTestDescriptor) parent.get();
+		while (parent.isPresent() && parent.get() instanceof JupiterTestDescriptor jupiterParent) {
 			executionMode = jupiterParent.getExplicitExecutionMode();
 			if (executionMode.isPresent()) {
 				return executionMode.get();
@@ -171,35 +169,22 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 	}
 
 	public static ExecutionMode toExecutionMode(org.junit.jupiter.api.parallel.ExecutionMode mode) {
-		switch (mode) {
-			case CONCURRENT:
-				return ExecutionMode.CONCURRENT;
-			case SAME_THREAD:
-				return ExecutionMode.SAME_THREAD;
-		}
-		throw new JUnitException("Unknown ExecutionMode: " + mode);
-	}
-
-	Set<ExclusiveResource> getExclusiveResourcesFromAnnotation(AnnotatedElement element) {
-		// @formatter:off
-		return findRepeatableAnnotations(element, ResourceLock.class).stream()
-				.map(resource -> new ExclusiveResource(resource.value(), toLockMode(resource.mode())))
-				.collect(toSet());
-		// @formatter:on
-	}
-
-	private static LockMode toLockMode(ResourceAccessMode mode) {
-		switch (mode) {
-			case READ:
-				return LockMode.READ;
-			case READ_WRITE:
-				return LockMode.READ_WRITE;
-		}
-		throw new JUnitException("Unknown ResourceAccessMode: " + mode);
+		return switch (mode) {
+			case CONCURRENT -> ExecutionMode.CONCURRENT;
+			case SAME_THREAD -> ExecutionMode.SAME_THREAD;
+		};
 	}
 
 	@Override
-	public SkipResult shouldBeSkipped(JupiterEngineExecutionContext context) throws Exception {
+	public Set<ExclusiveResource> getExclusiveResources() {
+		if (this instanceof ResourceLockAware resourceLockAware) {
+			return resourceLockAware.determineExclusiveResources().collect(toSet());
+		}
+		return emptySet();
+	}
+
+	@Override
+	public SkipResult shouldBeSkipped(JupiterEngineExecutionContext context) {
 		context.getThrowableCollector().assertEmpty();
 		ConditionEvaluationResult evaluationResult = conditionEvaluator.evaluate(context.getExtensionRegistry(),
 			context.getConfiguration(), context.getExtensionContext());
@@ -214,7 +199,8 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 	}
 
 	/**
-	 * Must be overridden and return a new context so cleanUp() does not accidentally close the parent context.
+	 * Must be overridden and return a new context with a new {@link ExtensionContext}
+	 * so cleanUp() does not accidentally close the parent context.
 	 */
 	@Override
 	public abstract JupiterEngineExecutionContext prepare(JupiterEngineExecutionContext context) throws Exception;
@@ -223,6 +209,23 @@ public abstract class JupiterTestDescriptor extends AbstractTestDescriptor
 	public void cleanUp(JupiterEngineExecutionContext context) throws Exception {
 		context.close();
 	}
+
+	/**
+	 * {@return a deep copy (with copies of children) of this descriptor with the supplied unique ID}
+	 */
+	protected JupiterTestDescriptor copyIncludingDescendants(UnaryOperator<UniqueId> uniqueIdTransformer) {
+		JupiterTestDescriptor result = withUniqueId(uniqueIdTransformer);
+		getChildren().forEach(oldChild -> {
+			TestDescriptor newChild = ((JupiterTestDescriptor) oldChild).copyIncludingDescendants(uniqueIdTransformer);
+			result.addChild(newChild);
+		});
+		return result;
+	}
+
+	/**
+	 * {@return shallow copy (without children) of this descriptor with the supplied unique ID}
+	 */
+	protected abstract JupiterTestDescriptor withUniqueId(UnaryOperator<UniqueId> uniqueIdTransformer);
 
 	/**
 	 * @since 5.5

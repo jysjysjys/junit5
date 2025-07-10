@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.platform.console.options;
 
 import static org.apiguardian.api.API.Status.INTERNAL;
 
+import java.io.Console;
 import java.nio.charset.Charset;
 
 import org.apiguardian.api.API;
@@ -35,6 +36,8 @@ public class ConsoleUtils {
 	 * {@return the charset of the console}
 	 */
 	public static Charset charset() {
-		return Charset.defaultCharset();
+		Console console = System.console();
+		return console != null ? console.charset() : Charset.defaultCharset();
 	}
+
 }

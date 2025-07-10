@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,40 +10,46 @@
 
 package org.junit.jupiter.engine.discovery;
 
+import static java.util.Comparator.comparing;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toCollection;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor;
-import org.junit.platform.commons.logging.Logger;
-import org.junit.platform.commons.logging.LoggerFactory;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.UnrecoverableExceptions;
+import org.junit.platform.engine.DiscoveryIssue;
+import org.junit.platform.engine.DiscoveryIssue.Severity;
 import org.junit.platform.engine.TestDescriptor;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter;
 
 /**
  * Abstract base class for {@linkplain TestDescriptor.Visitor visitors} that
  * order children nodes.
  *
- * @param <PARENT> the parent container type to search in for matching children
- * @param <CHILD> the type of children (containers or tests) to order
- * @param <WRAPPER> the wrapper type for the children to order
  * @since 5.8
  */
-abstract class AbstractOrderingVisitor<PARENT extends TestDescriptor, CHILD extends TestDescriptor, WRAPPER extends AbstractAnnotatedDescriptorWrapper<?>>
-		implements TestDescriptor.Visitor {
+abstract class AbstractOrderingVisitor implements TestDescriptor.Visitor {
 
-	private static final Logger logger = LoggerFactory.getLogger(AbstractOrderingVisitor.class);
+	private final DiscoveryIssueReporter issueReporter;
 
+	AbstractOrderingVisitor(DiscoveryIssueReporter issueReporter) {
+		this.issueReporter = issueReporter;
+	}
+
+	/**
+	 * @param <PARENT> the parent container type to search in for matching children
+	 */
 	@SuppressWarnings("unchecked")
-	protected void doWithMatchingDescriptor(Class<PARENT> parentTestDescriptorType, TestDescriptor testDescriptor,
-			Consumer<PARENT> action, Function<PARENT, String> errorMessageBuilder) {
+	protected <PARENT extends TestDescriptor> void doWithMatchingDescriptor(Class<PARENT> parentTestDescriptorType,
+			TestDescriptor testDescriptor, Consumer<PARENT> action, Function<PARENT, String> errorMessageBuilder) {
 
 		if (parentTestDescriptorType.isInstance(testDescriptor)) {
 			PARENT parentTestDescriptor = (PARENT) testDescriptor;
@@ -52,19 +58,37 @@ abstract class AbstractOrderingVisitor<PARENT extends TestDescriptor, CHILD exte
 			}
 			catch (Throwable t) {
 				UnrecoverableExceptions.rethrowIfUnrecoverable(t);
-				logger.error(t, () -> errorMessageBuilder.apply(parentTestDescriptor));
+				String message = errorMessageBuilder.apply(parentTestDescriptor);
+				this.issueReporter.reportIssue(DiscoveryIssue.builder(Severity.ERROR, message) //
+						.source(parentTestDescriptor.getSource()) //
+						.cause(t));
 			}
 		}
 	}
 
-	protected void orderChildrenTestDescriptors(TestDescriptor parentTestDescriptor, Class<CHILD> matchingChildrenType,
-			Function<CHILD, WRAPPER> descriptorWrapperFactory, DescriptorWrapperOrderer descriptorWrapperOrderer) {
+	/**
+	 * @param <CHILD> the type of children (containers or tests) to order
+	 */
+	protected <CHILD extends TestDescriptor, WRAPPER extends AbstractAnnotatedDescriptorWrapper<?>> void orderChildrenTestDescriptors(
+			TestDescriptor parentTestDescriptor, Class<CHILD> matchingChildrenType,
+			Optional<Consumer<CHILD>> validationAction, Function<CHILD, WRAPPER> descriptorWrapperFactory,
+			DescriptorWrapperOrderer<?, WRAPPER> descriptorWrapperOrderer) {
 
-		Set<? extends TestDescriptor> children = parentTestDescriptor.getChildren();
-
-		List<WRAPPER> matchingDescriptorWrappers = children.stream()//
+		Stream<CHILD> matchingChildren = parentTestDescriptor.getChildren()//
+				.stream()//
 				.filter(matchingChildrenType::isInstance)//
-				.map(matchingChildrenType::cast)//
+				.map(matchingChildrenType::cast);
+
+		if (!descriptorWrapperOrderer.canOrderWrappers()) {
+			validationAction.ifPresent(matchingChildren::forEach);
+			return;
+		}
+
+		if (validationAction.isPresent()) {
+			matchingChildren = matchingChildren.peek(validationAction.get());
+		}
+
+		List<WRAPPER> matchingDescriptorWrappers = matchingChildren//
 				.map(descriptorWrapperFactory)//
 				.collect(toCollection(ArrayList::new));
 
@@ -73,109 +97,109 @@ abstract class AbstractOrderingVisitor<PARENT extends TestDescriptor, CHILD exte
 			return;
 		}
 
-		if (descriptorWrapperOrderer.canOrderWrappers()) {
-			List<TestDescriptor> nonMatchingTestDescriptors = children.stream()//
-					.filter(childTestDescriptor -> !matchingChildrenType.isInstance(childTestDescriptor))//
-					.collect(Collectors.toList());
+		parentTestDescriptor.orderChildren(children -> {
+			Stream<TestDescriptor> nonMatchingTestDescriptors = children.stream()//
+					.filter(childTestDescriptor -> !matchingChildrenType.isInstance(childTestDescriptor));
 
-			// Make a local copy for later validation
-			Set<WRAPPER> originalWrappers = new LinkedHashSet<>(matchingDescriptorWrappers);
+			descriptorWrapperOrderer.orderWrappers(matchingDescriptorWrappers,
+				message -> reportWarning(parentTestDescriptor, message));
 
-			descriptorWrapperOrderer.orderWrappers(matchingDescriptorWrappers);
+			Stream<TestDescriptor> orderedTestDescriptors = matchingDescriptorWrappers.stream()//
+					.map(AbstractAnnotatedDescriptorWrapper::getTestDescriptor);
 
-			int difference = matchingDescriptorWrappers.size() - originalWrappers.size();
-			if (difference > 0) {
-				descriptorWrapperOrderer.logDescriptorsAddedWarning(difference);
+			if (shouldNonMatchingDescriptorsComeBeforeOrderedOnes()) {
+				return Stream.concat(nonMatchingTestDescriptors, orderedTestDescriptors)//
+						.toList();
 			}
-			else if (difference < 0) {
-				descriptorWrapperOrderer.logDescriptorsRemovedWarning(difference);
-			}
-
-			Set<TestDescriptor> orderedTestDescriptors = matchingDescriptorWrappers.stream()//
-					.filter(originalWrappers::contains)//
-					.map(AbstractAnnotatedDescriptorWrapper::getTestDescriptor)//
-					.collect(toCollection(LinkedHashSet::new));
-
-			// There is currently no way to removeAll or addAll children at once, so we
-			// first remove them all and then add them all back.
-			Stream.concat(orderedTestDescriptors.stream(), nonMatchingTestDescriptors.stream())//
-					.forEach(parentTestDescriptor::removeChild);
-
-			// If we are ordering children of type ClassBasedTestDescriptor, that means we
-			// are ordering top-level classes or @Nested test classes. Thus, the
-			// nonMatchingTestDescriptors list is either empty (for top-level classes) or
-			// contains only local test methods (for @Nested classes) which must be executed
-			// before tests in @Nested test classes. So we add the test methods before adding
-			// the @Nested test classes.
-			if (matchingChildrenType == ClassBasedTestDescriptor.class) {
-				Stream.concat(nonMatchingTestDescriptors.stream(), orderedTestDescriptors.stream())//
-						.forEach(parentTestDescriptor::addChild);
-			}
-			// Otherwise, we add the ordered descriptors before the non-matching descriptors,
-			// which is the case when we are ordering test methods. In other words, local
-			// test methods always get added before @Nested test classes.
 			else {
-				Stream.concat(orderedTestDescriptors.stream(), nonMatchingTestDescriptors.stream())//
-						.forEach(parentTestDescriptor::addChild);
+				return Stream.concat(orderedTestDescriptors, nonMatchingTestDescriptors)//
+						.toList();
 			}
-		}
-
-		// Recurse through the children in order to support ordering for @Nested test classes.
-		matchingDescriptorWrappers.forEach(descriptorWrapper -> {
-			TestDescriptor newParentTestDescriptor = descriptorWrapper.getTestDescriptor();
-			DescriptorWrapperOrderer newDescriptorWrapperOrderer = getDescriptorWrapperOrderer(descriptorWrapperOrderer,
-				descriptorWrapper);
-
-			orderChildrenTestDescriptors(newParentTestDescriptor, matchingChildrenType, descriptorWrapperFactory,
-				newDescriptorWrapperOrderer);
 		});
 	}
 
-	/**
-	 * Get the {@link DescriptorWrapperOrderer} for the supplied {@link AbstractAnnotatedDescriptorWrapper}.
-	 *
-	 * <p>The default implementation returns the supplied {@code DescriptorWrapperOrderer}.
-	 *
-	 * @return a new {@code DescriptorWrapperOrderer} or the one supplied as an argument
-	 */
-	protected DescriptorWrapperOrderer getDescriptorWrapperOrderer(
-			DescriptorWrapperOrderer inheritedDescriptorWrapperOrderer,
-			AbstractAnnotatedDescriptorWrapper<?> descriptorWrapper) {
-
-		return inheritedDescriptorWrapperOrderer;
+	private void reportWarning(TestDescriptor parentTestDescriptor, String message) {
+		issueReporter.reportIssue(DiscoveryIssue.builder(Severity.WARNING, message) //
+				.source(parentTestDescriptor.getSource()));
 	}
 
-	protected class DescriptorWrapperOrderer {
+	protected abstract boolean shouldNonMatchingDescriptorsComeBeforeOrderedOnes();
 
+	/**
+	 * @param <WRAPPER> the wrapper type for the children to order
+	 */
+	protected static class DescriptorWrapperOrderer<ORDERER, WRAPPER> {
+
+		private static final DescriptorWrapperOrderer<?, ?> NOOP = new DescriptorWrapperOrderer<>(null, null, __ -> "",
+			___ -> "");
+
+		@SuppressWarnings("unchecked")
+		protected static <ORDERER, WRAPPER> DescriptorWrapperOrderer<ORDERER, WRAPPER> noop() {
+			return (DescriptorWrapperOrderer<ORDERER, WRAPPER>) NOOP;
+		}
+
+		@Nullable
+		private final ORDERER orderer;
+		@Nullable
 		private final Consumer<List<WRAPPER>> orderingAction;
 
 		private final MessageGenerator descriptorsAddedMessageGenerator;
-
 		private final MessageGenerator descriptorsRemovedMessageGenerator;
 
-		DescriptorWrapperOrderer(Consumer<List<WRAPPER>> orderingAction,
+		DescriptorWrapperOrderer(@Nullable ORDERER orderer, @Nullable Consumer<List<WRAPPER>> orderingAction,
 				MessageGenerator descriptorsAddedMessageGenerator,
 				MessageGenerator descriptorsRemovedMessageGenerator) {
 
+			this.orderer = orderer;
 			this.orderingAction = orderingAction;
 			this.descriptorsAddedMessageGenerator = descriptorsAddedMessageGenerator;
 			this.descriptorsRemovedMessageGenerator = descriptorsRemovedMessageGenerator;
+		}
+
+		@Nullable
+		ORDERER getOrderer() {
+			return orderer;
 		}
 
 		private boolean canOrderWrappers() {
 			return this.orderingAction != null;
 		}
 
-		private void orderWrappers(List<WRAPPER> wrappers) {
-			this.orderingAction.accept(wrappers);
+		private void orderWrappers(List<WRAPPER> wrappers, Consumer<String> errorHandler) {
+			List<WRAPPER> orderedWrappers = new ArrayList<>(wrappers);
+			requireNonNull(this.orderingAction).accept(orderedWrappers);
+			Map<Object, Integer> distinctWrappersToIndex = distinctWrappersToIndex(orderedWrappers);
+
+			int difference = orderedWrappers.size() - wrappers.size();
+			int distinctDifference = distinctWrappersToIndex.size() - wrappers.size();
+			if (difference > 0) { // difference >= distinctDifference
+				reportDescriptorsAddedWarning(difference, errorHandler);
+			}
+			if (distinctDifference < 0) { // distinctDifference <= difference
+				reportDescriptorsRemovedWarning(distinctDifference, errorHandler);
+			}
+
+			wrappers.sort(comparing(wrapper -> distinctWrappersToIndex.getOrDefault(wrapper, -1)));
 		}
 
-		private void logDescriptorsAddedWarning(int number) {
-			logger.warn(() -> this.descriptorsAddedMessageGenerator.generateMessage(number));
+		private Map<Object, Integer> distinctWrappersToIndex(List<?> wrappers) {
+			Map<Object, Integer> toIndex = new HashMap<>();
+			for (int i = 0; i < wrappers.size(); i++) {
+				// Avoid ClassCastException if a misbehaving ordering action added a non-WRAPPER
+				Object wrapper = wrappers.get(i);
+				if (!toIndex.containsKey(wrapper)) {
+					toIndex.put(wrapper, i);
+				}
+			}
+			return toIndex;
 		}
 
-		private void logDescriptorsRemovedWarning(int number) {
-			logger.warn(() -> this.descriptorsRemovedMessageGenerator.generateMessage(Math.abs(number)));
+		private void reportDescriptorsAddedWarning(int number, Consumer<String> errorHandler) {
+			errorHandler.accept(this.descriptorsAddedMessageGenerator.generateMessage(number));
+		}
+
+		private void reportDescriptorsRemovedWarning(int number, Consumer<String> errorHandler) {
+			errorHandler.accept(this.descriptorsRemovedMessageGenerator.generateMessage(Math.abs(number)));
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -52,7 +52,7 @@ public final class RuntimeUtils {
 	static Optional<List<String>> getInputArguments() {
 		Optional<Class<?>> managementFactoryClass = ReflectionUtils.tryToLoadClass(
 			"java.lang.management.ManagementFactory").toOptional();
-		if (!managementFactoryClass.isPresent()) {
+		if (managementFactoryClass.isEmpty()) {
 			return Optional.empty();
 		}
 		// Can't use "java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments()"
@@ -61,7 +61,7 @@ public final class RuntimeUtils {
 		// See https://github.com/junit-team/junit4/pull/1187
 		try {
 			Object bean = managementFactoryClass.get().getMethod("getRuntimeMXBean").invoke(null);
-			Class<?> mx = ReflectionUtils.tryToLoadClass("java.lang.management.RuntimeMXBean").get();
+			Class<?> mx = ReflectionUtils.tryToLoadClass("java.lang.management.RuntimeMXBean").getNonNull();
 			@SuppressWarnings("unchecked")
 			List<String> args = (List<String>) mx.getMethod("getInputArguments").invoke(bean);
 			return Optional.of(args);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.apiguardian.api.API.Status.STABLE;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 
@@ -29,20 +30,26 @@ public class ConditionEvaluationResult {
 	/**
 	 * Factory for creating <em>enabled</em> results.
 	 *
-	 * @param reason the reason why the container or test should be enabled
+	 * @param reason the reason why the container or test should be enabled; may
+	 * be {@code null} or <em>blank</em> if the reason is unknown
 	 * @return an enabled {@code ConditionEvaluationResult} with the given reason
+	 * or an <em>empty</em> reason if the reason is unknown
+	 * @see StringUtils#isBlank(String)
 	 */
-	public static ConditionEvaluationResult enabled(String reason) {
+	public static ConditionEvaluationResult enabled(@Nullable String reason) {
 		return new ConditionEvaluationResult(true, reason);
 	}
 
 	/**
 	 * Factory for creating <em>disabled</em> results.
 	 *
-	 * @param reason the reason why the container or test should be disabled
+	 * @param reason the reason why the container or test should be disabled; may
+	 * be {@code null} or <em>blank</em> if the reason is unknown
 	 * @return a disabled {@code ConditionEvaluationResult} with the given reason
+	 * or an <em>empty</em> reason if the reason is unknown
+	 * @see StringUtils#isBlank(String)
 	 */
-	public static ConditionEvaluationResult disabled(String reason) {
+	public static ConditionEvaluationResult disabled(@Nullable String reason) {
 		return new ConditionEvaluationResult(false, reason);
 	}
 
@@ -50,26 +57,38 @@ public class ConditionEvaluationResult {
 	 * Factory for creating <em>disabled</em> results with custom reasons
 	 * added by the user.
 	 *
-	 * @param reason the default reason why the container or test should be disabled
-	 * @param customReason the custom reason why the container or test should be disabled
-	 * @return a disabled {@code ConditionEvaluationResult} with the given reasons
+	 * <p>If non-blank default and custom reasons are provided, they will be
+	 * concatenated using the format: <code>"reason&nbsp;==&gt;&nbsp;customReason"</code>.
+	 *
+	 * @param reason the default reason why the container or test should be disabled;
+	 * may be {@code null} or <em>blank</em> if the default reason is unknown
+	 * @param customReason the custom reason why the container or test should be
+	 * disabled; may be {@code null} or <em>blank</em> if the custom reason is unknown
+	 * @return a disabled {@code ConditionEvaluationResult} with the given reason(s)
+	 * or an <em>empty</em> reason if the reasons are unknown
 	 * @since 5.7
+	 * @see StringUtils#isBlank(String)
 	 */
 	@API(status = STABLE, since = "5.7")
-	public static ConditionEvaluationResult disabled(String reason, String customReason) {
+	@SuppressWarnings("NullAway") // StringUtils.isBlank() does not yet have a nullability @Contract
+	public static ConditionEvaluationResult disabled(@Nullable String reason, @Nullable String customReason) {
+		if (StringUtils.isBlank(reason)) {
+			return disabled(customReason);
+		}
 		if (StringUtils.isBlank(customReason)) {
 			return disabled(reason);
 		}
-		return disabled(String.format("%s ==> %s", reason, customReason));
+		return disabled("%s ==> %s".formatted(reason.strip(), customReason.strip()));
 	}
 
 	private final boolean enabled;
 
 	private final Optional<String> reason;
 
-	private ConditionEvaluationResult(boolean enabled, String reason) {
+	@SuppressWarnings("NullAway") // StringUtils.isNotBlank() does not yet have a nullability @Contract
+	private ConditionEvaluationResult(boolean enabled, @Nullable String reason) {
 		this.enabled = enabled;
-		this.reason = Optional.ofNullable(reason);
+		this.reason = StringUtils.isNotBlank(reason) ? Optional.of(reason.strip()) : Optional.empty();
 	}
 
 	/**

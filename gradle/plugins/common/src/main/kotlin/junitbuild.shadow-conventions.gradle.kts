@@ -1,11 +1,12 @@
-import junitbuild.java.ModuleCompileOptions
-
 plugins {
 	id("junitbuild.java-library-conventions")
-	id("com.github.johnrengelman.shadow")
+	id("com.gradleup.shadow")
 }
 
-val shadowed by configurations.creatingResolvable
+val shadowed = configurations.dependencyScope("shadowed")
+val shadowedClasspath = configurations.resolvable("shadowedClasspath") {
+	extendsFrom(shadowed.get())
+}
 
 configurations {
 	listOf(apiElements, runtimeElements).forEach {
@@ -18,41 +19,26 @@ configurations {
 			}
 		}
 	}
-}
-
-sourceSets {
-	main {
-		compileClasspath += shadowed
-	}
-	test {
-		runtimeClasspath += shadowed
+	compileClasspath {
+		extendsFrom(shadowed.get())
 	}
 }
 
-eclipse {
-	classpath {
-		plusConfigurations.add(shadowed)
-	}
-}
-
-idea {
-	module {
-		scopes["PROVIDED"]!!["plus"]!!.add(shadowed)
-	}
-}
+val javaComponent = components["java"] as AdhocComponentWithVariants
+javaComponent.withVariantsFromConfiguration(configurations.shadowRuntimeElements.get()) { skip() }
 
 tasks {
 	javadoc {
-		classpath += shadowed
+		classpath += shadowedClasspath.get()
 	}
 	checkstyleMain {
-		classpath += shadowed
+		classpath += shadowedClasspath.get()
 	}
 	shadowJar {
-		configurations = listOf(shadowed)
+		configurations = listOf(shadowedClasspath.get())
 		exclude("META-INF/maven/**")
 		excludes.remove("module-info.class")
-		archiveClassifier.set("")
+		archiveClassifier = ""
 	}
 	jar {
 		dependsOn(shadowJar)
@@ -62,13 +48,4 @@ tasks {
 		from(shadowJar.map { zipTree(it.archiveFile) })
 		exclude("**/shadow/**")
 	}
-	test {
-		dependsOn(shadowJar)
-		// in order to run the test against the shadowJar
-		classpath -= sourceSets.main.get().output
-		classpath += files(shadowJar.map { it.archiveFile })
-	}
-    named<JavaCompile>("compileModule") {
-        the<ModuleCompileOptions>().modulePath.from(shadowed)
-    }
 }

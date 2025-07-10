@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,7 @@ import static org.junit.jupiter.engine.descriptor.TestFactoryTestDescriptor.crea
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DynamicContainer;
@@ -47,6 +48,12 @@ class DynamicContainerTestDescriptor extends DynamicNodeTestDescriptor {
 	}
 
 	@Override
+	protected DynamicContainerTestDescriptor withUniqueId(UnaryOperator<UniqueId> uniqueIdTransformer) {
+		return new DynamicContainerTestDescriptor(uniqueIdTransformer.apply(getUniqueId()), this.index,
+			this.dynamicContainer, this.testSource, this.dynamicDescendantFilter, this.configuration);
+	}
+
+	@Override
 	public Type getType() {
 		return Type.CONTAINER;
 	}
@@ -62,8 +69,7 @@ class DynamicContainerTestDescriptor extends DynamicNodeTestDescriptor {
 						Preconditions.notNull(child, "individual dynamic node must not be null");
 						return toDynamicDescriptor(index.getAndIncrement(), child);
 					})
-					.filter(Optional::isPresent)
-					.map(Optional::get)
+					.flatMap(Optional::stream)
 					.forEachOrdered(dynamicTestExecutor::execute);
 			// @formatter:on
 		}

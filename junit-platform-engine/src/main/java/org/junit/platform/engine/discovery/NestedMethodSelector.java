@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,30 +10,36 @@
 
 package org.junit.platform.engine.discovery;
 
+import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
- * A {@link DiscoverySelector} that selects a nested {@link Method}
- * or a combination of enclosing classes names, class name, method
- * name, and parameter types so that
- * {@link org.junit.platform.engine.TestEngine TestEngines} can discover
- * tests or containers based on methods.
+ * A {@link DiscoverySelector} that selects a nested {@link Method} or a
+ * combination of enclosing class names, class name, method name, and parameter
+ * types so that {@link org.junit.platform.engine.TestEngine TestEngines} can
+ * discover tests or containers based on methods.
  *
  * <p>If a Java {@link Method} is provided, the selector will return that
  * {@linkplain #getMethod() method} and its method name, class name, enclosing
- * classes names and parameter types accordingly. If class or methods names are
- * provided, this selector will only attempt to lazily load the {@link Class}
- * and {@link Method} if {@link #getEnclosingClasses()},
- * {@link #getNestedClass()} or {@link #getMethod()} is invoked.
+ * class names, and parameter types accordingly. If class names or method names
+ * are provided, this selector will only attempt to lazily load a class or method
+ * if {@link #getEnclosingClasses()}, {@link #getNestedClass()},
+ * {@link #getMethod()}, or {@link #getParameterTypes()} is invoked.
  *
  * <p>In this context, a Java {@code Method} means anything that can be referenced
  * as a {@link Method} on the JVM &mdash; for example, methods from Java classes
@@ -55,26 +61,34 @@ public class NestedMethodSelector implements DiscoverySelector {
 	private final NestedClassSelector nestedClassSelector;
 	private final MethodSelector methodSelector;
 
-	NestedMethodSelector(List<String> enclosingClassNames, String nestedClassName, String methodName) {
-		this.nestedClassSelector = new NestedClassSelector(enclosingClassNames, nestedClassName);
-		this.methodSelector = new MethodSelector(nestedClassName, methodName);
+	NestedMethodSelector(@Nullable ClassLoader classLoader, List<String> enclosingClassNames, String nestedClassName,
+			String methodName, String parameterTypeNames) {
+		this.nestedClassSelector = new NestedClassSelector(classLoader, enclosingClassNames, nestedClassName);
+		this.methodSelector = new MethodSelector(classLoader, nestedClassName, methodName, parameterTypeNames);
 	}
 
-	NestedMethodSelector(List<String> enclosingClassNames, String nestedClassName, String methodName,
-			String methodParameterTypes) {
-		this.nestedClassSelector = new NestedClassSelector(enclosingClassNames, nestedClassName);
-		this.methodSelector = new MethodSelector(nestedClassName, methodName, methodParameterTypes);
-	}
-
-	NestedMethodSelector(List<Class<?>> enclosingClasses, Class<?> nestedClass, String methodName) {
-		this.nestedClassSelector = new NestedClassSelector(enclosingClasses, nestedClass);
-		this.methodSelector = new MethodSelector(nestedClass, methodName);
+	/**
+	 * @since 1.10
+	 */
+	NestedMethodSelector(@Nullable ClassLoader classLoader, List<String> enclosingClassNames, String nestedClassName,
+			String methodName, Class<?>... parameterTypes) {
+		this.nestedClassSelector = new NestedClassSelector(classLoader, enclosingClassNames, nestedClassName);
+		this.methodSelector = new MethodSelector(classLoader, nestedClassName, methodName, parameterTypes);
 	}
 
 	NestedMethodSelector(List<Class<?>> enclosingClasses, Class<?> nestedClass, String methodName,
-			String methodParameterTypes) {
+			String parameterTypeNames) {
 		this.nestedClassSelector = new NestedClassSelector(enclosingClasses, nestedClass);
-		this.methodSelector = new MethodSelector(nestedClass, methodName, methodParameterTypes);
+		this.methodSelector = new MethodSelector(nestedClass, methodName, parameterTypeNames);
+	}
+
+	/**
+	 * @since 1.10
+	 */
+	NestedMethodSelector(List<Class<?>> enclosingClasses, Class<?> nestedClass, String methodName,
+			Class<?>... parameterTypes) {
+		this.nestedClassSelector = new NestedClassSelector(enclosingClasses, nestedClass);
+		this.methodSelector = new MethodSelector(nestedClass, methodName, parameterTypes);
 	}
 
 	NestedMethodSelector(List<Class<?>> enclosingClasses, Class<?> nestedClass, Method method) {
@@ -83,11 +97,21 @@ public class NestedMethodSelector implements DiscoverySelector {
 	}
 
 	/**
+	 * Get the {@link ClassLoader} used to load the nested class.
+	 *
+	 * @since 1.10
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public @Nullable ClassLoader getClassLoader() {
+		return this.nestedClassSelector.getClassLoader();
+	}
+
+	/**
 	 * Get the names of the classes enclosing the nested class
 	 * containing the selected method.
 	 */
 	public List<String> getEnclosingClassNames() {
-		return nestedClassSelector.getEnclosingClassNames();
+		return this.nestedClassSelector.getEnclosingClassNames();
 	}
 
 	/**
@@ -100,14 +124,14 @@ public class NestedMethodSelector implements DiscoverySelector {
 	 * {@link PreconditionViolationException} if the classes cannot be loaded.
 	 */
 	public List<Class<?>> getEnclosingClasses() {
-		return nestedClassSelector.getEnclosingClasses();
+		return this.nestedClassSelector.getEnclosingClasses();
 	}
 
 	/**
 	 * Get the name of the nested class containing the selected method.
 	 */
 	public String getNestedClassName() {
-		return nestedClassSelector.getNestedClassName();
+		return this.nestedClassSelector.getNestedClassName();
 	}
 
 	/**
@@ -119,14 +143,14 @@ public class NestedMethodSelector implements DiscoverySelector {
 	 * {@link PreconditionViolationException} if the class cannot be loaded.
 	 */
 	public Class<?> getNestedClass() {
-		return nestedClassSelector.getNestedClass();
+		return this.nestedClassSelector.getNestedClass();
 	}
 
 	/**
 	 * Get the name of the selected method.
 	 */
 	public String getMethodName() {
-		return methodSelector.getMethodName();
+		return this.methodSelector.getMethodName();
 	}
 
 	/**
@@ -137,25 +161,40 @@ public class NestedMethodSelector implements DiscoverySelector {
 	 * {@link PreconditionViolationException} if the method cannot be loaded.
 	 */
 	public Method getMethod() {
-		return methodSelector.getJavaMethod();
+		return this.methodSelector.getJavaMethod();
 	}
 
 	/**
-	 * Get the parameter types for the selected method as a {@link String},
-	 * typically a comma-separated list of primitive types, fully qualified
-	 * class names, or array types.
+	 * Get the names of parameter types for the selected method as a {@link String}.
 	 *
-	 * <p>Note: the parameter types are provided as a single string instead of
-	 * a collection in order to allow this selector to be used in a generic
-	 * fashion by various test engines. It is therefore the responsibility of
-	 * the caller of this method to determine how to parse the returned string.
+	 * <p>See {@link MethodSelector#getParameterTypeNames()} for details.
 	 *
-	 * @return the parameter types supplied to this {@code NestedMethodSelector}
-	 * via a constructor or deduced from a {@code Method} supplied via a
-	 * constructor; never {@code null}
+	 * @return the names of parameter types supplied to this {@code NestedMethodSelector}
+	 * via a constructor or deduced from a {@code Method} or parameter types supplied
+	 * via a constructor; never {@code null} but potentially an empty string
+	 * @since 1.10
+	 * @see MethodSelector#getParameterTypeNames()
+	 *
 	 */
-	public String getMethodParameterTypes() {
-		return methodSelector.getMethodParameterTypes();
+	@API(status = STABLE, since = "1.10")
+	public String getParameterTypeNames() {
+		return this.methodSelector.getParameterTypeNames();
+	}
+
+	/**
+	 * Get the parameter types for the selected method.
+	 *
+	 * <p>See {@link MethodSelector#getParameterTypes()} for details.
+	 *
+	 * @return the method's parameter types; never {@code null} but potentially
+	 * an empty array if the selected method does not declare parameters
+	 * @since 1.10
+	 * @see #getParameterTypeNames()
+	 * @see MethodSelector#getParameterTypes()
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public Class<?>[] getParameterTypes() {
+		return this.methodSelector.getParameterTypes();
 	}
 
 	@Override
@@ -167,12 +206,13 @@ public class NestedMethodSelector implements DiscoverySelector {
 			return false;
 		}
 		NestedMethodSelector that = (NestedMethodSelector) o;
-		return nestedClassSelector.equals(that.nestedClassSelector) && methodSelector.equals(that.methodSelector);
+		return this.nestedClassSelector.equals(that.nestedClassSelector)
+				&& this.methodSelector.equals(that.methodSelector);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(nestedClassSelector, methodSelector);
+		return Objects.hash(this.nestedClassSelector, this.methodSelector);
 	}
 
 	@Override
@@ -181,8 +221,52 @@ public class NestedMethodSelector implements DiscoverySelector {
 				.append("enclosingClassNames", getEnclosingClassNames()) //
 				.append("nestedClassName", getNestedClassName()) //
 				.append("methodName", getMethodName()) //
-				.append("methodParameterTypes", getMethodParameterTypes()) //
+				.append("parameterTypes", getParameterTypeNames()) //
+				.append("classLoader", getClassLoader()) //
 				.toString();
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		return nestedClassSelector.toIdentifier() //
+				.map(parent -> {
+					String fullyQualifiedMethodName = ReflectionUtils.getFullyQualifiedMethodName(parent.getValue(),
+						methodSelector.getMethodName(), methodSelector.getParameterTypeNames());
+					return DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, fullyQualifiedMethodName);
+				});
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for
+	 * {@link NestedMethodSelector NestedMethodSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		private static final String PREFIX = "nested-method";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<NestedMethodSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			List<String> parts = Arrays.asList(identifier.getValue().split("/"));
+			List<String> enclosingClassNames = parts.subList(0, parts.size() - 1);
+
+			String[] methodParts = ReflectionUtils.parseFullyQualifiedMethodName(parts.get(parts.size() - 1));
+			String nestedClassName = methodParts[0];
+			String methodName = methodParts[1];
+			String parameterTypeNames = methodParts[2];
+
+			return Optional.of(DiscoverySelectors.selectNestedMethod(enclosingClassNames, nestedClassName, methodName,
+				parameterTypeNames));
+		}
+
 	}
 
 }

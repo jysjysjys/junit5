@@ -1,3 +1,6 @@
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -5,22 +8,24 @@ plugins {
 	kotlin("jvm")
 }
 
+tasks.named("kotlinSourcesJar") {
+	enabled = false
+}
+
+val javaLibraryExtension = project.the<JavaLibraryExtension>()
+
 tasks.withType<KotlinCompile>().configureEach {
-	kotlinOptions {
-		apiVersion = "1.3"
-		languageVersion = "1.3"
-		allWarningsAsErrors = false
+	compilerOptions {
+		jvmTarget = javaLibraryExtension.mainJavaVersion.map { JvmTarget.fromTarget(it.toString()) }
+		apiVersion = KOTLIN_2_1
+		languageVersion = apiVersion
+		allWarningsAsErrors.convention(true)
+		javaParameters = true
+		freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
+		freeCompilerArgs.add(jvmTarget.map { "-Xjdk-release=${JavaVersion.toVersion(it.target).majorVersion}" })
 	}
 }
 
-afterEvaluate {
-	val extension = project.the<JavaLibraryExtension>()
-	tasks {
-		withType<KotlinCompile>().configureEach {
-			kotlinOptions.jvmTarget = extension.mainJavaVersion.toString()
-		}
-		named<KotlinCompile>("compileTestKotlin") {
-			kotlinOptions.jvmTarget = extension.testJavaVersion.toString()
-		}
-	}
+tasks.named<KotlinCompile>("compileTestKotlin") {
+	compilerOptions.jvmTarget = javaLibraryExtension.testJavaVersion.map { JvmTarget.fromTarget(it.toString()) }
 }

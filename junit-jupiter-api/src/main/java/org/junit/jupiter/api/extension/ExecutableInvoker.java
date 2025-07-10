@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,12 +10,13 @@
 
 package org.junit.jupiter.api.extension;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code ExecutableInvoker} allows invoking methods and constructors
@@ -24,7 +25,7 @@ import org.apiguardian.api.API;
  *
  * @since 5.9
  */
-@API(status = EXPERIMENTAL, since = "5.9")
+@API(status = STABLE, since = "5.11")
 public interface ExecutableInvoker {
 
 	/**
@@ -33,7 +34,7 @@ public interface ExecutableInvoker {
 	 * @param method the method to invoke and resolve parameters for
 	 * @see #invoke(Method, Object)
 	 */
-	default Object invoke(Method method) {
+	default @Nullable Object invoke(Method method) {
 		return invoke(method, null);
 	}
 
@@ -44,7 +45,8 @@ public interface ExecutableInvoker {
 	 * @param target the target on which the executable will be invoked;
 	 * can be {@code null} for {@code static} methods
 	 */
-	Object invoke(Method method, Object target);
+	@Nullable
+	Object invoke(Method method, @Nullable Object target);
 
 	/**
 	 * Invoke the supplied top-level constructor with dynamic parameter resolution.
@@ -67,6 +69,6 @@ public interface ExecutableInvoker {
 	 * to the constructor; must be {@code null} for top-level classes
 	 * or {@code static} nested classes
 	 */
-	<T> T invoke(Constructor<T> constructor, Object outerInstance);
+	<T> T invoke(Constructor<T> constructor, @Nullable Object outerInstance);
 
 }

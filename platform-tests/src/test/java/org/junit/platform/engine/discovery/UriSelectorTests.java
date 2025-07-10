@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,10 +10,11 @@
 
 package org.junit.platform.engine.discovery;
 
+import static org.junit.jupiter.api.EqualsAndHashCodeAssertions.assertEqualsAndHashCode;
+
 import java.net.URI;
 
 import org.junit.jupiter.api.Test;
-import org.junit.platform.AbstractEqualsAndHashCodeTests;
 
 /**
  * Unit tests for {@link UriSelector}.
@@ -21,7 +22,7 @@ import org.junit.platform.AbstractEqualsAndHashCodeTests;
  * @since 1.3
  * @see DiscoverySelectorsTests
  */
-class UriSelectorTests extends AbstractEqualsAndHashCodeTests {
+class UriSelectorTests {
 
 	@Test
 	void equalsAndHashCode() throws Exception {

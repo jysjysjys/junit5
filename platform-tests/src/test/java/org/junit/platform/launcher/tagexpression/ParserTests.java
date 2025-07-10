@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -76,7 +76,7 @@ class ParserTests {
 
 	private TagExpression tagExpressionParsedFrom(String tagExpression) {
 		return parser.parse(tagExpression).tagExpressionOrThrow(
-			(error) -> new RuntimeException("[" + tagExpression + "] should be parsable"));
+			error -> new RuntimeException("[" + tagExpression + "] should be parsable"));
 	}
 
 }

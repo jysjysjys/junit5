@@ -1,5 +1,6 @@
 # Gradle
 .gradle
+.kotlin
 build
 
 # Ignore Gradle GUI config
@@ -11,6 +12,7 @@ gradle-app.setting
 .project
 /bin/
 /*/bin
+/gradle/plugins/*/bin
 
 # IntelliJ
 *.iml
@@ -29,5 +31,10 @@ gradle-app.setting
 coverage.db*
 .metadata
 /.sdkmanrc
+/.tool-versions
 
 checksums*
+
+# snapshot-tests
+*.snapshot_actual
+*.snapshot_raw

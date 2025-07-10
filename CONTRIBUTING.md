@@ -1,5 +1,14 @@
 # Contributing
 
+## Getting Started
+
+We welcome new contributors to the project!
+If you're interested, please check for [issues labeled with `up-for-grabs`
+that are not yet in progress](https://github.com/junit-team/junit-framework/issues?q=sort%3Aupdated-desc%20is%3Aissue%20is%3Aopen%20label%3Aup-for-grabs%20-label%3A%22status%3A%20in%20progress%22).
+Generally, before you work on an issue, post a comment and ask whether it can be started.
+Please wait for the core team to respond and assign the issue to you before making any code
+changes.
+
 ## JUnit Contributor License Agreement
 
 - You will only Submit Contributions where You have authored 100% of the content.
@@ -27,11 +36,11 @@ Issue: #999
 
 ## Pull Requests
 
-Our [Definition of Done](https://github.com/junit-team/junit5/wiki/Definition-of-Done)
-offers some guidelines on what we expect from a pull request.
+Our [Definition of Done](https://github.com/junit-team/junit-framework/wiki/Definition-of-Done)
+(DoD) offers some guidelines on what we expect from a pull request.
 Feel free to open a pull request that does not fulfill all criteria, e.g. to discuss
 a certain change before polishing it, but please be aware that we will only merge it
-in case the DoD is met.
+once the DoD is met.
 
 Please add the following lines to your pull request description:
 
@@ -95,22 +104,29 @@ code -- class names, method names, variable names, etc.
 ### Javadoc
 
 - Javadoc comments should be wrapped after 80 characters whenever possible.
-- This first paragraph must be a single, concise sentence that ends with a period (".").
-- Place `<p>` on the same line as the first line in a new paragraph and precede `<p>` with a blank line.
+- This first paragraph must be a single, concise sentence that ends with a period (`.`).
+- Place `<p>` on the same line as the first line of a new paragraph and precede `<p>` with a blank line.
 - Insert a blank line before at-clauses/tags.
 - Favor `{@code foo}` over `<code>foo</code>`.
 - Favor literals (e.g., `{@literal @}`) over HTML entities.
-- New classes and methods should have `@since ...` annotation.
-- Use `@since 5.0` instead of `@since 5.0.0`.
-- Do not use `@author` tags. Instead, contributors are listed on [GitHub](https://github.com/junit-team/junit5/graphs/contributors).
-- Do not use verbs in third person form (e.g. use "Discover tests..." instead of "Discovers tests...")
-  in the first sentence describing a method.
+- New classes and methods should declare a `@since ...` tag.
+- Use `@since 5.10` instead of `@since 5.10.0`.
+- Do not use `@author` tags. Instead, contributors are listed on the [GitHub](https://github.com/junit-team/junit-framework/graphs/contributors) page.
+- Do not use verbs in third-person form in the first sentence of the Javadoc for a method -- for example, use "Discover tests..." instead of "Discovers tests...".
 
 #### Examples
 
 See [`ExtensionContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/extension/ExtensionContext.java) and
 [`ParameterContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/extension/ParameterContext.java) for example Javadoc.
 
+
+### Nullability
+
+This project uses JSpecify's annotation to indicate nullability. In general, the approach
+is as follows:
+
+- All packages are annotated with `@NullMarked`
+- Types of fields, parameters, return types etc. may be annotated with `@Nullable`
 
 ### Tests
 
@@ -121,19 +137,19 @@ See [`ExtensionContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/e
 
 #### Assertions
 
-- Use `org.junit.jupiter.api.Assertions` wherever possible.
+- Use `org.junit.jupiter.api.Assertions` for simple assertions.
 - Use AssertJ when richer assertions are needed.
 - Do not use `org.junit.Assert` or `junit.framework.Assert`.
 
-#### Mocking
+#### Mocking and Stubbing
 
 - Use either [Mockito](https://github.com/mockito/mockito) or hand-written test doubles.
 
 ### Logging
 
 - In general, logging should be used sparingly.
-- All logging must be performed via the internal `Logger` façade provided via the JUnit [LoggerFactory](https://github.com/junit-team/junit5/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/LoggerFactory.java).
-- Levels defined in JUnit's [Logger](https://github.com/junit-team/junit5/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/Logger.java) façade, which delegates to Java Util Logging (JUL) for the actual logging.
+- All logging must be performed via the internal `Logger` façade provided via the JUnit [LoggerFactory](https://github.com/junit-team/junit-framework/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/LoggerFactory.java).
+- Levels defined in JUnit's [Logger](https://github.com/junit-team/junit-framework/blob/main/junit-platform-commons/src/main/java/org/junit/platform/commons/logging/Logger.java) façade, which delegates to Java Util Logging (JUL) for the actual logging.
   - _error_ (JUL: `SEVERE`, Log4J: `ERROR`): extra information (in addition to an Exception) about errors that will halt execution
   - _warn_ (JUL: `WARNING`, Log4J: `WARN`): potential usage or configuration errors that should not halt execution
   - _info_ (JUL: `INFO`, Log4J: `INFO`): information the users might want to know but not by default
@@ -143,10 +159,11 @@ See [`ExtensionContext`](junit-jupiter-api/src/main/java/org/junit/jupiter/api/e
 
 ### Deprecation
 
-Publicly available interfaces, classes and methods have a defined lifecycle
-which is described in detail in the [User Guide](https://junit.org/junit5/docs/current/user-guide/#api-evolution).
-This process is using the `@API` annotation from [API Guardian](https://github.com/apiguardian-team/apiguardian).
-It also describes the deprecation process followed for API items.
+The JUnit project uses the `@API` annotation from [API Guardian](https://github.com/apiguardian-team/apiguardian).
+Publicly available interfaces, classes, and methods have a defined lifecycle
+which is described in detail in the [User Guide](https://docs.junit.org/current/user-guide/#api-evolution).
+
+That following describes the deprecation process followed for API items.
 
 To deprecate an item:
 - Update the `@API.status` to `DEPRECATED`.
@@ -157,3 +174,16 @@ To deprecate an item:
   an eventual replacement.
 - If the item is used in existing code, add `@SuppressWarnings("deprecation")`
   to make the build pass.
+
+## Building the Project
+
+Please refer to [the readme](README.md#building-from-source) for the most common
+build commands.
+
+### Build Parameters
+
+The build can be influenced by a number of parameters. For example, measuring
+JaCoCo code coverage of Test tasks can be enabled, or Predictive Test Selection
+disabled. To see the full list, please run the following task:
+
+`./gradlew :plugins:build-parameters:parameters`

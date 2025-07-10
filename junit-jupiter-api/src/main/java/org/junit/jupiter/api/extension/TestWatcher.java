@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -15,6 +15,7 @@ import static org.apiguardian.api.API.Status.STABLE;
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code TestWatcher} defines the API for {@link Extension Extensions} that
@@ -31,9 +32,29 @@ import org.apiguardian.api.API;
  * {@link org.junit.jupiter.api.TestTemplate @TestTemplate} methods (e.g.,
  * {@code @RepeatedTest} and {@code @ParameterizedTest}). Moreover, if there is a
  * failure at the class level &mdash; for example, an exception thrown by a
- * {@code @BeforeAll} method &mdash; no test results will be reported.
+ * {@code @BeforeAll} method &mdash; no test results will be reported. Similarly,
+ * if the test class is disabled via an {@link ExecutionCondition} &mdash; for
+ * example, {@code @Disabled} &mdash; no test results will be reported.
  *
- * <p>Extensions implementing this API can be registered at any level.
+ * <p>Extensions implementing this interface can be registered at the class level,
+ * instance level, or method level. When registered at the class level, a
+ * {@code TestWatcher} will be invoked for any contained test method including
+ * those in {@link org.junit.jupiter.api.Nested @Nested} classes. When registered
+ * at the method level, a {@code TestWatcher} will only be invoked for the test
+ * method for which it was registered.
+ *
+ * <p><strong>WARNING</strong>: If a {@code TestWatcher} is registered via a
+ * non-static (instance) field &mdash; for example, using
+ * {@link RegisterExtension @RegisterExtension} &mdash; and the test class is
+ * configured with
+ * {@link org.junit.jupiter.api.TestInstance @TestInstance(Lifecycle.PER_METHOD)}
+ * semantics (which is the default lifecycle mode), the {@code TestWatcher} will
+ * <strong>not</strong> be invoked with events for {@code @TestTemplate} methods
+ * (such as {@code @RepeatedTest} and {@code @ParameterizedTest}). To ensure that
+ * a {@code TestWatcher} is invoked for all test methods in a given class, it is
+ * therefore recommended that the {@code TestWatcher} be registered at the class
+ * level with {@link ExtendWith @ExtendWith} or via a {@code static} field with
+ * {@code @RegisterExtension} or {@code @ExtendWith}.
  *
  * <h2>Exception Handling</h2>
  *
@@ -83,7 +104,7 @@ public interface TestWatcher extends Extension {
 	 * @param context the current extension context; never {@code null}
 	 * @param cause the throwable responsible for the test being aborted; may be {@code null}
 	 */
-	default void testAborted(ExtensionContext context, Throwable cause) {
+	default void testAborted(ExtensionContext context, @Nullable Throwable cause) {
 		/* no-op */
 	}
 
@@ -96,7 +117,7 @@ public interface TestWatcher extends Extension {
 	 * @param context the current extension context; never {@code null}
 	 * @param cause the throwable that caused test failure; may be {@code null}
 	 */
-	default void testFailed(ExtensionContext context, Throwable cause) {
+	default void testFailed(ExtensionContext context, @Nullable Throwable cause) {
 		/* no-op */
 	}
 

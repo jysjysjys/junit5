@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,8 +12,6 @@ package org.junit.platform.launcher.listeners.session;
 
 import static org.junit.platform.commons.util.CollectionUtils.forEachInReverseOrder;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.platform.launcher.LauncherSession;
@@ -28,7 +26,7 @@ class CompositeLauncherSessionListener implements LauncherSessionListener {
 	private final List<LauncherSessionListener> listeners;
 
 	CompositeLauncherSessionListener(List<LauncherSessionListener> listeners) {
-		this.listeners = Collections.unmodifiableList(new ArrayList<>(listeners));
+		this.listeners = List.copyOf(listeners);
 	}
 
 	@Override

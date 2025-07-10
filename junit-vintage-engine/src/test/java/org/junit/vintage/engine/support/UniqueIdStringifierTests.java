@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,6 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamException;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Base64;
 
@@ -45,7 +46,7 @@ class UniqueIdStringifierTests {
 
 		var deserializedObject = deserialize(decodeBase64(serialized));
 		assertThat(deserializedObject).isInstanceOf(MyCustomId.class);
-		assertEquals(42, ((MyCustomId) deserializedObject).getValue());
+		assertEquals(42, ((MyCustomId) deserializedObject).value());
 	}
 
 	@Test
@@ -68,26 +69,19 @@ class UniqueIdStringifierTests {
 		}
 	}
 
-	private static class MyCustomId implements Serializable {
+	private record MyCustomId(int value) implements Serializable {
 
+		@Serial
 		private static final long serialVersionUID = 1L;
-
-		private final int value;
-
-		MyCustomId(int value) {
-			this.value = value;
-		}
-
-		int getValue() {
-			return value;
-		}
 
 	}
 
 	private static class ClassWithErroneousSerialization implements Serializable {
 
+		@Serial
 		private static final long serialVersionUID = 1L;
 
+		@Serial
 		Object writeReplace() throws ObjectStreamException {
 			throw new InvalidObjectException("failed on purpose");
 		}

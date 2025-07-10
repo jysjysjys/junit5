@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -45,9 +45,9 @@ public class MavenRepo {
 
 	private static Path artifact(String artifactId, Predicate<String> fileNamePredicate) {
 		var parentDir = dir() //
-				.resolve(Helper.groupId(artifactId).replace('.', File.separatorChar)) //
+				.resolve(groupId(artifactId).replace('.', File.separatorChar)) //
 				.resolve(artifactId) //
-				.resolve(Helper.version(artifactId));
+				.resolve(Helper.version());
 		try (var files = Files.list(parentDir)) {
 			return files.filter(
 				file -> fileNamePredicate.test(file.getFileName().toString())).findFirst().orElseThrow();
@@ -57,4 +57,16 @@ public class MavenRepo {
 		}
 	}
 
+	private static String groupId(String artifactId) {
+		if (artifactId.startsWith("junit-jupiter")) {
+			return "org.junit.jupiter";
+		}
+		if (artifactId.startsWith("junit-platform")) {
+			return "org.junit.platform";
+		}
+		if (artifactId.startsWith("junit-vintage")) {
+			return "org.junit.vintage";
+		}
+		return "org.junit";
+	}
 }

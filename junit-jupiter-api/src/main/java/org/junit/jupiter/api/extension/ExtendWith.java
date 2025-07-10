@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -23,9 +23,9 @@ import java.lang.annotation.Target;
 import org.apiguardian.api.API;
 
 /**
- * {@code @ExtendWith} is a {@linkplain Repeatable repeatable} annotation
- * that is used to register {@linkplain Extension extensions} for the annotated
- * test class, test interface, test method, parameter, or field.
+ * {@code @ExtendWith} is a {@linkplain Repeatable repeatable} annotation that
+ * is used to register {@linkplain Extension extensions} for the annotated test
+ * class, test interface, test method, parameter, or field.
  *
  * <p>Annotated parameters are supported in test class constructors, in test
  * methods, and in {@code @BeforeAll}, {@code @AfterAll}, {@code @BeforeEach},
@@ -35,10 +35,10 @@ import org.apiguardian.api.API;
  *
  * <h2>Inheritance</h2>
  *
- * <p>{@code @ExtendWith} fields are inherited from superclasses as long as they
- * are not <em>hidden</em> or <em>overridden</em>. Furthermore, {@code @ExtendWith}
- * fields from superclasses will be registered before {@code @ExtendWith} fields
- * in subclasses.
+ * <p>{@code @ExtendWith} fields are inherited from superclasses. Furthermore,
+ * {@code @ExtendWith} fields from superclasses will be registered before
+ * {@code @ExtendWith} fields in subclasses unless {@code @Order} is used to
+ * alter that behavior (see below).
  *
  * <h2>Registration Order</h2>
  *
@@ -76,10 +76,13 @@ import org.apiguardian.api.API;
  * <li>{@link AfterTestExecutionCallback}</li>
  * <li>{@link TestInstanceFactory}</li>
  * <li>{@link TestInstancePostProcessor}</li>
+ * <li>{@link TestInstancePreConstructCallback}</li>
  * <li>{@link TestInstancePreDestroyCallback}</li>
  * <li>{@link ParameterResolver}</li>
+ * <li>{@link LifecycleMethodExecutionExceptionHandler}</li>
  * <li>{@link TestExecutionExceptionHandler}</li>
  * <li>{@link TestTemplateInvocationContextProvider}</li>
+ * <li>{@link TestWatcher}</li>
  * </ul>
  *
  * @since 5.0

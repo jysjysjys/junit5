@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,6 +20,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.apiguardian.api.API;
+import org.junit.jupiter.api.parallel.Execution;
 
 /**
  * {@code @TestMethodOrder} is a type-level annotation that is used to configure
@@ -61,8 +62,12 @@ import org.apiguardian.api.API;
  *     {@literal @}Test
  *     {@literal @}Order(3)
  *     void validValues() {}
- * }
- * </pre>
+ * }</pre>
+ *
+ * <h2>Parallel Execution</h2>
+ * <p>Using a {@link MethodOrderer} disables parallel execution unless the test
+ * class or test method is annotated with
+ * {@link Execution @Execution(CONCURRENT)}.
  *
  * @since 5.4
  * @see MethodOrderer

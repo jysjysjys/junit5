@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,28 +12,36 @@ package org.junit.platform.testkit.engine;
 
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
-import static org.apiguardian.api.API.Status.DEPRECATED;
+import static java.util.Objects.requireNonNullElseGet;
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.MAINTAINED;
-import static org.junit.platform.launcher.core.EngineDiscoveryOrchestrator.Phase.EXECUTION;
+import static org.apiguardian.api.API.Status.STABLE;
+import static org.junit.platform.engine.support.store.NamespacedHierarchicalStore.CloseAction.closeAutoCloseables;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.commons.JUnitException;
 import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.CollectionUtils;
 import org.junit.platform.commons.util.Preconditions;
+import org.junit.platform.engine.CancellationToken;
 import org.junit.platform.engine.DiscoveryFilter;
+import org.junit.platform.engine.DiscoveryIssue;
 import org.junit.platform.engine.DiscoverySelector;
-import org.junit.platform.engine.EngineDiscoveryRequest;
 import org.junit.platform.engine.EngineExecutionListener;
-import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.Filter;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.TestEngine;
-import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
+import org.junit.platform.engine.support.store.Namespace;
+import org.junit.platform.engine.support.store.NamespacedHierarchicalStore;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.core.EngineDiscoveryOrchestrator;
 import org.junit.platform.launcher.core.EngineExecutionOrchestrator;
@@ -42,15 +50,24 @@ import org.junit.platform.launcher.core.LauncherDiscoveryResult;
 import org.junit.platform.launcher.core.ServiceLoaderTestEngineRegistry;
 
 /**
- * {@code EngineTestKit} provides support for executing a test plan for a given
- * {@link TestEngine} and then accessing the results via
- * {@linkplain EngineExecutionResults a fluent API} to verify the expected results.
+ * {@code EngineTestKit} provides support for discovering and executing tests
+ * for a given {@link TestEngine} and provides convenient access to the results.
+ *
+ * <p>For <em>discovery</em>, {@link EngineDiscoveryResults} provides access to
+ * the {@link TestDescriptor} of the engine and any {@link DiscoveryIssue
+ * DiscoveryIssues} that were encountered.
+ *
+ * <p>For <em>execution</em>, {@link EngineExecutionResults} provides a fluent
+ * API to verify the expected results.
  *
  * @since 1.4
  * @see #engine(String)
  * @see #engine(TestEngine)
+ * @see #discover(String, LauncherDiscoveryRequest)
+ * @see #discover(TestEngine, LauncherDiscoveryRequest)
  * @see #execute(String, LauncherDiscoveryRequest)
  * @see #execute(TestEngine, LauncherDiscoveryRequest)
+ * @see EngineDiscoveryResults
  * @see EngineExecutionResults
  */
 @API(status = MAINTAINED, since = "1.7")
@@ -87,7 +104,7 @@ public final class EngineTestKit {
 	 */
 	public static Builder engine(String engineId) {
 		Preconditions.notBlank(engineId, "TestEngine ID must not be null or blank");
-		return engine(loadTestEngine(engineId.trim()));
+		return engine(loadTestEngine(engineId.strip()));
 	}
 
 	/**
@@ -118,39 +135,62 @@ public final class EngineTestKit {
 	}
 
 	/**
-	 * Execute tests for the given {@link EngineDiscoveryRequest} using the
+	 * Discover tests for the given {@link LauncherDiscoveryRequest} using the
 	 * {@link TestEngine} with the supplied ID.
 	 *
 	 * <p>The {@code TestEngine} will be loaded via Java's {@link ServiceLoader}
 	 * mechanism, analogous to the manner in which test engines are loaded in
 	 * the JUnit Platform Launcher API.
 	 *
-	 * <p>Note that {@link org.junit.platform.launcher.LauncherDiscoveryRequest}
-	 * from the {@code junit-platform-launcher} module is a subtype of
-	 * {@code EngineDiscoveryRequest}. It is therefore quite convenient to make
-	 * use of the DSL provided in
-	 * {@link org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder}
-	 * to build an appropriate discovery request to supply to this method. As
-	 * an alternative, consider using {@link #engine(String)} for a more fluent
-	 * API.
+	 * <p>{@link org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder}
+	 * provides a convenient way to build an appropriate discovery request to
+	 * supply to this method. As an alternative, consider using
+	 * {@link #engine(TestEngine)} for a more fluent API.
 	 *
 	 * @param engineId the ID of the {@code TestEngine} to use; must not be
 	 * {@code null} or <em>blank</em>
-	 * @param discoveryRequest the {@code EngineDiscoveryRequest} to use
-	 * @return the results of the execution
+	 * @param discoveryRequest the {@code LauncherDiscoveryRequest} to use
+	 * @return the results of the discovery
 	 * @throws PreconditionViolationException for invalid arguments or if the
 	 * {@code TestEngine} with the supplied ID cannot be loaded
-	 * @see #execute(String, LauncherDiscoveryRequest)
+	 * @since 1.13
+	 * @see #discover(TestEngine, LauncherDiscoveryRequest)
 	 * @see #engine(String)
 	 * @see #engine(TestEngine)
-	 * @deprecated Please use {@link #execute(String, LauncherDiscoveryRequest)}
-	 * instead.
 	 */
-	@Deprecated
-	@API(status = DEPRECATED, since = "1.7")
-	public static EngineExecutionResults execute(String engineId, EngineDiscoveryRequest discoveryRequest) {
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static EngineDiscoveryResults discover(String engineId, LauncherDiscoveryRequest discoveryRequest) {
 		Preconditions.notBlank(engineId, "TestEngine ID must not be null or blank");
-		return execute(loadTestEngine(engineId.trim()), discoveryRequest);
+		return discover(loadTestEngine(engineId.strip()), discoveryRequest);
+	}
+
+	/**
+	 * Discover tests for the given {@link LauncherDiscoveryRequest} using the
+	 * supplied {@link TestEngine}.
+	 *
+	 * <p>{@link org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder}
+	 * provides a convenient way to build an appropriate discovery request to
+	 * supply to this method. As an alternative, consider using
+	 * {@link #engine(TestEngine)} for a more fluent API.
+	 *
+	 * @param testEngine the {@code TestEngine} to use; must not be {@code null}
+	 * @param discoveryRequest the {@code EngineDiscoveryResults} to use; must
+	 * not be {@code null}
+	 * @return the recorded {@code EngineExecutionResults}
+	 * @throws PreconditionViolationException for invalid arguments
+	 * @since 1.13
+	 * @see #discover(String, LauncherDiscoveryRequest)
+	 * @see #engine(String)
+	 * @see #engine(TestEngine)
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	public static EngineDiscoveryResults discover(TestEngine testEngine, LauncherDiscoveryRequest discoveryRequest) {
+		Preconditions.notNull(testEngine, "TestEngine must not be null");
+		Preconditions.notNull(discoveryRequest, "EngineDiscoveryRequest must not be null");
+		LauncherDiscoveryResult discoveryResult = discoverUsingOrchestrator(testEngine, discoveryRequest);
+		TestDescriptor engineDescriptor = discoveryResult.getEngineTestDescriptor(testEngine);
+		List<DiscoveryIssue> discoveryIssues = discoveryResult.getDiscoveryIssues(testEngine);
+		return new EngineDiscoveryResults(engineDescriptor, discoveryIssues);
 	}
 
 	/**
@@ -179,42 +219,7 @@ public final class EngineTestKit {
 	 */
 	public static EngineExecutionResults execute(String engineId, LauncherDiscoveryRequest discoveryRequest) {
 		Preconditions.notBlank(engineId, "TestEngine ID must not be null or blank");
-		return execute(loadTestEngine(engineId.trim()), discoveryRequest);
-	}
-
-	/**
-	 * Execute tests for the given {@link EngineDiscoveryRequest} using the
-	 * supplied {@link TestEngine}.
-	 *
-	 * <p>Note that {@link org.junit.platform.launcher.LauncherDiscoveryRequest}
-	 * from the {@code junit-platform-launcher} module is a subtype of
-	 * {@code EngineDiscoveryRequest}. It is therefore quite convenient to make
-	 * use of the DSL provided in
-	 * {@link org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder}
-	 * to build an appropriate discovery request to supply to this method. As
-	 * an alternative, consider using {@link #engine(TestEngine)} for a more fluent
-	 * API.
-	 *
-	 * @param testEngine the {@code TestEngine} to use; must not be {@code null}
-	 * @param discoveryRequest the {@code EngineDiscoveryRequest} to use; must
-	 * not be {@code null}
-	 * @return the recorded {@code EngineExecutionResults}
-	 * @throws PreconditionViolationException for invalid arguments
-	 * @see #execute(TestEngine, LauncherDiscoveryRequest)
-	 * @see #engine(String)
-	 * @see #engine(TestEngine)
-	 * @deprecated Please use {@link #execute(TestEngine, LauncherDiscoveryRequest)}
-	 * instead.
-	 */
-	@Deprecated
-	@API(status = DEPRECATED, since = "1.7")
-	public static EngineExecutionResults execute(TestEngine testEngine, EngineDiscoveryRequest discoveryRequest) {
-		Preconditions.notNull(testEngine, "TestEngine must not be null");
-		Preconditions.notNull(discoveryRequest, "EngineDiscoveryRequest must not be null");
-
-		ExecutionRecorder executionRecorder = new ExecutionRecorder();
-		executeDirectly(testEngine, discoveryRequest, executionRecorder);
-		return executionRecorder.getExecutionResults();
+		return execute(loadTestEngine(engineId.strip()), discoveryRequest);
 	}
 
 	/**
@@ -241,26 +246,38 @@ public final class EngineTestKit {
 		Preconditions.notNull(discoveryRequest, "EngineDiscoveryRequest must not be null");
 
 		ExecutionRecorder executionRecorder = new ExecutionRecorder();
-		executeUsingLauncherOrchestration(testEngine, discoveryRequest, executionRecorder);
+		executeUsingLauncherOrchestration(testEngine, discoveryRequest, executionRecorder,
+			CancellationToken.disabled());
 		return executionRecorder.getExecutionResults();
 	}
 
-	private static void executeDirectly(TestEngine testEngine, EngineDiscoveryRequest discoveryRequest,
-			EngineExecutionListener listener) {
-		UniqueId engineUniqueId = UniqueId.forEngine(testEngine.getId());
-		TestDescriptor engineTestDescriptor = testEngine.discover(discoveryRequest, engineUniqueId);
-		ExecutionRequest request = new ExecutionRequest(engineTestDescriptor, listener,
-			discoveryRequest.getConfigurationParameters());
-		testEngine.execute(request);
-	}
-
 	private static void executeUsingLauncherOrchestration(TestEngine testEngine,
-			LauncherDiscoveryRequest discoveryRequest, EngineExecutionListener listener) {
-		LauncherDiscoveryResult discoveryResult = new EngineDiscoveryOrchestrator(singleton(testEngine),
-			emptySet()).discover(discoveryRequest, EXECUTION);
+			LauncherDiscoveryRequest discoveryRequest, EngineExecutionListener listener,
+			CancellationToken cancellationToken) {
+
+		LauncherDiscoveryResult discoveryResult = discoverUsingOrchestrator(testEngine, discoveryRequest);
 		TestDescriptor engineTestDescriptor = discoveryResult.getEngineTestDescriptor(testEngine);
 		Preconditions.notNull(engineTestDescriptor, "TestEngine did not yield a TestDescriptor");
-		new EngineExecutionOrchestrator().execute(discoveryResult, listener);
+		withRequestLevelStore(
+			store -> new EngineExecutionOrchestrator().execute(discoveryResult, listener, store, cancellationToken));
+	}
+
+	private static void withRequestLevelStore(Consumer<NamespacedHierarchicalStore<Namespace>> action) {
+		try (NamespacedHierarchicalStore<Namespace> sessionLevelStore = newStore(null);
+				NamespacedHierarchicalStore<Namespace> requestLevelStore = newStore(sessionLevelStore)) {
+			action.accept(requestLevelStore);
+		}
+	}
+
+	private static NamespacedHierarchicalStore<Namespace> newStore(
+			@Nullable NamespacedHierarchicalStore<Namespace> parentStore) {
+		return new NamespacedHierarchicalStore<>(parentStore, closeAutoCloseables());
+	}
+
+	private static LauncherDiscoveryResult discoverUsingOrchestrator(TestEngine testEngine,
+			LauncherDiscoveryRequest discoveryRequest) {
+		return new EngineDiscoveryOrchestrator(singleton(testEngine), emptySet()) //
+				.discover(discoveryRequest);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -270,7 +287,7 @@ public final class EngineTestKit {
 				.filter((TestEngine engine) -> engineId.equals(engine.getId()))//
 				.findFirst()//
 				.orElseThrow(() -> new PreconditionViolationException(
-					String.format("Failed to load TestEngine with ID [%s]", engineId)));
+					"Failed to load TestEngine with ID [%s]".formatted(engineId)));
 	}
 
 	private EngineTestKit() {
@@ -295,8 +312,10 @@ public final class EngineTestKit {
 	public static final class Builder {
 
 		private final LauncherDiscoveryRequestBuilder requestBuilder = LauncherDiscoveryRequestBuilder.request() //
-				.enableImplicitConfigurationParameters(false);
+				.enableImplicitConfigurationParameters(false) //
+				.outputDirectoryProvider(DisabledOutputDirectoryProvider.INSTANCE);
 		private final TestEngine testEngine;
+		private @Nullable CancellationToken cancellationToken;
 
 		private Builder(TestEngine testEngine) {
 			this.testEngine = testEngine;
@@ -321,29 +340,6 @@ public final class EngineTestKit {
 		}
 
 		/**
-		 * Add all of the supplied {@linkplain DiscoveryFilter discovery filters}.
-		 *
-		 * <p>Built-in discovery filters can be created via the static factory
-		 * methods in {@link org.junit.platform.engine.discovery.ClassNameFilter}
-		 * and {@link org.junit.platform.engine.discovery.PackageNameFilter}.
-		 *
-		 * @param filters the discovery filters to add; never {@code null}
-		 * @return this builder for method chaining
-		 * @see #filters(Filter...)
-		 * @see #selectors(DiscoverySelector...)
-		 * @see #configurationParameter(String, String)
-		 * @see #configurationParameters(Map)
-		 * @see #execute()
-		 * @deprecated Please use {@link #filters(Filter...)} instead.
-		 */
-		@Deprecated
-		@API(status = DEPRECATED, since = "1.7")
-		public Builder filters(DiscoveryFilter<?>... filters) {
-			this.requestBuilder.filters(filters);
-			return this;
-		}
-
-		/**
 		 * Add all of the supplied {@linkplain Filter filters}.
 		 *
 		 * <p>Built-in discovery filters can be created via the static factory
@@ -361,7 +357,7 @@ public final class EngineTestKit {
 		 * @see #configurationParameters(Map)
 		 * @see #execute()
 		 */
-		@API(status = EXPERIMENTAL, since = "1.7")
+		@API(status = STABLE, since = "1.10")
 		public Builder filters(Filter<?>... filters) {
 			this.requestBuilder.filters(filters);
 			return this;
@@ -416,10 +412,63 @@ public final class EngineTestKit {
 		 * @see #configurationParameter(String, String)
 		 * @see #configurationParameters(Map)
 		 */
-		@API(status = EXPERIMENTAL, since = "1.7")
+		@API(status = STABLE, since = "1.10")
 		public Builder enableImplicitConfigurationParameters(boolean enabled) {
 			this.requestBuilder.enableImplicitConfigurationParameters(enabled);
 			return this;
+		}
+
+		/**
+		 * Set the {@link OutputDirectoryProvider} to use.
+		 *
+		 * <p>If not specified, a default provider will be used that throws an
+		 * exception when attempting to create output directories. This is done
+		 * to avoid accidentally writing output files to the file system.
+		 *
+		 * @param outputDirectoryProvider the output directory provider to use;
+		 * never {@code null}
+		 * @return this builder for method chaining
+		 * @since 1.12
+		 * @see OutputDirectoryProvider
+		 */
+		@API(status = MAINTAINED, since = "1.13.3")
+		public Builder outputDirectoryProvider(OutputDirectoryProvider outputDirectoryProvider) {
+			this.requestBuilder.outputDirectoryProvider(outputDirectoryProvider);
+			return this;
+		}
+
+		/**
+		 * Set the {@link CancellationToken} to use for execution.
+		 *
+		 * @param cancellationToken the cancellation token to use; never
+		 * {@code null}
+		 * @return this builder for method chaining
+		 * @since 6.0
+		 * @see CancellationToken
+		 */
+		@API(status = EXPERIMENTAL, since = "6.0")
+		public Builder cancellationToken(CancellationToken cancellationToken) {
+			this.cancellationToken = Preconditions.notNull(cancellationToken, "cancellationToken must not be null");
+			return this;
+		}
+
+		/**
+		 * Discover tests for the configured {@link TestEngine},
+		 * {@linkplain DiscoverySelector discovery selectors},
+		 * {@linkplain DiscoveryFilter discovery filters}, and
+		 * <em>configuration parameters</em>.
+		 *
+		 * @return the recorded {@code EngineDiscoveryResults}
+		 * @since 1.13
+		 * @see #selectors(DiscoverySelector...)
+		 * @see #filters(Filter...)
+		 * @see #configurationParameter(String, String)
+		 * @see #configurationParameters(Map)
+		 */
+		@API(status = EXPERIMENTAL, since = "6.0")
+		public EngineDiscoveryResults discover() {
+			LauncherDiscoveryRequest request = this.requestBuilder.build();
+			return EngineTestKit.discover(this.testEngine, request);
 		}
 
 		/**
@@ -437,10 +486,32 @@ public final class EngineTestKit {
 		public EngineExecutionResults execute() {
 			LauncherDiscoveryRequest request = this.requestBuilder.build();
 			ExecutionRecorder executionRecorder = new ExecutionRecorder();
-			EngineTestKit.executeUsingLauncherOrchestration(this.testEngine, request, executionRecorder);
+			EngineTestKit.executeUsingLauncherOrchestration(this.testEngine, request, executionRecorder,
+				requireNonNullElseGet(this.cancellationToken, CancellationToken::disabled));
 			return executionRecorder.getExecutionResults();
 		}
 
+		private static class DisabledOutputDirectoryProvider implements OutputDirectoryProvider {
+
+			public static final OutputDirectoryProvider INSTANCE = new DisabledOutputDirectoryProvider();
+
+			private static final String FAILURE_MESSAGE = "Writing outputs is disabled by default when using EngineTestKit. "
+					+ "To enable, configure a custom OutputDirectoryProvider via EngineTestKit#outputDirectoryProvider.";
+
+			private DisabledOutputDirectoryProvider() {
+			}
+
+			@Override
+			public Path getRootDirectory() {
+				throw new JUnitException(FAILURE_MESSAGE);
+			}
+
+			@Override
+			public Path createOutputDirectory(TestDescriptor testDescriptor) {
+				throw new JUnitException(FAILURE_MESSAGE);
+			}
+
+		}
 	}
 
 }

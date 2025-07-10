@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,7 @@ package org.junit.jupiter.engine.extension;
 
 import java.util.concurrent.TimeoutException;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.Preconditions;
 
 /**
@@ -22,8 +23,9 @@ class TimeoutExceptionFactory {
 	private TimeoutExceptionFactory() {
 	}
 
-	static TimeoutException create(String methodSignature, TimeoutDuration timeoutDuration, Throwable failure) {
-		String message = String.format("%s timed out after %s",
+	static TimeoutException create(String methodSignature, TimeoutDuration timeoutDuration,
+			@Nullable Throwable failure) {
+		String message = "%s timed out after %s".formatted(
 			Preconditions.notNull(methodSignature, "method signature must not be null"),
 			Preconditions.notNull(timeoutDuration, "timeout duration must not be null"));
 		TimeoutException timeoutException = new TimeoutException(message);

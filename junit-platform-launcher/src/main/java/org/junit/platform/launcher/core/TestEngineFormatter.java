@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -33,7 +33,7 @@ class TestEngineFormatter {
 
 	private static String format(String title, Stream<TestEngine> testEngines) {
 		String details = testEngines //
-				.map(engine -> String.format("- %s (%s)", engine.getId(), join(", ", computeAttributes(engine)))) //
+				.map(engine -> "- %s (%s)".formatted(engine.getId(), join(", ", computeAttributes(engine)))) //
 				.collect(joining("\n"));
 		return title + ":" + (details.isEmpty() ? " <none>" : "\n" + details);
 	}

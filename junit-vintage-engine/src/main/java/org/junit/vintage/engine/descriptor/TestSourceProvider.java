@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,10 +12,10 @@ package org.junit.vintage.engine.descriptor;
 
 import static java.util.Collections.synchronizedMap;
 import static java.util.function.Predicate.isEqual;
-import static java.util.stream.Collectors.toList;
 import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.junit.platform.commons.support.HierarchyTraversalMode.TOP_DOWN;
+import static org.junit.platform.commons.support.ReflectionSupport.findMethods;
 import static org.junit.platform.commons.util.FunctionUtils.where;
-import static org.junit.platform.commons.util.ReflectionUtils.findMethods;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.support.ModifierSupport;
 import org.junit.platform.commons.util.LruCache;
 import org.junit.platform.engine.TestSource;
@@ -43,7 +44,7 @@ public class TestSourceProvider {
 	private final Map<Description, TestSource> testSourceCache = new ConcurrentHashMap<>();
 	private final Map<Class<?>, List<Method>> methodsCache = synchronizedMap(new LruCache<>(31));
 
-	public TestSource findTestSource(Description description) {
+	public @Nullable TestSource findTestSource(Description description) {
 		TestSource testSource = testSourceCache.computeIfAbsent(description, this::computeTestSource);
 		return testSource == NULL_SOURCE ? null : testSource;
 	}
@@ -71,17 +72,18 @@ public class TestSourceProvider {
 		return methodName;
 	}
 
-	private Method findMethod(Class<?> testClass, String methodName) {
-		List<Method> methods = methodsCache.computeIfAbsent(testClass, clazz -> findMethods(clazz, m -> true)).stream() //
+	private @Nullable Method findMethod(Class<?> testClass, String methodName) {
+		List<Method> methods = methodsCache.computeIfAbsent(testClass,
+			clazz -> findMethods(clazz, m -> true, TOP_DOWN)).stream() //
 				.filter(where(Method::getName, isEqual(methodName))) //
-				.collect(toList());
+				.toList();
 		if (methods.isEmpty()) {
 			return null;
 		}
 		if (methods.size() == 1) {
 			return methods.get(0);
 		}
-		methods = methods.stream().filter(ModifierSupport::isPublic).collect(toList());
+		methods = methods.stream().filter(ModifierSupport::isPublic).toList();
 		if (methods.size() == 1) {
 			return methods.get(0);
 		}

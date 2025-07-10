@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,11 @@
 
 package org.junit.jupiter.engine.descriptor;
 
+import static java.util.Objects.requireNonNull;
+
+import java.util.function.UnaryOperator;
+
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -33,12 +38,18 @@ class DynamicTestTestDescriptor extends DynamicNodeTestDescriptor {
 
 	private static final InvocationInterceptorChain interceptorChain = new InvocationInterceptorChain();
 
-	private DynamicTest dynamicTest;
+	private @Nullable DynamicTest dynamicTest;
 
-	DynamicTestTestDescriptor(UniqueId uniqueId, int index, DynamicTest dynamicTest, TestSource source,
+	DynamicTestTestDescriptor(UniqueId uniqueId, int index, DynamicTest dynamicTest, @Nullable TestSource source,
 			JupiterConfiguration configuration) {
 		super(uniqueId, index, dynamicTest, source, configuration);
 		this.dynamicTest = dynamicTest;
+	}
+
+	@Override
+	protected DynamicTestTestDescriptor withUniqueId(UnaryOperator<UniqueId> uniqueIdTransformer) {
+		return new DynamicTestTestDescriptor(uniqueIdTransformer.apply(getUniqueId()), this.index,
+			requireNonNull(this.dynamicTest), this.getSource().orElse(null), this.configuration);
 	}
 
 	@Override
@@ -49,18 +60,22 @@ class DynamicTestTestDescriptor extends DynamicNodeTestDescriptor {
 	@Override
 	public JupiterEngineExecutionContext execute(JupiterEngineExecutionContext context,
 			DynamicTestExecutor dynamicTestExecutor) {
-		InvocationInterceptor.Invocation<Void> invocation = () -> {
-			dynamicTest.getExecutable().execute();
-			return null;
-		};
 		DynamicTestInvocationContext dynamicTestInvocationContext = new DefaultDynamicTestInvocationContext(
-			dynamicTest.getExecutable());
+			requiredDynamicTest().getExecutable());
 		ExtensionContext extensionContext = context.getExtensionContext();
 		ExtensionRegistry extensionRegistry = context.getExtensionRegistry();
-		interceptorChain.invoke(invocation, extensionRegistry, InterceptorCall.ofVoid(
-			(interceptor, wrappedInvocation) -> interceptor.interceptDynamicTest(wrappedInvocation,
-				dynamicTestInvocationContext, extensionContext)));
+		interceptorChain.<@Nullable Void> invoke(toInvocation(), extensionRegistry, InterceptorCall.ofVoid((
+				InvocationInterceptor interceptor,
+				InvocationInterceptor.Invocation<@Nullable Void> wrappedInvocation) -> interceptor.interceptDynamicTest(
+					wrappedInvocation, dynamicTestInvocationContext, extensionContext)));
 		return context;
+	}
+
+	private InvocationInterceptor.Invocation<@Nullable Void> toInvocation() {
+		return () -> {
+			requiredDynamicTest().getExecutable().execute();
+			return null;
+		};
 	}
 
 	/**
@@ -70,12 +85,16 @@ class DynamicTestTestDescriptor extends DynamicNodeTestDescriptor {
 	 * on the heap.
 	 *
 	 * @since 5.5
-	 * @see <a href="https://github.com/junit-team/junit5/issues/1865">Issue 1865</a>
+	 * @see <a href="https://github.com/junit-team/junit-framework/issues/1865">Issue 1865</a>
 	 */
 	@Override
 	public void after(JupiterEngineExecutionContext context) throws Exception {
 		super.after(context);
 		this.dynamicTest = null;
+	}
+
+	private DynamicTest requiredDynamicTest() {
+		return requireNonNull(dynamicTest);
 	}
 
 }

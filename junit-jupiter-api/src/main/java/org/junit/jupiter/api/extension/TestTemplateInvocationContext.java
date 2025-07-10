@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.jupiter.api.extension;
 
 import static java.util.Collections.emptyList;
+import static org.apiguardian.api.API.Status.EXPERIMENTAL;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.List;
@@ -64,6 +65,20 @@ public interface TestTemplateInvocationContext {
 	 */
 	default List<Extension> getAdditionalExtensions() {
 		return emptyList();
+	}
+
+	/**
+	 * Prepare the imminent invocation of the test template.
+	 *
+	 * <p>This may be used, for example, to store entries in the
+	 * {@link ExtensionContext.Store Store} to benefit from its cleanup support
+	 * or for retrieval by other extensions.
+	 *
+	 * @param context The invocation-level extension context.
+	 * @since 5.13
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	default void prepareInvocation(ExtensionContext context) {
 	}
 
 }

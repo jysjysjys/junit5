@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -13,6 +13,7 @@ package org.junit.vintage.engine.samples.junit3;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+@SuppressWarnings("JUnitMalformedDeclaration")
 public class JUnit3SuiteWithSubsuites extends TestCase {
 	private final String arg;
 

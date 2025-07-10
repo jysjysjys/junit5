@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -17,8 +17,8 @@ import static org.junit.vintage.engine.descriptor.VintageTestDescriptor.SEGMENT_
 import java.util.Optional;
 
 import org.junit.platform.commons.JUnitException;
-import org.junit.platform.commons.util.ClassFilter;
-import org.junit.platform.commons.util.ReflectionUtils;
+import org.junit.platform.commons.support.ReflectionSupport;
+import org.junit.platform.commons.support.scanning.ClassFilter;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.UniqueId.Segment;
@@ -26,7 +26,6 @@ import org.junit.platform.engine.discovery.ClassSelector;
 import org.junit.platform.engine.discovery.UniqueIdSelector;
 import org.junit.platform.engine.support.discovery.SelectorResolver;
 import org.junit.runner.Runner;
-import org.junit.runners.model.RunnerBuilder;
 import org.junit.vintage.engine.descriptor.RunnerTestDescriptor;
 
 /**
@@ -34,7 +33,7 @@ import org.junit.vintage.engine.descriptor.RunnerTestDescriptor;
  */
 class ClassSelectorResolver implements SelectorResolver {
 
-	private static final RunnerBuilder RUNNER_BUILDER = new DefensiveAllDefaultPossibilitiesBuilder();
+	private static final DefensiveAllDefaultPossibilitiesBuilder RUNNER_BUILDER = new DefensiveAllDefaultPossibilitiesBuilder();
 
 	private final ClassFilter classFilter;
 
@@ -44,7 +43,10 @@ class ClassSelectorResolver implements SelectorResolver {
 
 	@Override
 	public Resolution resolve(ClassSelector selector, Context context) {
-		return resolveTestClass(selector.getJavaClass(), context);
+		if (classFilter.match(selector.getClassName())) {
+			return resolveTestClassThatPassedNameFilter(selector.getJavaClass(), context);
+		}
+		return unresolved();
 	}
 
 	@Override
@@ -52,15 +54,17 @@ class ClassSelectorResolver implements SelectorResolver {
 		Segment lastSegment = selector.getUniqueId().getLastSegment();
 		if (SEGMENT_TYPE_RUNNER.equals(lastSegment.getType())) {
 			String testClassName = lastSegment.getValue();
-			Class<?> testClass = ReflectionUtils.tryToLoadClass(testClassName)//
-					.getOrThrow(cause -> new JUnitException("Unknown class: " + testClassName, cause));
-			return resolveTestClass(testClass, context);
+			if (classFilter.match(testClassName)) {
+				Class<?> testClass = ReflectionSupport.tryToLoadClass(testClassName)//
+						.getNonNullOrThrow(cause -> new JUnitException("Unknown class: " + testClassName, cause));
+				return resolveTestClassThatPassedNameFilter(testClass, context);
+			}
 		}
 		return unresolved();
 	}
 
-	private Resolution resolveTestClass(Class<?> testClass, Context context) {
-		if (!classFilter.test(testClass)) {
+	private Resolution resolveTestClassThatPassedNameFilter(Class<?> testClass, Context context) {
+		if (!classFilter.match(testClass)) {
 			return unresolved();
 		}
 		Runner runner = RUNNER_BUILDER.safeRunnerForClass(testClass);
@@ -76,7 +80,7 @@ class ClassSelectorResolver implements SelectorResolver {
 
 	private RunnerTestDescriptor createRunnerTestDescriptor(TestDescriptor parent, Class<?> testClass, Runner runner) {
 		UniqueId uniqueId = parent.getUniqueId().append(SEGMENT_TYPE_RUNNER, testClass.getName());
-		return new RunnerTestDescriptor(uniqueId, testClass, runner);
+		return new RunnerTestDescriptor(uniqueId, testClass, runner, RUNNER_BUILDER.isIgnored(runner));
 	}
 
 }

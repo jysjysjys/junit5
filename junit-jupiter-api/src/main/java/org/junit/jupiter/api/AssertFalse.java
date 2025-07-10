@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.AssertionFailureBuilder.assertionFailure;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code AssertFalse} is a collection of utility methods that support asserting
@@ -31,13 +33,13 @@ class AssertFalse {
 		assertFalse(condition, (String) null);
 	}
 
-	static void assertFalse(boolean condition, String message) {
+	static void assertFalse(boolean condition, @Nullable String message) {
 		if (condition) {
 			failNotFalse(message);
 		}
 	}
 
-	static void assertFalse(boolean condition, Supplier<String> messageSupplier) {
+	static void assertFalse(boolean condition, Supplier<@Nullable String> messageSupplier) {
 		if (condition) {
 			failNotFalse(messageSupplier);
 		}
@@ -47,15 +49,15 @@ class AssertFalse {
 		assertFalse(booleanSupplier.getAsBoolean(), (String) null);
 	}
 
-	static void assertFalse(BooleanSupplier booleanSupplier, String message) {
+	static void assertFalse(BooleanSupplier booleanSupplier, @Nullable String message) {
 		assertFalse(booleanSupplier.getAsBoolean(), message);
 	}
 
-	static void assertFalse(BooleanSupplier booleanSupplier, Supplier<String> messageSupplier) {
+	static void assertFalse(BooleanSupplier booleanSupplier, Supplier<@Nullable String> messageSupplier) {
 		assertFalse(booleanSupplier.getAsBoolean(), messageSupplier);
 	}
 
-	private static void failNotFalse(Object messageOrSupplier) {
+	private static void failNotFalse(@Nullable Object messageOrSupplier) {
 		assertionFailure() //
 				.message(messageOrSupplier) //
 				.expected(false) //

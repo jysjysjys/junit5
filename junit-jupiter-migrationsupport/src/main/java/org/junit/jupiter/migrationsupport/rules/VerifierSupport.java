@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,7 @@
 
 package org.junit.jupiter.migrationsupport.rules;
 
-import static org.apiguardian.api.API.Status.STABLE;
+import static org.apiguardian.api.API.Status.DEPRECATED;
 
 import org.apiguardian.api.API;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -29,15 +29,18 @@ import org.junit.rules.Verifier;
  * can be left unchanged including the JUnit 4 rule import statements.
  *
  * <p>However, if you intend to develop a <em>new</em> extension for
- * JUnit 5 please use the new extension model of JUnit Jupiter instead
+ * JUnit please use the new extension model of JUnit Jupiter instead
  * of the rule-based model of JUnit 4.
  *
  * @since 5.0
  * @see org.junit.rules.Verifier
  * @see org.junit.rules.TestRule
  * @see org.junit.Rule
+ * @deprecated Please implement {@link org.junit.jupiter.api.extension.AfterTestExecutionCallback} instead.
  */
-@API(status = STABLE, since = "5.7")
+@SuppressWarnings("removal")
+@API(status = DEPRECATED, since = "6.0")
+@Deprecated(since = "6.0", forRemoval = true)
 public class VerifierSupport implements AfterEachCallback {
 
 	private final TestRuleSupport support = new TestRuleSupport(VerifierAdapter::new, Verifier.class);

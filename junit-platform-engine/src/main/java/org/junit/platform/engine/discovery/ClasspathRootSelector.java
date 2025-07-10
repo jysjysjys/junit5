@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,14 +10,21 @@
 
 package org.junit.platform.engine.discovery;
 
+import static java.util.Collections.singleton;
+import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.apiguardian.api.API.Status.STABLE;
+import static org.junit.platform.commons.util.CollectionUtils.getFirstElement;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
  * A {@link DiscoverySelector} that selects a <em>classpath root</em> so that
@@ -42,7 +49,7 @@ public class ClasspathRootSelector implements DiscoverySelector {
 	private final URI classpathRoot;
 
 	ClasspathRootSelector(URI classpathRoot) {
-		this.classpathRoot = classpathRoot;
+		this.classpathRoot = Preconditions.notNull(classpathRoot, "classpathRoot must not be null");
 	}
 
 	/**
@@ -80,6 +87,36 @@ public class ClasspathRootSelector implements DiscoverySelector {
 	@Override
 	public String toString() {
 		return new ToStringBuilder(this).append("classpathRoot", this.classpathRoot).toString();
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, this.classpathRoot.toString()));
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for
+	 * {@link ClasspathRootSelector ClasspathRootSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		private static final String PREFIX = "classpath-root";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<ClasspathRootSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			Path path = Path.of(URI.create(identifier.getValue()));
+			return getFirstElement(DiscoverySelectors.selectClasspathRoots(singleton(path)));
+		}
+
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -9,6 +9,8 @@
  */
 
 package org.junit.platform.launcher.core;
+
+import static java.util.stream.Collectors.joining;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -25,10 +27,13 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.logging.Logger;
 import org.junit.platform.commons.logging.LoggerFactory;
 import org.junit.platform.commons.util.ClassLoaderUtils;
+import org.junit.platform.commons.util.CollectionUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.ConfigurationParameters;
@@ -61,20 +66,12 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
-	public int size() {
-		return providers.stream() //
-				.mapToInt(ParameterProvider::size) //
-				.sum();
-	}
-
-	@Override
 	public Set<String> keySet() {
 		return providers.stream().map(ParameterProvider::keySet).flatMap(Collection::stream).collect(
 			Collectors.toSet());
 	}
 
-	private String getProperty(String key) {
+	private @Nullable String getProperty(String key) {
 		Preconditions.notBlank(key, "key must not be null or blank");
 		return providers.stream() //
 				.map(parameterProvider -> parameterProvider.getValue(key)) //
@@ -93,8 +90,11 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 	static final class Builder {
 
 		private final Map<String, String> explicitParameters = new HashMap<>();
+		private final List<String> configResources = new ArrayList<>();
 		private boolean implicitProvidersEnabled = true;
 		private String configFileName = ConfigurationParameters.CONFIG_FILE_NAME;
+
+		@Nullable
 		private ConfigurationParameters parentConfigurationParameters;
 
 		private Builder() {
@@ -103,6 +103,12 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 		Builder explicitParameters(Map<String, String> parameters) {
 			Preconditions.notNull(parameters, "configuration parameters must not be null");
 			explicitParameters.putAll(parameters);
+			return this;
+		}
+
+		Builder configurationResources(List<String> configResources) {
+			Preconditions.notNull(configResources, "configResources must not be null");
+			this.configResources.addAll(configResources);
 			return this;
 		}
 
@@ -129,6 +135,9 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 				parameterProviders.add(ParameterProvider.explicit(explicitParameters));
 			}
 
+			CollectionUtils.forEachInReverseOrder(configResources,
+				configResource -> parameterProviders.add(ParameterProvider.propertiesFile(configResource)));
+
 			if (parentConfigurationParameters != null) {
 				parameterProviders.add(ParameterProvider.inherited(parentConfigurationParameters));
 			}
@@ -143,24 +152,16 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 
 	private interface ParameterProvider {
 
+		@Nullable
 		String getValue(String key);
-
-		default int size() {
-			return 0;
-		}
 
 		Set<String> keySet();
 
 		static ParameterProvider explicit(Map<String, String> configParams) {
 			return new ParameterProvider() {
 				@Override
-				public String getValue(String key) {
+				public @Nullable String getValue(String key) {
 					return configParams.get(key);
-				}
-
-				@Override
-				public int size() {
-					return configParams.size();
 				}
 
 				@Override
@@ -180,7 +181,7 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 		static ParameterProvider systemProperties() {
 			return new ParameterProvider() {
 				@Override
-				public String getValue(String key) {
+				public @Nullable String getValue(String key) {
 					try {
 						return System.getProperty(key);
 					}
@@ -203,7 +204,7 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 
 		static ParameterProvider propertiesFile(String configFileName) {
 			Preconditions.notBlank(configFileName, "configFileName must not be null or blank");
-			Properties properties = loadClasspathResource(configFileName.trim());
+			Properties properties = loadClasspathResource(configFileName.strip());
 			return new ParameterProvider() {
 				@Override
 				public String getValue(String key) {
@@ -227,14 +228,8 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 		static ParameterProvider inherited(ConfigurationParameters configParams) {
 			return new ParameterProvider() {
 				@Override
-				public String getValue(String key) {
+				public @Nullable String getValue(String key) {
 					return configParams.get(key).orElse(null);
-				}
-
-				@Override
-				@SuppressWarnings("deprecation")
-				public int size() {
-					return configParams.size();
 				}
 
 				@Override
@@ -261,15 +256,23 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 			Set<URL> resources = new LinkedHashSet<>(Collections.list(classLoader.getResources(configFileName)));
 
 			if (!resources.isEmpty()) {
+
+				URL configFileUrl = CollectionUtils.getFirstElement(resources).get();
+
 				if (resources.size() > 1) {
-					logger.warn(() -> String.format(
-						"Discovered %d '%s' configuration files in the classpath; only the first will be used.",
-						resources.size(), configFileName));
+					logger.warn(() -> {
+						String formattedResourceList = Stream.concat( //
+							Stream.of(configFileUrl + " (*)"), //
+							resources.stream().skip(1).map(URL::toString) //
+						).collect(joining("\n- ", "\n- ", ""));
+						return "Discovered %d '%s' configuration files on the classpath (see below); only the first (*) will be used.%s".formatted(
+							resources.size(), configFileName, formattedResourceList);
+					});
 				}
 
-				URL configFileUrl = resources.iterator().next(); // same as List#get(0)
-				logger.config(() -> String.format(
-					"Loading JUnit Platform configuration parameters from classpath resource [%s].", configFileUrl));
+				logger.config(
+					() -> "Loading JUnit Platform configuration parameters from classpath resource [%s].".formatted(
+						configFileUrl));
 				URLConnection urlConnection = configFileUrl.openConnection();
 				urlConnection.setUseCaches(false);
 				try (InputStream inputStream = urlConnection.getInputStream()) {
@@ -279,8 +282,7 @@ class LauncherConfigurationParameters implements ConfigurationParameters {
 		}
 		catch (Exception ex) {
 			logger.warn(ex,
-				() -> String.format(
-					"Failed to load JUnit Platform configuration parameters from classpath resource [%s].",
+				() -> "Failed to load JUnit Platform configuration parameters from classpath resource [%s].".formatted(
 					configFileName));
 		}
 

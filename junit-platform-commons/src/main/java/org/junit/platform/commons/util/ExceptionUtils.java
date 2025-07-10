@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -14,6 +14,15 @@ import static org.apiguardian.api.API.Status.INTERNAL;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import org.apiguardian.api.API;
 
@@ -30,6 +39,11 @@ import org.apiguardian.api.API;
  */
 @API(status = INTERNAL, since = "1.0")
 public final class ExceptionUtils {
+
+	private static final String JUNIT_PLATFORM_LAUNCHER_PACKAGE_PREFIX = "org.junit.platform.launcher.";
+
+	private static final Predicate<String> STACK_TRACE_ELEMENT_FILTER = ClassNamePatternFilterUtils //
+			.excludeMatchingClassNames("org.junit.*,jdk.internal.reflect.*,sun.reflect.*");
 
 	private ExceptionUtils() {
 		/* no-op */
@@ -57,14 +71,13 @@ public final class ExceptionUtils {
 	 */
 	public static RuntimeException throwAsUncheckedException(Throwable t) {
 		Preconditions.notNull(t, "Throwable must not be null");
-		ExceptionUtils.throwAs(t);
-
-		// Appeasing the compiler: the following line will never be executed.
-		return null;
+		// The following line will never actually return an exception but rather
+		// throw t masked as a RuntimeException.
+		return ExceptionUtils.throwAs(t);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T extends Throwable> void throwAs(Throwable t) throws T {
+	private static <T extends Throwable> T throwAs(Throwable t) throws T {
 		throw (T) t;
 	}
 
@@ -78,6 +91,87 @@ public final class ExceptionUtils {
 			throwable.printStackTrace(printWriter);
 		}
 		return stringWriter.toString();
+	}
+
+	/**
+	 * Prune the stack trace of the supplied {@link Throwable} by removing
+	 * {@linkplain StackTraceElement stack trace elements} from the {@code org.junit},
+	 * {@code jdk.internal.reflect}, and {@code sun.reflect} packages. If a
+	 * {@code StackTraceElement} matching one of the supplied {@code classNames}
+	 * is encountered, all subsequent elements in the stack trace will be retained.
+	 *
+	 * <p>Additionally, all elements prior to and including the first JUnit Platform
+	 * Launcher call will be removed.
+	 *
+	 * @param throwable the {@code Throwable} whose stack trace should be pruned;
+	 * never {@code null}
+	 * @param classNames the class names that should stop the pruning if encountered;
+	 * never {@code null}
+	 *
+	 * @since 1.10
+	 */
+	@API(status = INTERNAL, since = "1.10")
+	public static void pruneStackTrace(Throwable throwable, List<String> classNames) {
+		Preconditions.notNull(throwable, "Throwable must not be null");
+		Preconditions.notNull(classNames, "List of class names must not be null");
+
+		List<StackTraceElement> stackTrace = Arrays.asList(throwable.getStackTrace());
+		List<StackTraceElement> prunedStackTrace = new ArrayList<>();
+
+		Collections.reverse(stackTrace);
+
+		for (int i = 0; i < stackTrace.size(); i++) {
+			StackTraceElement element = stackTrace.get(i);
+			String className = element.getClassName();
+
+			if (classNames.contains(className)) {
+				// Include all elements called by the test
+				prunedStackTrace.addAll(stackTrace.subList(i, stackTrace.size()));
+				break;
+			}
+			else if (className.startsWith(JUNIT_PLATFORM_LAUNCHER_PACKAGE_PREFIX)) {
+				prunedStackTrace.clear();
+			}
+			else if (STACK_TRACE_ELEMENT_FILTER.test(className)) {
+				prunedStackTrace.add(element);
+			}
+		}
+
+		Collections.reverse(prunedStackTrace);
+		throwable.setStackTrace(prunedStackTrace.toArray(new StackTraceElement[0]));
+	}
+
+	/**
+	 * Find all causes and suppressed exceptions in the stack trace of the
+	 * supplied {@link Throwable}.
+	 *
+	 * @param rootThrowable the {@code Throwable} to explore; never {@code null}
+	 * @return an immutable list of all throwables found, including the supplied
+	 * one; never {@code null}
+	 *
+	 * @since 1.10
+	 */
+	@API(status = INTERNAL, since = "1.10")
+	public static List<Throwable> findNestedThrowables(Throwable rootThrowable) {
+		Preconditions.notNull(rootThrowable, "Throwable must not be null");
+
+		Set<Throwable> visited = new LinkedHashSet<>();
+		Deque<Throwable> toVisit = new ArrayDeque<>();
+		toVisit.add(rootThrowable);
+
+		while (!toVisit.isEmpty()) {
+			Throwable current = toVisit.remove();
+			boolean isFirstVisit = visited.add(current);
+			if (isFirstVisit) {
+				Throwable cause = current.getCause();
+				if (cause != null) {
+					toVisit.add(cause);
+				}
+				toVisit.addAll(Arrays.asList(current.getSuppressed()));
+			}
+		}
+
+		return List.copyOf(visited);
 	}
 
 }

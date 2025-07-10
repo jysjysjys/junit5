@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,14 +10,17 @@
 
 package org.junit.platform.suite.engine;
 
+import java.io.Serial;
+
 import org.junit.platform.commons.JUnitException;
 
 class NoTestsDiscoveredException extends JUnitException {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	NoTestsDiscoveredException(Class<?> suiteClass) {
-		super(String.format("Suite [%s] did not discover any tests", suiteClass.getName()));
+		super("Suite [%s] did not discover any tests".formatted(suiteClass.getName()));
 	}
 
 }

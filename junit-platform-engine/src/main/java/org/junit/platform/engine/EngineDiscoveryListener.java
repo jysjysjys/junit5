@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -11,6 +11,7 @@
 package org.junit.platform.engine;
 
 import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import org.apiguardian.api.API;
 
@@ -29,7 +30,7 @@ import org.apiguardian.api.API;
  * @since 1.6
  * @see EngineDiscoveryRequest#getDiscoveryListener()
  */
-@API(status = EXPERIMENTAL, since = "1.6")
+@API(status = STABLE, since = "1.10")
 public interface EngineDiscoveryListener {
 
 	/**
@@ -51,6 +52,19 @@ public interface EngineDiscoveryListener {
 	 * @see SelectorResolutionResult
 	 */
 	default void selectorProcessed(UniqueId engineId, DiscoverySelector selector, SelectorResolutionResult result) {
+	}
+
+	/**
+	 * Called when the engine with the supplied {@code engineId} encountered an
+	 * issue during test discovery.
+	 *
+	 * @param engineId the unique ID of the engine descriptor
+	 * @param issue the encountered issue
+	 * @since 1.13
+	 * @see DiscoveryIssue
+	 */
+	@API(status = EXPERIMENTAL, since = "6.0")
+	default void issueEncountered(UniqueId engineId, DiscoveryIssue issue) {
 	}
 
 }

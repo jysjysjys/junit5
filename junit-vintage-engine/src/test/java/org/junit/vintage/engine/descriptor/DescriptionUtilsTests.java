@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -20,8 +20,7 @@ import org.junit.internal.builders.AllDefaultPossibilitiesBuilder;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
-import org.junit.platform.commons.util.ClassFilter;
-import org.junit.platform.commons.util.ReflectionUtils;
+import org.junit.platform.commons.support.ReflectionSupport;
 import org.junit.runner.Description;
 import org.junit.vintage.engine.discovery.IsPotentialJUnit4TestClass;
 
@@ -32,8 +31,8 @@ class DescriptionUtilsTests {
 
 	@TestFactory
 	Stream<DynamicNode> computedMethodNameCorrectly() {
-		var classFilter = ClassFilter.of(new IsPotentialJUnit4TestClass());
-		var testClasses = ReflectionUtils.findAllClassesInPackage("org.junit.vintage.engine.samples", classFilter);
+		var testClasses = ReflectionSupport.findAllClassesInPackage("org.junit.vintage.engine.samples",
+			new IsPotentialJUnit4TestClass(), name -> true);
 		return testClasses.stream().flatMap(this::toDynamicTests);
 	}
 
@@ -49,8 +48,8 @@ class DescriptionUtilsTests {
 
 	Stream<DynamicNode> toDynamicTests(Stream<Description> children) {
 		return children.map(description -> description.isTest() //
-				? toDynamicTest(description, "child: " + description.toString()) //
-				: dynamicContainer("class: " + description.toString(), Stream.concat( //
+				? toDynamicTest(description, "child: " + description) //
+				: dynamicContainer("class: " + description, Stream.concat( //
 					Stream.of(toDynamicTest(description, "self")), //
 					toDynamicTests(description.getChildren().stream()))));
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -37,6 +37,7 @@ class PrefixedConfigurationParametersTests {
 	@Mock
 	private ConfigurationParameters delegate;
 
+	@SuppressWarnings({ "DataFlowIssue", "NullAway" })
 	@Test
 	void preconditions() {
 		assertThrows(PreconditionViolationException.class, () -> new PrefixedConfigurationParameters(null, "example."));
@@ -74,17 +75,6 @@ class PrefixedConfigurationParametersTests {
 		assertThat(parameters.get("qux", transformer)).contains("QUX");
 
 		verify(delegate).get("foo.bar.qux", transformer);
-	}
-
-	@Test
-	@SuppressWarnings("deprecation")
-	void delegatesSizeCalls() {
-		when(delegate.size()).thenReturn(42);
-		var parameters = new PrefixedConfigurationParameters(delegate, "foo.bar.");
-
-		assertThat(parameters.size()).isEqualTo(42);
-
-		verify(delegate).size();
 	}
 
 }

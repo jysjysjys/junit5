@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -12,6 +12,8 @@ package org.junit.platform.engine.support.hierarchical;
 
 import java.util.concurrent.Future;
 
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.engine.CancellationToken;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestDescriptor;
@@ -46,15 +48,24 @@ class HierarchicalTestExecutor<C extends EngineExecutionContext> {
 		this.throwableCollectorFactory = throwableCollectorFactory;
 	}
 
-	Future<Void> execute() {
+	Future<@Nullable Void> execute() {
+		return this.executorService.submit(createRootTestTask());
+	}
+
+	private NodeTestTask<C> createRootTestTask() {
+		NodeTestTaskContext taskContext = createTaskContext();
 		TestDescriptor rootTestDescriptor = this.request.getRootTestDescriptor();
-		EngineExecutionListener executionListener = this.request.getEngineExecutionListener();
-		NodeExecutionAdvisor executionAdvisor = new NodeTreeWalker().walk(rootTestDescriptor);
-		NodeTestTaskContext taskContext = new NodeTestTaskContext(executionListener, this.executorService,
-			this.throwableCollectorFactory, executionAdvisor);
 		NodeTestTask<C> rootTestTask = new NodeTestTask<>(taskContext, rootTestDescriptor);
 		rootTestTask.setParentContext(this.rootContext);
-		return this.executorService.submit(rootTestTask);
+		return rootTestTask;
+	}
+
+	private NodeTestTaskContext createTaskContext() {
+		EngineExecutionListener executionListener = this.request.getEngineExecutionListener();
+		NodeExecutionAdvisor executionAdvisor = new NodeTreeWalker().walk(this.request.getRootTestDescriptor());
+		CancellationToken cancellationToken = this.request.getCancellationToken();
+		return new NodeTestTaskContext(executionListener, this.executorService, this.throwableCollectorFactory,
+			executionAdvisor, cancellationToken);
 	}
 
 }

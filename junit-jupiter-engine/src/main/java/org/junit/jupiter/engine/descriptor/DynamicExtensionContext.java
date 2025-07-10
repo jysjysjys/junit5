@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,15 +10,18 @@
 
 package org.junit.jupiter.engine.descriptor;
 
+import static java.util.Collections.emptyList;
+
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestInstances;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
+import org.junit.jupiter.engine.extension.ExtensionRegistry;
 import org.junit.platform.engine.EngineExecutionListener;
 import org.junit.platform.engine.support.hierarchical.Node;
 
@@ -26,8 +29,8 @@ class DynamicExtensionContext extends AbstractExtensionContext<DynamicNodeTestDe
 
 	DynamicExtensionContext(ExtensionContext parent, EngineExecutionListener engineExecutionListener,
 			DynamicNodeTestDescriptor testDescriptor, JupiterConfiguration configuration,
-			ExecutableInvoker executableInvoker) {
-		super(parent, engineExecutionListener, testDescriptor, configuration, executableInvoker);
+			ExtensionRegistry extensionRegistry, LauncherStoreFacade launcherStoreFacade) {
+		super(parent, engineExecutionListener, testDescriptor, configuration, extensionRegistry, launcherStoreFacade);
 	}
 
 	@Override
@@ -38,6 +41,11 @@ class DynamicExtensionContext extends AbstractExtensionContext<DynamicNodeTestDe
 	@Override
 	public Optional<Class<?>> getTestClass() {
 		return Optional.empty();
+	}
+
+	@Override
+	public List<Class<?>> getEnclosingTestClasses() {
+		return emptyList();
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,8 +10,11 @@
 
 package org.junit.platform.engine.support.hierarchical;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.naturalOrder;
+import static org.apiguardian.api.API.Status.STABLE;
 
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 
@@ -27,7 +30,7 @@ import org.junit.platform.engine.support.hierarchical.Node.ExecutionMode;
  * @since 1.3
  * @see Node#getExecutionMode()
  */
-@API(status = EXPERIMENTAL, since = "1.3")
+@API(status = STABLE, since = "1.10")
 public class ExclusiveResource {
 
 	/**
@@ -44,11 +47,19 @@ public class ExclusiveResource {
 	 *
 	 * @since 1.7
 	 */
-	@API(status = EXPERIMENTAL, since = "1.7")
+	@API(status = STABLE, since = "1.10")
 	public static final String GLOBAL_KEY = "org.junit.platform.engine.support.hierarchical.ExclusiveResource.GLOBAL_KEY";
 
 	static final ExclusiveResource GLOBAL_READ = new ExclusiveResource(GLOBAL_KEY, LockMode.READ);
 	static final ExclusiveResource GLOBAL_READ_WRITE = new ExclusiveResource(GLOBAL_KEY, LockMode.READ_WRITE);
+
+	static final Comparator<ExclusiveResource> COMPARATOR //
+		= comparing(ExclusiveResource::getKey, globalKeyFirst().thenComparing(naturalOrder())) //
+				.thenComparing(ExclusiveResource::getLockMode);
+
+	private static Comparator<String> globalKeyFirst() {
+		return comparing(key -> !GLOBAL_KEY.equals(key));
+	}
 
 	private final String key;
 	private final LockMode lockMode;

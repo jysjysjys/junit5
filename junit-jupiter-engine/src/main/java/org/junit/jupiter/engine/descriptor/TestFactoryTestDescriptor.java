@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -18,11 +18,14 @@ import static org.junit.platform.engine.support.descriptor.ClasspathResourceSour
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicContainer;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
@@ -33,7 +36,6 @@ import org.junit.jupiter.engine.execution.InterceptingExecutableInvoker;
 import org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.ReflectiveInterceptorCall;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.platform.commons.JUnitException;
-import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.commons.util.CollectionUtils;
 import org.junit.platform.commons.util.Preconditions;
 import org.junit.platform.engine.TestDescriptor;
@@ -57,14 +59,29 @@ public class TestFactoryTestDescriptor extends TestMethodTestDescriptor implemen
 	public static final String DYNAMIC_CONTAINER_SEGMENT_TYPE = "dynamic-container";
 	public static final String DYNAMIC_TEST_SEGMENT_TYPE = "dynamic-test";
 
-	private static final ReflectiveInterceptorCall<Method, Object> interceptorCall = InvocationInterceptor::interceptTestFactoryMethod;
+	private static final ReflectiveInterceptorCall<Method, @Nullable Object> interceptorCall = InvocationInterceptor::interceptTestFactoryMethod;
 	private static final InterceptingExecutableInvoker executableInvoker = new InterceptingExecutableInvoker();
 
-	private final DynamicDescendantFilter dynamicDescendantFilter = new DynamicDescendantFilter();
+	private final DynamicDescendantFilter dynamicDescendantFilter;
 
 	public TestFactoryTestDescriptor(UniqueId uniqueId, Class<?> testClass, Method testMethod,
-			JupiterConfiguration configuration) {
-		super(uniqueId, testClass, testMethod, configuration);
+			Supplier<List<Class<?>>> enclosingInstanceTypes, JupiterConfiguration configuration) {
+		super(uniqueId, testClass, testMethod, enclosingInstanceTypes, configuration);
+		this.dynamicDescendantFilter = new DynamicDescendantFilter();
+	}
+
+	private TestFactoryTestDescriptor(UniqueId uniqueId, String displayName, Class<?> testClass, Method testMethod,
+			JupiterConfiguration configuration, DynamicDescendantFilter dynamicDescendantFilter) {
+		super(uniqueId, displayName, testClass, testMethod, configuration);
+		this.dynamicDescendantFilter = dynamicDescendantFilter;
+	}
+
+	// --- JupiterTestDescriptor -----------------------------------------------
+
+	@Override
+	protected TestFactoryTestDescriptor withUniqueId(UnaryOperator<UniqueId> uniqueIdTransformer) {
+		return new TestFactoryTestDescriptor(uniqueIdTransformer.apply(getUniqueId()), getDisplayName(), getTestClass(),
+			getTestMethod(), this.configuration, this.dynamicDescendantFilter.copy(uniqueIdTransformer));
 	}
 
 	// --- Filterable ----------------------------------------------------------
@@ -94,8 +111,8 @@ public class TestFactoryTestDescriptor extends TestMethodTestDescriptor implemen
 
 		context.getThrowableCollector().execute(() -> {
 			Object instance = extensionContext.getRequiredTestInstance();
-			Object testFactoryMethodResult = executableInvoker.invoke(getTestMethod(), instance, extensionContext,
-				context.getExtensionRegistry(), interceptorCall);
+			Object testFactoryMethodResult = executableInvoker.<@Nullable Object> invoke(getTestMethod(), instance,
+				extensionContext, context.getExtensionRegistry(), interceptorCall);
 			TestSource defaultTestSource = getSource().orElseThrow(
 				() -> new JUnitException("Illegal state: TestSource must be present"));
 			try (Stream<DynamicNode> dynamicNodeStream = toDynamicNodeStream(testFactoryMethodResult)) {
@@ -117,21 +134,18 @@ public class TestFactoryTestDescriptor extends TestMethodTestDescriptor implemen
 	}
 
 	@SuppressWarnings("unchecked")
-	private Stream<DynamicNode> toDynamicNodeStream(Object testFactoryMethodResult) {
-		if (testFactoryMethodResult instanceof DynamicNode) {
-			return Stream.of((DynamicNode) testFactoryMethodResult);
+	private Stream<DynamicNode> toDynamicNodeStream(@Nullable Object testFactoryMethodResult) {
+		if (testFactoryMethodResult == null) {
+			throw new JUnitException("@TestFactory method must not return null");
 		}
-		try {
-			return (Stream<DynamicNode>) CollectionUtils.toStream(testFactoryMethodResult);
+		if (testFactoryMethodResult instanceof DynamicNode node) {
+			return Stream.of(node);
 		}
-		catch (PreconditionViolationException ex) {
-			throw invalidReturnTypeException(ex);
-		}
+		return (Stream<DynamicNode>) CollectionUtils.toStream(testFactoryMethodResult);
 	}
 
 	private JUnitException invalidReturnTypeException(Throwable cause) {
-		String message = String.format(
-			"@TestFactory method [%s] must return a single %2$s or a Stream, Collection, Iterable, Iterator, or array of %2$s.",
+		String message = "Objects produced by @TestFactory method '%s' must be of type %s.".formatted(
 			getTestMethod().toGenericString(), DynamicNode.class.getName());
 		return new JUnitException(message, cause);
 	}
@@ -145,8 +159,7 @@ public class TestFactoryTestDescriptor extends TestMethodTestDescriptor implemen
 		Optional<TestSource> customTestSource = node.getTestSourceUri().map(TestFactoryTestDescriptor::fromUri);
 		TestSource source = customTestSource.orElse(defaultTestSource);
 
-		if (node instanceof DynamicTest) {
-			DynamicTest test = (DynamicTest) node;
+		if (node instanceof DynamicTest test) {
 			uniqueId = parent.getUniqueId().append(DYNAMIC_TEST_SEGMENT_TYPE, "#" + index);
 			descriptorCreator = () -> new DynamicTestTestDescriptor(uniqueId, index, test, source, configuration);
 		}

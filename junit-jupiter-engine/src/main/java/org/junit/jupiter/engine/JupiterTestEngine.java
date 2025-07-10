@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -19,6 +19,7 @@ import org.junit.jupiter.engine.config.CachingJupiterConfiguration;
 import org.junit.jupiter.engine.config.DefaultJupiterConfiguration;
 import org.junit.jupiter.engine.config.JupiterConfiguration;
 import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
+import org.junit.jupiter.engine.descriptor.LauncherStoreFacade;
 import org.junit.jupiter.engine.discovery.DiscoverySelectorResolver;
 import org.junit.jupiter.engine.execution.JupiterEngineExecutionContext;
 import org.junit.jupiter.engine.support.JupiterThrowableCollectorFactory;
@@ -27,6 +28,7 @@ import org.junit.platform.engine.ExecutionRequest;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.config.PrefixedConfigurationParameters;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter;
 import org.junit.platform.engine.support.hierarchical.ForkJoinPoolHierarchicalTestExecutorService;
 import org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine;
 import org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutorService;
@@ -63,10 +65,13 @@ public final class JupiterTestEngine extends HierarchicalTestEngine<JupiterEngin
 
 	@Override
 	public TestDescriptor discover(EngineDiscoveryRequest discoveryRequest, UniqueId uniqueId) {
+		DiscoveryIssueReporter issueReporter = DiscoveryIssueReporter.deduplicating(
+			DiscoveryIssueReporter.forwarding(discoveryRequest.getDiscoveryListener(), uniqueId));
 		JupiterConfiguration configuration = new CachingJupiterConfiguration(
-			new DefaultJupiterConfiguration(discoveryRequest.getConfigurationParameters()));
+			new DefaultJupiterConfiguration(discoveryRequest.getConfigurationParameters(),
+				discoveryRequest.getOutputDirectoryProvider(), issueReporter));
 		JupiterEngineDescriptor engineDescriptor = new JupiterEngineDescriptor(uniqueId, configuration);
-		new DiscoverySelectorResolver().resolveSelectors(discoveryRequest, engineDescriptor);
+		DiscoverySelectorResolver.resolveSelectors(discoveryRequest, engineDescriptor, issueReporter);
 		return engineDescriptor;
 	}
 
@@ -82,8 +87,8 @@ public final class JupiterTestEngine extends HierarchicalTestEngine<JupiterEngin
 
 	@Override
 	protected JupiterEngineExecutionContext createExecutionContext(ExecutionRequest request) {
-		return new JupiterEngineExecutionContext(request.getEngineExecutionListener(),
-			getJupiterConfiguration(request));
+		return new JupiterEngineExecutionContext(request.getEngineExecutionListener(), getJupiterConfiguration(request),
+			new LauncherStoreFacade(request.getStore()));
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,11 +10,12 @@
 
 package org.junit.platform.launcher;
 
-import static org.apiguardian.api.API.Status.EXPERIMENTAL;
+import static org.apiguardian.api.API.Status.STABLE;
 
 import java.util.Optional;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
 import org.junit.platform.commons.util.ToStringBuilder;
 
 /**
@@ -26,7 +27,7 @@ import org.junit.platform.commons.util.ToStringBuilder;
  *
  * @since 1.6
  */
-@API(status = EXPERIMENTAL, since = "1.6")
+@API(status = STABLE, since = "1.10")
 public class EngineDiscoveryResult {
 
 	/**
@@ -66,14 +67,15 @@ public class EngineDiscoveryResult {
 	 * {@code null}
 	 * @return the {@code EngineDiscoveryResult}; never {@code null}
 	 */
-	public static EngineDiscoveryResult failed(Throwable throwable) {
+	public static EngineDiscoveryResult failed(@Nullable Throwable throwable) {
 		return new EngineDiscoveryResult(Status.FAILED, throwable);
 	}
 
 	private final Status status;
-	private final Throwable throwable;
 
-	private EngineDiscoveryResult(Status status, Throwable throwable) {
+	private final @Nullable Throwable throwable;
+
+	private EngineDiscoveryResult(Status status, @Nullable Throwable throwable) {
 		this.status = status;
 		this.throwable = throwable;
 	}
@@ -100,11 +102,11 @@ public class EngineDiscoveryResult {
 	@Override
 	public String toString() {
 		// @formatter:off
-        return new ToStringBuilder(this)
-                .append("status", status)
-                .append("throwable", throwable)
-                .toString();
-        // @formatter:on
+		return new ToStringBuilder(this)
+				.append("status", status)
+				.append("throwable", throwable)
+				.toString();
+		// @formatter:on
 	}
 
 }

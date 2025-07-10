@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.jupiter.api.condition;
 
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
 import java.lang.annotation.Documented;
@@ -24,15 +25,26 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * {@code @EnabledForJreRange} is used to signal that the annotated test class or
  * test method is only <em>enabled</em> for a specific range of Java Runtime
- * Environment (JRE) versions from {@link #min} to {@link #max}.
+ * Environment (JRE) versions.
+ *
+ * <p>Version ranges can be specified as {@link JRE} enum constants via
+ * {@link #min min} and {@link #max max} or as integers via
+ * {@link #minVersion minVersion} and {@link #maxVersion maxVersion}.
  *
  * <p>When applied at the class level, all test methods within that class will
  * be enabled on the same specified JRE versions.
  *
- * <p>If a test method is disabled via this annotation, that does not prevent
- * the test class from being instantiated. Rather, it prevents the execution of
- * the test method and method-level lifecycle callbacks such as {@code @BeforeEach}
- * methods, {@code @AfterEach} methods, and corresponding extension APIs.
+ * <p>This annotation is not {@link java.lang.annotation.Inherited @Inherited}.
+ * Consequently, if you wish to apply the same semantics to a subclass, this
+ * annotation must be redeclared on the subclass.
+ *
+ * <p>If a test method is disabled via this annotation, that prevents execution
+ * of the test method and method-level lifecycle callbacks such as
+ * {@code @BeforeEach} methods, {@code @AfterEach} methods, and corresponding
+ * extension APIs. However, that does not prevent the test class from being
+ * instantiated, and it does not prevent the execution of class-level lifecycle
+ * callbacks such as {@code @BeforeAll} methods, {@code @AfterAll} methods, and
+ * corresponding extension APIs.
  *
  * <p>This annotation may be used as a meta-annotation in order to create a
  * custom <em>composed annotation</em> that inherits the semantics of this
@@ -75,28 +87,78 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public @interface EnabledForJreRange {
 
 	/**
-	 * Java Runtime Environment version which should be used as the lower boundary
-	 * for the version range that determines if the annotated class or method
-	 * should be enabled.
+	 * Java Runtime Environment version which is used as the lower boundary for
+	 * the version range that determines if the annotated class or method should
+	 * be enabled, specified as a {@link JRE} enum constant.
 	 *
-	 * <p>Defaults to {@link JRE#JAVA_8 JAVA_8}, as this is the lowest
-	 * supported JRE version.
+	 * <p>If a {@code JRE} enum constant does not exist for a particular JRE
+	 * version, you can specify the minimum version via
+	 * {@link #minVersion() minVersion} instead.
+	 *
+	 * <p>Defaults to {@link JRE#UNDEFINED UNDEFINED}, which will be interpreted
+	 * as {@link JRE#JAVA_17 JAVA_17} if the {@link #minVersion() minVersion} is
+	 * not set.
 	 *
 	 * @see JRE
+	 * @see #minVersion()
 	 */
-	JRE min() default JRE.JAVA_8;
+	JRE min() default JRE.UNDEFINED;
 
 	/**
-	 * Java Runtime Environment version which should be used as the upper boundary
-	 * for the version range that determines if the annotated class or method
-	 * should be enabled.
+	 * Java Runtime Environment version which is used as the upper boundary for
+	 * the version range that determines if the annotated class or method should
+	 * be enabled, specified as a {@link JRE} enum constant.
 	 *
-	 * <p>Defaults to {@link JRE#OTHER OTHER}, as this will always be the highest
-	 * possible version.
+	 * <p>If a {@code JRE} enum constant does not exist for a particular JRE
+	 * version, you can specify the maximum version via
+	 * {@link #maxVersion() maxVersion} instead.
+	 *
+	 * <p>Defaults to {@link JRE#UNDEFINED UNDEFINED}, which will be interpreted
+	 * as {@link JRE#OTHER OTHER} if the {@link #maxVersion() maxVersion} is not
+	 * set.
 	 *
 	 * @see JRE
+	 * @see #maxVersion()
 	 */
-	JRE max() default JRE.OTHER;
+	JRE max() default JRE.UNDEFINED;
+
+	/**
+	 * Java Runtime Environment version which is used as the lower boundary for
+	 * the version range that determines if the annotated class or method should
+	 * be enabled, specified as an integer.
+	 *
+	 * <p>If a {@code JRE} enum constant exists for the particular JRE version,
+	 * you can specify the minimum version via {@link #min() min} instead.
+	 *
+	 * <p>Defaults to {@code -1} to signal that {@link #min() min} should be used
+	 * instead.
+	 *
+	 * @since 5.12
+	 * @see #min()
+	 * @see JRE#version()
+	 * @see Runtime.Version#feature()
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	int minVersion() default -1;
+
+	/**
+	 * Java Runtime Environment version which is used as the upper boundary for
+	 * the version range that determines if the annotated class or method should
+	 * be enabled, specified as an integer.
+	 *
+	 * <p>If a {@code JRE} enum constant exists for the particular JRE version,
+	 * you can specify the maximum version via {@link #max() max} instead.
+	 *
+	 * <p>Defaults to {@code -1} to signal that {@link #max() max} should be used
+	 * instead.
+	 *
+	 * @since 5.12
+	 * @see #max()
+	 * @see JRE#version()
+	 * @see Runtime.Version#feature()
+	 */
+	@API(status = MAINTAINED, since = "5.13.3")
+	int maxVersion() default -1;
 
 	/**
 	 * Custom reason to provide if the test or container is disabled.

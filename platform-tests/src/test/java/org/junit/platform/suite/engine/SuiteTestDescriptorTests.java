@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,18 +10,17 @@
 
 package org.junit.platform.suite.engine;
 
-import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.toSet;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.engine.descriptor.ClassTestDescriptor;
 import org.junit.jupiter.engine.descriptor.JupiterEngineDescriptor;
 import org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor;
@@ -29,6 +28,9 @@ import org.junit.platform.commons.PreconditionViolationException;
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
+import org.junit.platform.engine.reporting.OutputDirectoryProvider;
+import org.junit.platform.engine.support.discovery.DiscoveryIssueReporter;
+import org.junit.platform.launcher.core.OutputDirectoryProviders;
 import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.engine.testcases.SingleTestTestCase;
 import org.junit.platform.suite.engine.testsuites.SelectClassesSuite;
@@ -37,60 +39,67 @@ import org.junit.platform.suite.engine.testsuites.SelectClassesSuite;
  * @since 1.8
  */
 class SuiteTestDescriptorTests {
-	@Suite
-	static class TestSuite {
 
-	}
-	UniqueId engineId = UniqueId.forEngine(SuiteEngineDescriptor.ENGINE_ID);
-	UniqueId suiteId = engineId.append(SuiteTestDescriptor.SEGMENT_TYPE, "test");
-	UniqueId jupiterEngineId = suiteId.append("engine", JupiterEngineDescriptor.ENGINE_ID);
-	UniqueId testClassId = jupiterEngineId.append(ClassTestDescriptor.SEGMENT_TYPE, SingleTestTestCase.class.getName());
-	UniqueId methodId = testClassId.append(TestMethodTestDescriptor.SEGMENT_TYPE, "test()");
+	final UniqueId engineId = UniqueId.forEngine(SuiteEngineDescriptor.ENGINE_ID);
+	final UniqueId suiteId = engineId.append(SuiteTestDescriptor.SEGMENT_TYPE, "test");
+	final UniqueId jupiterEngineId = suiteId.append("engine", JupiterEngineDescriptor.ENGINE_ID);
+	final UniqueId testClassId = jupiterEngineId.append(ClassTestDescriptor.SEGMENT_TYPE,
+		SingleTestTestCase.class.getName());
+	final UniqueId methodId = testClassId.append(TestMethodTestDescriptor.SEGMENT_TYPE,
+		"test(%s)".formatted(TestReporter.class.getName()));
 
-	ConfigurationParameters configurationParameters = new EmptyConfigurationParameters();
-	SuiteTestDescriptor suite = new SuiteTestDescriptor(suiteId, TestSuite.class, configurationParameters);
+	final ConfigurationParameters configurationParameters = new EmptyConfigurationParameters();
+	final OutputDirectoryProvider outputDirectoryProvider = OutputDirectoryProviders.dummyOutputDirectoryProvider();
+	final DiscoveryIssueReporter discoveryIssueReporter = DiscoveryIssueReporter.forwarding(mock(), engineId);
+	final SuiteTestDescriptor suite = new SuiteTestDescriptor(suiteId, TestSuite.class, configurationParameters,
+		outputDirectoryProvider, mock(), discoveryIssueReporter);
 
 	@Test
 	void suiteIsEmptyBeforeDiscovery() {
 		suite.addDiscoveryRequestFrom(SelectClassesSuite.class);
-		assertEquals(emptySet(), suite.getChildren());
+
+		assertThat(suite.getChildren()).isEmpty();
 	}
 
 	@Test
 	void suiteDiscoversTestsFromClass() {
 		suite.addDiscoveryRequestFrom(SelectClassesSuite.class);
 		suite.discover();
-		assertEquals(Set.of(jupiterEngineId, testClassId, methodId),
-			suite.getDescendants().stream().map(TestDescriptor::getUniqueId).collect(toSet()));
+
+		assertThat(suite.getDescendants()).map(TestDescriptor::getUniqueId)//
+				.containsExactly(jupiterEngineId, testClassId, methodId);
 	}
 
 	@Test
-	void suitDiscoversTestsFromUniqueId() {
+	void suiteDiscoversTestsFromUniqueId() {
 		suite.addDiscoveryRequestFrom(methodId);
 		suite.discover();
-		assertEquals(Set.of(jupiterEngineId, testClassId, methodId),
-			suite.getDescendants().stream().map(TestDescriptor::getUniqueId).collect(toSet()));
+
+		assertThat(suite.getDescendants()).map(TestDescriptor::getUniqueId)//
+				.containsExactly(jupiterEngineId, testClassId, methodId);
 	}
 
 	@Test
 	void discoveryPlanCanNotBeModifiedAfterDiscovery() {
 		suite.addDiscoveryRequestFrom(SelectClassesSuite.class);
 		suite.discover();
-		assertAll(() -> {
-			PreconditionViolationException exception = assertThrows(PreconditionViolationException.class,
-				() -> suite.addDiscoveryRequestFrom(SelectClassesSuite.class));
-			assertEquals("discovery request can not be modified after discovery", exception.getMessage());
 
-		}, () -> {
-			PreconditionViolationException exception = assertThrows(PreconditionViolationException.class,
-				() -> suite.addDiscoveryRequestFrom(methodId));
-			assertEquals("discovery request can not be modified after discovery", exception.getMessage());
-		});
+		assertAll(//
+			() -> assertThatExceptionOfType(PreconditionViolationException.class)//
+					.isThrownBy(() -> suite.addDiscoveryRequestFrom(SelectClassesSuite.class))//
+					.withMessage("discovery request cannot be modified after discovery"),
+			() -> assertThatExceptionOfType(PreconditionViolationException.class)//
+					.isThrownBy(() -> suite.addDiscoveryRequestFrom(methodId))//
+					.withMessage("discovery request cannot be modified after discovery"));
 	}
 
 	@Test
 	void suiteMayRegisterTests() {
-		assertTrue(suite.mayRegisterTests());
+		assertThat(suite.mayRegisterTests()).isTrue();
+	}
+
+	@Suite
+	static class TestSuite {
 	}
 
 	private static class EmptyConfigurationParameters implements ConfigurationParameters {
@@ -102,12 +111,6 @@ class SuiteTestDescriptorTests {
 		@Override
 		public Optional<Boolean> getBoolean(String key) {
 			return Optional.empty();
-		}
-
-		@Override
-		@SuppressWarnings("deprecation")
-		public int size() {
-			return 0;
 		}
 
 		@Override

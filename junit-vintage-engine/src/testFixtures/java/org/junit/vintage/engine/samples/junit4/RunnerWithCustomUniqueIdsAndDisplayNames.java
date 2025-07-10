@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -53,29 +53,18 @@ public class RunnerWithCustomUniqueIdsAndDisplayNames extends BlockJUnit4ClassRu
 		return label == null ? fallback.get() : label.value();
 	}
 
-	private static class CustomUniqueId implements Serializable {
+	private record CustomUniqueId(String testName) implements Serializable {
 
 		@Serial
 		private static final long serialVersionUID = 1L;
 
-		private final String testName;
-
-		public CustomUniqueId(String testName) {
-			this.testName = testName;
-		}
-
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof CustomUniqueId) {
-				var that = (CustomUniqueId) obj;
-				return Objects.equals(this.testName, that.testName);
+			if (obj instanceof CustomUniqueId(String name)) {
+				return Objects.equals(this.testName, name);
 			}
 			return false;
 		}
 
-		@Override
-		public int hashCode() {
-			return testName.hashCode();
-		}
 	}
 }

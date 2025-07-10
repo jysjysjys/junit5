@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,14 +10,26 @@
 
 package org.junit.platform.engine.discovery;
 
+import static java.util.Collections.unmodifiableSet;
+import static org.apiguardian.api.API.Status.INTERNAL;
+import static org.apiguardian.api.API.Status.MAINTAINED;
 import static org.apiguardian.api.API.Status.STABLE;
 
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apiguardian.api.API;
+import org.jspecify.annotations.Nullable;
+import org.junit.platform.commons.PreconditionViolationException;
+import org.junit.platform.commons.function.Try;
+import org.junit.platform.commons.support.Resource;
+import org.junit.platform.commons.util.ReflectionUtils;
+import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.commons.util.ToStringBuilder;
 import org.junit.platform.engine.DiscoverySelector;
+import org.junit.platform.engine.DiscoverySelectorIdentifier;
 
 /**
  * A {@link DiscoverySelector} that selects the name of a <em>classpath resource</em>
@@ -31,6 +43,10 @@ import org.junit.platform.engine.DiscoverySelector;
  * {@linkplain Thread#getContextClassLoader() context class loader} of the
  * {@linkplain Thread thread} that uses it.
  *
+ * <p>Note: Since Java 9, all resources are on the module path. Either in
+ * named or unnamed modules. These resources are also considered to be
+ * classpath resources.
+ *
  * @since 1.0
  * @see DiscoverySelectors#selectClasspathResource(String)
  * @see ClasspathRootSelector
@@ -40,12 +56,20 @@ import org.junit.platform.engine.DiscoverySelector;
 public class ClasspathResourceSelector implements DiscoverySelector {
 
 	private final String classpathResourceName;
-	private final FilePosition position;
 
-	ClasspathResourceSelector(String classpathResourceName, FilePosition position) {
+	private final @Nullable FilePosition position;
+
+	private @Nullable Set<Resource> classpathResources;
+
+	ClasspathResourceSelector(String classpathResourceName, @Nullable FilePosition position) {
 		boolean startsWithSlash = classpathResourceName.startsWith("/");
 		this.classpathResourceName = (startsWithSlash ? classpathResourceName.substring(1) : classpathResourceName);
 		this.position = position;
+	}
+
+	ClasspathResourceSelector(Set<Resource> classpathResources) {
+		this(classpathResources.iterator().next().getName(), null);
+		this.classpathResources = unmodifiableSet(new LinkedHashSet<>(classpathResources));
 	}
 
 	/**
@@ -60,6 +84,32 @@ public class ClasspathResourceSelector implements DiscoverySelector {
 	 */
 	public String getClasspathResourceName() {
 		return this.classpathResourceName;
+	}
+
+	/**
+	 * Get the selected {@link Resource resources}.
+	 *
+	 * <p>If the {@link Resource resources} were not provided, but only their name,
+	 * this method attempts to lazily load the {@link Resource resources} based on
+	 * their name and throws a {@link PreconditionViolationException} if the
+	 * resource cannot be loaded.
+	 *
+	 * @since 1.12
+	 */
+	@API(status = MAINTAINED, since = "1.13.3")
+	public Set<Resource> getClasspathResources() {
+		if (this.classpathResources == null) {
+			Try<Set<Resource>> tryToGetResource = ReflectionUtils.tryToGetResources(this.classpathResourceName);
+			Set<Resource> classpathResources = tryToGetResource.getOrThrow( //
+				cause -> new PreconditionViolationException( //
+					"Could not load resource(s) with name: " + this.classpathResourceName, cause));
+			if (classpathResources.isEmpty()) {
+				throw new PreconditionViolationException(
+					"Could not find any resource(s) with name: " + this.classpathResourceName);
+			}
+			this.classpathResources = unmodifiableSet(classpathResources);
+		}
+		return this.classpathResources;
 	}
 
 	/**
@@ -97,8 +147,53 @@ public class ClasspathResourceSelector implements DiscoverySelector {
 
 	@Override
 	public String toString() {
-		return new ToStringBuilder(this).append("classpathResourceName", this.classpathResourceName).append("position",
-			this.position).toString();
+		// @formatter:off
+		return new ToStringBuilder(this)
+				.append("classpathResourceName", this.classpathResourceName)
+				.append("position", this.position)
+				.toString();
+		// @formatter:on
+	}
+
+	@Override
+	public Optional<DiscoverySelectorIdentifier> toIdentifier() {
+		if (this.position == null) {
+			return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX, this.classpathResourceName));
+		}
+		else {
+			return Optional.of(DiscoverySelectorIdentifier.create(IdentifierParser.PREFIX,
+				"%s?%s".formatted(this.classpathResourceName, this.position.toQueryPart())));
+		}
+	}
+
+	/**
+	 * The {@link DiscoverySelectorIdentifierParser} for
+	 * {@link ClasspathResourceSelector ClasspathResourceSelectors}.
+	 */
+	@API(status = INTERNAL, since = "1.11")
+	public static class IdentifierParser implements DiscoverySelectorIdentifierParser {
+
+		private static final String PREFIX = "resource";
+
+		public IdentifierParser() {
+		}
+
+		@Override
+		public String getPrefix() {
+			return PREFIX;
+		}
+
+		@Override
+		public Optional<ClasspathResourceSelector> parse(DiscoverySelectorIdentifier identifier, Context context) {
+			return Optional.of(StringUtils.splitIntoTwo('?', identifier.getValue()).map( //
+				DiscoverySelectors::selectClasspathResource, //
+				(resourceName, query) -> {
+					FilePosition position = FilePosition.fromQuery(query).orElse(null);
+					return DiscoverySelectors.selectClasspathResource(resourceName, position);
+				} //
+			));
+		}
+
 	}
 
 }

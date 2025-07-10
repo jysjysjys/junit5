@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,7 +10,6 @@
 
 package org.junit.vintage.engine.support;
 
-import static java.lang.String.format;
 import static org.apiguardian.api.API.Status.INTERNAL;
 import static org.junit.platform.commons.util.ReflectionUtils.tryToReadFieldValue;
 
@@ -47,7 +46,7 @@ public class UniqueIdReader implements Function<Description, Serializable> {
 		return tryToReadFieldValue(Description.class, fieldName, description)
 				.andThenTry(Serializable.class::cast)
 				.ifFailure(cause -> logger.warn(cause, () ->
-						format("Could not read unique ID for Description; using display name instead: %s", description)))
+						"Could not read unique ID for Description; using display name instead: %s".formatted(description)))
 				.toOptional()
 				.orElseGet(description::getDisplayName);
 		// @formatter:on

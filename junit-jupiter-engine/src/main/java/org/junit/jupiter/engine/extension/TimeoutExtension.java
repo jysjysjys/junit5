@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -10,6 +10,7 @@
 
 package org.junit.jupiter.engine.extension;
 
+import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Timeout.TIMEOUT_MODE_PROPERTY_NAME;
 import static org.junit.jupiter.api.Timeout.ThreadMode.SAME_THREAD;
 
@@ -18,6 +19,7 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.Timeout.ThreadMode;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -46,6 +48,11 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	private static final String DISABLED_ON_DEBUG_MODE_VALUE = "disabled_on_debug";
 
 	@Override
+	public ExtensionContextScope getTestInstantiationExtensionContextScope(ExtensionContext rootContext) {
+		return ExtensionContextScope.TEST_METHOD;
+	}
+
+	@Override
 	public void beforeAll(ExtensionContext context) {
 		readAndStoreTimeoutSoChildrenInheritIt(context);
 	}
@@ -64,7 +71,7 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	}
 
 	@Override
-	public void interceptBeforeAllMethod(Invocation<Void> invocation,
+	public void interceptBeforeAllMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
 		interceptLifecycleMethod(invocation, invocationContext, extensionContext,
@@ -72,7 +79,7 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	}
 
 	@Override
-	public void interceptBeforeEachMethod(Invocation<Void> invocation,
+	public void interceptBeforeEachMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
 		interceptLifecycleMethod(invocation, invocationContext, extensionContext,
@@ -80,31 +87,31 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	}
 
 	@Override
-	public void interceptTestMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext,
-			ExtensionContext extensionContext) throws Throwable {
+	public void interceptTestMethod(Invocation<@Nullable Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
-		interceptTestableMethod(invocation, invocationContext, extensionContext,
+		this.<@Nullable Void> interceptTestableMethod(invocation, invocationContext, extensionContext,
 			TimeoutConfiguration::getDefaultTestMethodTimeout);
 	}
 
 	@Override
-	public void interceptTestTemplateMethod(Invocation<Void> invocation,
+	public void interceptTestTemplateMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
-		interceptTestableMethod(invocation, invocationContext, extensionContext,
+		this.<@Nullable Void> interceptTestableMethod(invocation, invocationContext, extensionContext,
 			TimeoutConfiguration::getDefaultTestTemplateMethodTimeout);
 	}
 
 	@Override
-	public <T> T interceptTestFactoryMethod(Invocation<T> invocation,
+	public <T extends @Nullable Object> T interceptTestFactoryMethod(Invocation<T> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
-		return interceptTestableMethod(invocation, invocationContext, extensionContext,
+		return this.<T> interceptTestableMethod(invocation, invocationContext, extensionContext,
 			TimeoutConfiguration::getDefaultTestFactoryMethodTimeout);
 	}
 
 	@Override
-	public void interceptAfterEachMethod(Invocation<Void> invocation,
+	public void interceptAfterEachMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
 		interceptLifecycleMethod(invocation, invocationContext, extensionContext,
@@ -112,20 +119,21 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	}
 
 	@Override
-	public void interceptAfterAllMethod(Invocation<Void> invocation,
+	public void interceptAfterAllMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
 
 		interceptLifecycleMethod(invocation, invocationContext, extensionContext,
 			TimeoutConfiguration::getDefaultAfterAllMethodTimeout);
 	}
 
-	private void interceptLifecycleMethod(Invocation<Void> invocation,
+	private void interceptLifecycleMethod(Invocation<@Nullable Void> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext,
 			TimeoutProvider defaultTimeoutProvider) throws Throwable {
 
 		TimeoutDuration timeout = readTimeoutFromAnnotation(Optional.of(invocationContext.getExecutable())).orElse(
 			null);
-		intercept(invocation, invocationContext, extensionContext, timeout, defaultTimeoutProvider);
+		this.<@Nullable Void> intercept(invocation, invocationContext, extensionContext, timeout,
+			defaultTimeoutProvider);
 	}
 
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -138,7 +146,7 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 		return AnnotationSupport.findAnnotation(element, Timeout.class).map(Timeout::threadMode);
 	}
 
-	private <T> T interceptTestableMethod(Invocation<T> invocation,
+	private <T extends @Nullable Object> T interceptTestableMethod(Invocation<T> invocation,
 			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext,
 			TimeoutProvider defaultTimeoutProvider) throws Throwable {
 
@@ -147,16 +155,16 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 		return intercept(invocation, invocationContext, extensionContext, timeout, defaultTimeoutProvider);
 	}
 
-	private <T> T intercept(Invocation<T> invocation, ReflectiveInvocationContext<Method> invocationContext,
-			ExtensionContext extensionContext, TimeoutDuration explicitTimeout, TimeoutProvider defaultTimeoutProvider)
-			throws Throwable {
+	private <T extends @Nullable Object> T intercept(Invocation<T> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext,
+			@Nullable TimeoutDuration explicitTimeout, TimeoutProvider defaultTimeoutProvider) throws Throwable {
 
 		TimeoutDuration timeout = explicitTimeout == null ? getDefaultTimeout(extensionContext, defaultTimeoutProvider)
 				: explicitTimeout;
 		return decorate(invocation, invocationContext, extensionContext, timeout).proceed();
 	}
 
-	private TimeoutDuration getDefaultTimeout(ExtensionContext extensionContext,
+	private @Nullable TimeoutDuration getDefaultTimeout(ExtensionContext extensionContext,
 			TimeoutProvider defaultTimeoutProvider) {
 
 		return defaultTimeoutProvider.apply(getGlobalTimeoutConfiguration(extensionContext)).orElse(null);
@@ -164,12 +172,13 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 
 	private TimeoutConfiguration getGlobalTimeoutConfiguration(ExtensionContext extensionContext) {
 		ExtensionContext root = extensionContext.getRoot();
-		return root.getStore(NAMESPACE).getOrComputeIfAbsent(GLOBAL_TIMEOUT_CONFIG_KEY,
-			key -> new TimeoutConfiguration(root), TimeoutConfiguration.class);
+		return requireNonNull(root.getStore(NAMESPACE).getOrComputeIfAbsent(GLOBAL_TIMEOUT_CONFIG_KEY,
+			key -> new TimeoutConfiguration(root), TimeoutConfiguration.class));
 	}
 
-	private <T> Invocation<T> decorate(Invocation<T> invocation, ReflectiveInvocationContext<Method> invocationContext,
-			ExtensionContext extensionContext, TimeoutDuration timeout) {
+	private <T extends @Nullable Object> Invocation<T> decorate(Invocation<T> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext,
+			@Nullable TimeoutDuration timeout) {
 
 		if (timeout == null || isTimeoutDisabled(extensionContext)) {
 			return invocation;
@@ -177,8 +186,8 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 
 		ThreadMode threadMode = resolveTimeoutThreadMode(extensionContext);
 		return new TimeoutInvocationFactory(extensionContext.getRoot().getStore(NAMESPACE)).create(threadMode,
-			new TimeoutInvocationParameters<>(invocation, timeout,
-				() -> describe(invocationContext, extensionContext)));
+			new TimeoutInvocationParameters<>(invocation, timeout, () -> describe(invocationContext, extensionContext),
+				PreInterruptCallbackInvocationFactory.create((ExtensionContextInternal) extensionContext)));
 	}
 
 	private ThreadMode resolveTimeoutThreadMode(ExtensionContext extensionContext) {
@@ -189,7 +198,7 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 		return annotationThreadMode;
 	}
 
-	private ThreadMode getAnnotationThreadMode(ExtensionContext extensionContext) {
+	private @Nullable ThreadMode getAnnotationThreadMode(ExtensionContext extensionContext) {
 		return extensionContext.getStore(NAMESPACE).get(TESTABLE_METHOD_TIMEOUT_THREAD_MODE_KEY, ThreadMode.class);
 	}
 
@@ -197,7 +206,7 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 		Method method = invocationContext.getExecutable();
 		Optional<Class<?>> testClass = extensionContext.getTestClass();
 		if (testClass.isPresent() && invocationContext.getTargetClass().equals(testClass.get())) {
-			return String.format("%s(%s)", method.getName(), ClassUtils.nullSafeToString(method.getParameterTypes()));
+			return "%s(%s)".formatted(method.getName(), ClassUtils.nullSafeToString(method.getParameterTypes()));
 		}
 		return ReflectionUtils.getFullyQualifiedMethodName(invocationContext.getTargetClass(), method);
 	}
@@ -214,16 +223,12 @@ class TimeoutExtension implements BeforeAllCallback, BeforeEachCallback, Invocat
 	 * Determine if timeouts are disabled for the supplied mode.
 	 */
 	private boolean isTimeoutDisabled(String mode) {
-		switch (mode) {
-			case ENABLED_MODE_VALUE:
-				return false;
-			case DISABLED_MODE_VALUE:
-				return true;
-			case DISABLED_ON_DEBUG_MODE_VALUE:
-				return RuntimeUtils.isDebugMode();
-			default:
-				throw new ExtensionConfigurationException("Unsupported timeout mode: " + mode);
-		}
+		return switch (mode) {
+			case ENABLED_MODE_VALUE -> false;
+			case DISABLED_MODE_VALUE -> true;
+			case DISABLED_ON_DEBUG_MODE_VALUE -> RuntimeUtils.isDebugMode();
+			default -> throw new ExtensionConfigurationException("Unsupported timeout mode: " + mode);
+		};
 	}
 
 	@FunctionalInterface

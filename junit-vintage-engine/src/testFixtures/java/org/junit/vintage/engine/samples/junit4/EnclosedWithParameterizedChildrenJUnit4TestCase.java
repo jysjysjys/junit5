@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * All rights reserved. This program and the accompanying materials are
  * made available under the terms of the Eclipse Public License v2.0 which
@@ -19,7 +19,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-// Source: https://github.com/junit-team/junit5/issues/3083
+// Source: https://github.com/junit-team/junit-framework/issues/3083
 @RunWith(Enclosed.class)
 public class EnclosedWithParameterizedChildrenJUnit4TestCase {
 

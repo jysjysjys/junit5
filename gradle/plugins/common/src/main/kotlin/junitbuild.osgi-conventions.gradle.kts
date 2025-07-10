@@ -5,19 +5,21 @@ plugins {
 	`java-library`
 }
 
-val importAPIGuardian = "org.apiguardian.*;resolution:=\"optional\""
+val projectDescription = objects.property<String>().convention(provider { project.description })
 
 // This task enhances `jar` and `shadowJar` tasks with the bnd
 // `BundleTaskExtension` extension which allows for generating OSGi
 // metadata into the jar
-tasks.withType<Jar>().matching { task: Jar ->
-	task.name == "jar" || task.name == "shadowJar"
-}.configureEach {
-	extra["importAPIGuardian"] = importAPIGuardian
+tasks.withType<Jar>().named {
+	it == "jar" || it == "shadowJar"
+}.all { // configure tasks eagerly as workaround for https://github.com/bndtools/bnd/issues/5695
+
+	val importAPIGuardian by extra { "org.apiguardian.*;resolution:=\"optional\"" }
+	val importJSpecify by extra { "org.jspecify.*;resolution:=\"optional\"" }
 
 	extensions.create<BundleTaskExtension>(BundleTaskExtension.NAME, this).apply {
-		properties.set(provider {
-			mapOf("project.description" to project.description)
+		properties.set(projectDescription.map {
+			mapOf("project.description" to it)
 		})
 		// These are bnd instructions necessary for generating OSGi metadata.
 		// We've generalized these so that they are widely applicable limiting
@@ -35,6 +37,7 @@ tasks.withType<Jar>().matching { task: Jar ->
 				# These are the general rules for package imports.
 				Import-Package: \
 					${importAPIGuardian},\
+					${importJSpecify},\
 					org.junit.platform.commons.logging;status=INTERNAL,\
 					kotlin.*;resolution:="optional",\
 					*
@@ -43,6 +46,7 @@ tasks.withType<Jar>().matching { task: Jar ->
 				# the kotlin and apiguardian packages, but enough modules do to make it a default.
 				-fixupmessages.kotlin.import: "Unused Import-Package instructions: \\[kotlin.*\\]";is:=ignore
 				-fixupmessages.apiguardian.import: "Unused Import-Package instructions: \\[org.apiguardian.*\\]";is:=ignore
+				-fixupmessages.jspecify.import: "Unused Import-Package instructions: \\[org.jspecify.*\\]";is:=ignore
 
 				# This tells bnd to ignore classes it finds in `META-INF/versions/`
 				# because bnd doesn't yet support multi-release jars.
@@ -63,6 +67,11 @@ tasks.withType<Jar>().matching { task: Jar ->
 				# Instruct the APIGuardianAnnotations how to operate.
 				# See https://bnd.bndtools.org/instructions/export-apiguardian.html
 				-export-apiguardian: *;version=${'$'}{versionmask;===;${'$'}{version_cleanup;${'$'}{task.archiveVersion}}}
+
+				# Avoid including java packages in Import-Package header to maximize compatibility with older OSGi runtimes.
+				# See https://bnd.bndtools.org/instructions/noimportjava.html
+				# Issue: https://github.com/junit-team/junit-framework/issues/4733
+				-noimportjava: true
 			"""
 		)
 
@@ -75,10 +84,10 @@ tasks.withType<Jar>().matching { task: Jar ->
 // task writes out the properties necessary for it to verify the OSGi
 // metadata.
 val osgiProperties by tasks.registering(WriteProperties::class) {
-	destinationFile.set(layout.buildDirectory.file("verifyOSGiProperties.bndrun"))
+	destinationFile = layout.buildDirectory.file("verifyOSGiProperties.bndrun")
 	property("-standalone", true)
-	project.extensions.getByType(JavaLibraryExtension::class.java).let { javaLibrary ->
-		property("-runee", "JavaSE-${javaLibrary.mainJavaVersion}")
+	project.extensions.getByType(JavaLibraryExtension::class).let { javaLibrary ->
+		property("-runee", Callable { "JavaSE-${javaLibrary.mainJavaVersion.get()}" })
 	}
 	property("-runrequires", "osgi.identity;filter:='(osgi.identity=${project.name})'")
 	property("-runsystempackages", "jdk.internal.misc,jdk.jfr,sun.misc")
@@ -87,16 +96,18 @@ val osgiProperties by tasks.registering(WriteProperties::class) {
 	property("-runblacklist", "org.apiguardian.api")
 }
 
-val osgiVerification by configurations.creatingResolvable {
+val osgiVerification = configurations.dependencyScope("osgiVerification")
+val osgiVerificationClasspath = configurations.resolvable("osgiVerificationClasspath") {
 	extendsFrom(configurations.runtimeClasspath.get())
+	extendsFrom(osgiVerification.get())
 }
 
 // Bnd's Resolve task is what verifies that a jar can be used in OSGi and
 // that its metadata is valid. If the metadata is invalid this task will
 // fail.
 val verifyOSGi by tasks.registering(Resolve::class) {
-	bndrun.set(osgiProperties.flatMap { it.destinationFile })
-	outputBndrun.set(layout.buildDirectory.file("resolvedOSGiProperties.bndrun"))
+	bndrun = osgiProperties.flatMap { it.destinationFile }
+	outputBndrun = layout.buildDirectory.file("resolvedOSGiProperties.bndrun")
 	isReportOptional = false
 	// By default bnd will use jars found in:
 	// 1. project.sourceSets.main.runtimeClasspath
@@ -105,7 +116,7 @@ val verifyOSGi by tasks.registering(Resolve::class) {
 	// This adds jars defined in `osgiVerification` also so that bnd
 	// can use them to validate the metadata without causing those to
 	// end up in the dependencies of those projects.
-	bundles(osgiVerification)
+	bundles(osgiVerificationClasspath)
 	properties.empty()
 }
 

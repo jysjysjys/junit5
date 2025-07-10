@@ -5,106 +5,133 @@ on:
     branches:
       - main
       - 'releases/**'
+    tags-ignore:
+      - '**'
   pull_request:
     branches:
-      - '*'
+      - '**'
+
+permissions: {}
 
 env:
-  ENTERPRISE_TESTDISTRIBUTION_ENABLED: true
-  BUILDCACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
-  BUILDCACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   Linux:
     runs-on: ubuntu-latest
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 1
-    - name: Install Graphviz
-      run: |
-        sudo apt-get update
-        sudo apt-get install graphviz
     - name: Install GraalVM
-      uses: graalvm/setup-graalvm@v1
+      uses: graalvm/setup-graalvm@e1df20a713a4cc6ab5b0eb03f0e0dcdc0199b805 # v1.3.4
       with:
+        distribution: graalvm-community
         version: 'latest'
-        java-version: '17'
-        components: 'native-image'
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        java-version: '21'
     - name: Build
       uses: ./.github/actions/main-build
       with:
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
         arguments: |
-          -Ptesting.enableJaCoCo
-          build
-          jacocoRootReport
-          prepareDocsForUploadToGhPages
+          :platform-tooling-support-tests:test \
+          build \
+          jacocoRootReport \
+          --no-configuration-cache # Disable configuration cache due to https://github.com/diffplug/spotless/issues/2318
     - name: Upload to Codecov.io
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   Windows:
     runs-on: windows-latest
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 1
     - name: Build
       uses: ./.github/actions/main-build
+      with:
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
   macOS:
     runs-on: macos-latest
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 1
     - name: Build
       uses: ./.github/actions/main-build
+      with:
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
   publish_artifacts:
     name: Publish Snapshot Artifacts
-    needs: linux
+    needs: macOS
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.repository == 'junit-team/junit5' && (startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main')
+    permissions:
+      attestations: write # required for build provenance attestation
+      id-token: write # required for build provenance attestation
+    if: github.event_name == 'push' && github.repository == 'junit-team/junit-framework' && (startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main')
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 1
     - name: Publish
       uses: ./.github/actions/run-gradle
       env:
-        ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USERNAME }}
-        ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
+        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
       with:
-        arguments: publish -x check
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+        arguments: |
+          publish -x check \
+          prepareGitHubAttestation
+    - name: Generate build provenance attestations
+      uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+      with:
+        subject-path: documentation/build/attestation/*.jar
 
-  update_documentation:
-    name: Update Snapshot Documentation
+  documentation:
+    name: Build Documentation
     concurrency:
-      group: github-pages
+      group: github-pages-${{ github.ref }}
       cancel-in-progress: true
-    needs: Linux
+    needs: macOS
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.repository == 'junit-team/junit5' && github.ref == 'refs/heads/main'
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 1
     - name: Install Graphviz
       run: |
         sudo apt-get update
         sudo apt-get install graphviz
-    - name: Restore Gradle cache and display toolchains
+    - name: Build Documentation
       uses: ./.github/actions/run-gradle
       with:
-        arguments: --quiet
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+        arguments: |
+          prepareDocsForUploadToGhPages \
+          -Dscan.tag.Documentation
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --global user.name "JUnit Team"
+        git config --global user.email "team@junit.org"
     - name: Upload Documentation
+      if: github.event_name == 'push' && github.repository == 'junit-team/junit-framework' && github.ref == 'refs/heads/main'
+      uses: ./.github/actions/run-gradle
+      with:
+        encryptionKey: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+        arguments: |
+          gitPublishPush \
+          -Dscan.tag.Documentation
       env:
-        GRGIT_USER: ${{ secrets.GH_TOKEN }}
-      run: ./gradle/scripts/publishDocumentationSnapshotOnlyIfNecessary.sh
+        GIT_USERNAME: git
+        GIT_PASSWORD: ${{ secrets.JUNIT_BUILDS_GITHUB_TOKEN_DOCS_REPO }}
